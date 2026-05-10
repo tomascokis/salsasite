@@ -1,0 +1,191 @@
+---
+title: "Partnerwork Dashboard"
+format:
+  html:
+    toc: false
+    grid:
+      sidebar-width: 10px
+      body-width: 2000px
+    html-table-processing: none
+    page-layout: full
+
+---
+
+```{=html}
+<style>
+  a, a:hover, a:visited, a:active {
+  color: inherit;
+  text-decoration: none;
+  }
+  
+  #title-block-header {
+  margin-block-end: 0px !important;
+  }
+  
+  #quarto-document-content{
+    margin-top: 0px;
+    min-width: 2000;
+  }
+  
+  h1.title {
+    font-size:22px !important;
+    text-align: center;
+  }
+
+  thead {
+    display: none;
+  }
+  
+  table.gt_table {
+    margin-top: 0px;
+}
+</style>
+```
+
+```{r, echo=F,attr.output=F}
+library(data.table)
+source("../header.R")
+x=source.all("../R")
+```
+
+```{r}
+dt_splash <- readRDS("dt_pw_lay.RDS") |> as.data.table()
+
+# Prepare data
+#DT <- add_video_links_html(dt_pw)
+
+# Use SafeID (with '/' replaced by '_') for URLs to handle IDs with slashes
+dt_splash[, DetailURL := sprintf("moves/%s.html", SafeID)]
+
+# Mark rows that have an explicit video link (any of the expected columns)
+vcol <- intersect(names(dt_splash), c("Video Links", "Video", "VideoURL"))[1]
+if (length(vcol) && nzchar(vcol)) {
+  dt_splash[, HasVideo := !is.na(get(vcol)) & nzchar(as.character(get(vcol)))]
+} else {
+  dt_splash[, HasVideo := FALSE]
+}
+
+dt_splash[,MoveN:=.I]
+for(i in dt_splash[EntryType=="Data",MoveN])
+{
+   # Do not show play icon on index page; links should be just the name
+   if(dt_splash[i,!is.na(`Video Links`) | (!is.na(Type) & Type=="Stub")])
+  {
+    dt_splash[i, Name := gt::html(sprintf('<a href="%s">%s</a>', DetailURL, Name))]
+  } else {
+   dt_splash[i, Name := gt::html(sprintf('<a href="%s">%s ▢</a>', DetailURL, Name))]
+ }
+}
+```
+
+:::: {style="display: flex;"}
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==1,])
+```
+
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==2,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==3,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==4,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==5,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==6,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==7,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==8,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==9,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==10,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==11,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==12,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==13,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==14,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==15,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group(dt_splash[layCol==16,])
+```
+:::
+::::
+
+
+```{r,echo=F,results='asis'}
+# cat(paste0("<p>",dt_splashsheet[Valid==TRUE,.N],
+#                   " moves: ",
+#                   dt_splashsheet[(Type=="Normal" | Type == "Stub") & Valid==TRUE,.N]," base moves, ",
+#                   dt_splashsheet[Valid==TRUE & Type == "Variation",.N]," variations, ",
+#                   dt_splashsheet[Valid==TRUE & Type == "Addition",.N]," combinations",
+#                   "</p>"))
+```
+
+

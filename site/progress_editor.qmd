@@ -1,0 +1,824 @@
+---
+title: "Progress Tracking"
+format:
+  html:
+    toc: false
+    grid:
+      sidebar-width: 10px
+      body-width: 2000px
+    html-table-processing: none
+    page-layout: full
+---
+
+```{=html}
+<style>
+  a, a:hover, a:visited, a:active {
+  color: inherit;
+  text-decoration: none;
+  }
+  
+  #title-block-header {
+  display: none !important;
+  }
+  
+  #quarto-document-content{
+    margin-top: 0px;
+    padding-top: 10px;
+    min-width: 2000;
+  }
+  
+  h1.title {
+    display: none;
+  }
+
+  thead {
+    display: none;
+  }
+  
+  table.gt_table {
+    margin-top: 0px;
+  }
+  
+  .progress-summary {
+    margin: 0;
+    padding: 4px 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  
+  .progress-summary h4 {
+    display: none;
+  }
+  
+  .progress-summary p {
+    margin: 0;
+  }
+  
+  .panel-tabset {
+    margin-top: 0;
+  }
+  
+  .tab-content {
+    padding-top: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  
+  .tab-content > div[style*="display: flex"] {
+    margin-top: 0;
+    gap: 2px;
+  }
+  
+  .tab-content > div[style*="display: flex"] > div {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .tab-pane {
+    padding-top: 5px;
+  }
+  
+  .nav-tabs .nav-link {
+    padding: 0.3rem 0.8rem;
+    font-size: 13px;
+  }
+</style>
+```
+
+```{r setup, include=FALSE}
+library(data.table)
+source("../header.R")
+source.all("../R")
+
+# Load data
+dt_pw <- readRDS("dt_pw.RDS") |> as.data.table()
+dt_progress_raw <- load_progress_data("../inputs/progress.RDS")
+dt_pw_layout <- readRDS("dt_pw_lay.RDS") |> as.data.table()
+
+# Merge progress into splash layout for all dates
+dt_progress_full <- merge_progress_into_splash(dt_progress_raw, dt_pw_layout)
+
+# Add links to move names
+dt_progress_full[, DetailURL := sprintf("moves/%s.html", SafeID)]
+dt_progress_full[, MoveN := .I]
+for(i in dt_progress_full[EntryType=="Data", MoveN]) {
+  dt_progress_full[i, Name := gt::html(sprintf('<a href="%s">%s</a>', DetailURL, Name))]
+}
+```
+
+::: {.panel-tabset}
+
+## Aug 2024
+
+```{r, echo=FALSE, results='asis'}
+dt_snapshot <- dt_progress_full[Date == as.Date("2024-08-01")]
+summary <- get_progress_summary(dt_snapshot)
+
+cat(sprintf('
+<div class="progress-summary">
+  <strong>Total:</strong> %d moves | 
+  <strong>Prepped:</strong> %d (%.0f%%) | 
+  <strong>Good Sequencing:</strong> %d (%.0f%%) | 
+  <strong>Good Success:</strong> %d (%.0f%%)
+</div>
+',
+  summary$total_moves,
+  summary$prepped, 100 * summary$prepped / summary$total_moves,
+  summary$good_sequencing, 100 * summary$good_sequencing / summary$total_moves,
+  summary$good_success, 100 * summary$good_success / summary$total_moves
+))
+```
+
+:::: {style="display: flex; gap: 2px;"}
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2024-08-01") & layCol==1,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2024-08-01") & layCol==2,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2024-08-01") & layCol==3,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2024-08-01") & layCol==4,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2024-08-01") & layCol==5,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2024-08-01") & layCol==6,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2024-08-01") & layCol==7,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2024-08-01") & layCol==8,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2024-08-01") & layCol==9,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2024-08-01") & layCol==10,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2024-08-01") & layCol==11,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2024-08-01") & layCol==12,])
+```
+:::
+
+::::
+
+## Oct 2023
+
+```{r, echo=FALSE, results='asis'}
+dt_snapshot <- dt_progress_full[Date == as.Date("2023-10-01")]
+summary <- get_progress_summary(dt_snapshot)
+
+cat(sprintf('
+<div class="progress-summary">
+  <strong>Total:</strong> %d moves | 
+  <strong>Prepped:</strong> %d (%.0f%%) | 
+  <strong>Good Sequencing:</strong> %d (%.0f%%) | 
+  <strong>Good Success:</strong> %d (%.0f%%)
+</div>
+',
+  summary$total_moves,
+  summary$prepped, 100 * summary$prepped / summary$total_moves,
+  summary$good_sequencing, 100 * summary$good_sequencing / summary$total_moves,
+  summary$good_success, 100 * summary$good_success / summary$total_moves
+))
+```
+
+:::: {style="display: flex; gap: 2px;"}
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-10-01") & layCol==1,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-10-01") & layCol==2,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-10-01") & layCol==3,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-10-01") & layCol==4,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-10-01") & layCol==5,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-10-01") & layCol==6,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-10-01") & layCol==7,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-10-01") & layCol==8,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-10-01") & layCol==9,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-10-01") & layCol==10,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-10-01") & layCol==11,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-10-01") & layCol==12,])
+```
+:::
+
+::::
+
+## Jul 2023
+
+```{r, echo=FALSE, results='asis'}
+dt_snapshot <- dt_progress_full[Date == as.Date("2023-07-01")]
+summary <- get_progress_summary(dt_snapshot)
+
+cat(sprintf('
+<div class="progress-summary">
+  <strong>Total:</strong> %d moves | 
+  <strong>Prepped:</strong> %d (%.0f%%) | 
+  <strong>Good Sequencing:</strong> %d (%.0f%%) | 
+  <strong>Good Success:</strong> %d (%.0f%%)
+</div>
+',
+  summary$total_moves,
+  summary$prepped, 100 * summary$prepped / summary$total_moves,
+  summary$good_sequencing, 100 * summary$good_sequencing / summary$total_moves,
+  summary$good_success, 100 * summary$good_success / summary$total_moves
+))
+```
+
+:::: {style="display: flex; gap: 2px;"}
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-07-01") & layCol==1,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-07-01") & layCol==2,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-07-01") & layCol==3,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-07-01") & layCol==4,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-07-01") & layCol==5,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-07-01") & layCol==6,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-07-01") & layCol==7,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-07-01") & layCol==8,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-07-01") & layCol==9,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-07-01") & layCol==10,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-07-01") & layCol==11,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-07-01") & layCol==12,])
+```
+:::
+
+::::
+
+## May 2023
+
+```{r, echo=FALSE, results='asis'}
+dt_snapshot <- dt_progress_full[Date == as.Date("2023-05-12")]
+summary <- get_progress_summary(dt_snapshot)
+
+cat(sprintf('
+<div class="progress-summary">
+  <strong>Total:</strong> %d moves | 
+  <strong>Prepped:</strong> %d (%.0f%%) | 
+  <strong>Good Sequencing:</strong> %d (%.0f%%) | 
+  <strong>Good Success:</strong> %d (%.0f%%)
+</div>
+',
+  summary$total_moves,
+  summary$prepped, 100 * summary$prepped / summary$total_moves,
+  summary$good_sequencing, 100 * summary$good_sequencing / summary$total_moves,
+  summary$good_success, 100 * summary$good_success / summary$total_moves
+))
+```
+
+:::: {style="display: flex; gap: 2px;"}
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-05-12") & layCol==1,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-05-12") & layCol==2,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-05-12") & layCol==3,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-05-12") & layCol==4,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-05-12") & layCol==5,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-05-12") & layCol==6,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-05-12") & layCol==7,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-05-12") & layCol==8,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-05-12") & layCol==9,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-05-12") & layCol==10,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-05-12") & layCol==11,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-05-12") & layCol==12,])
+```
+:::
+
+::::
+
+## Apr 2023
+
+```{r, echo=FALSE, results='asis'}
+dt_snapshot <- dt_progress_full[Date == as.Date("2023-04-08")]
+summary <- get_progress_summary(dt_snapshot)
+
+cat(sprintf('
+<div class="progress-summary">
+  <strong>Total:</strong> %d moves | 
+  <strong>Prepped:</strong> %d (%.0f%%) | 
+  <strong>Good Sequencing:</strong> %d (%.0f%%) | 
+  <strong>Good Success:</strong> %d (%.0f%%)
+</div>
+',
+  summary$total_moves,
+  summary$prepped, 100 * summary$prepped / summary$total_moves,
+  summary$good_sequencing, 100 * summary$good_sequencing / summary$total_moves,
+  summary$good_success, 100 * summary$good_success / summary$total_moves
+))
+```
+
+:::: {style="display: flex; gap: 2px;"}
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-04-08") & layCol==1,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-04-08") & layCol==2,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-04-08") & layCol==3,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-04-08") & layCol==4,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-04-08") & layCol==5,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-04-08") & layCol==6,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-04-08") & layCol==7,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-04-08") & layCol==8,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-04-08") & layCol==9,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-04-08") & layCol==10,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-04-08") & layCol==11,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-04-08") & layCol==12,])
+```
+:::
+
+::::
+
+## Jan 2023
+
+```{r, echo=FALSE, results='asis'}
+dt_snapshot <- dt_progress_full[Date == as.Date("2023-01-25")]
+summary <- get_progress_summary(dt_snapshot)
+
+cat(sprintf('
+<div class="progress-summary">
+  <strong>Total:</strong> %d moves | 
+  <strong>Prepped:</strong> %d (%.0f%%) | 
+  <strong>Good Sequencing:</strong> %d (%.0f%%) | 
+  <strong>Good Success:</strong> %d (%.0f%%)
+</div>
+',
+  summary$total_moves,
+  summary$prepped, 100 * summary$prepped / summary$total_moves,
+  summary$good_sequencing, 100 * summary$good_sequencing / summary$total_moves,
+  summary$good_success, 100 * summary$good_success / summary$total_moves
+))
+```
+
+:::: {style="display: flex; gap: 2px;"}
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-01-25") & layCol==1,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-01-25") & layCol==2,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-01-25") & layCol==3,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-01-25") & layCol==4,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-01-25") & layCol==5,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-01-25") & layCol==6,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-01-25") & layCol==7,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-01-25") & layCol==8,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-01-25") & layCol==9,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-01-25") & layCol==10,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-01-25") & layCol==11,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2023-01-25") & layCol==12,])
+```
+:::
+
+::::
+
+## Apr 2022
+
+```{r, echo=FALSE, results='asis'}
+dt_snapshot <- dt_progress_full[Date == as.Date("2022-04-17")]
+summary <- get_progress_summary(dt_snapshot)
+
+cat(sprintf('
+<div class="progress-summary">
+  <strong>Total:</strong> %d moves | 
+  <strong>Prepped:</strong> %d (%.0f%%) | 
+  <strong>Good Sequencing:</strong> %d (%.0f%%) | 
+  <strong>Good Success:</strong> %d (%.0f%%)
+</div>
+',
+  summary$total_moves,
+  summary$prepped, 100 * summary$prepped / summary$total_moves,
+  summary$good_sequencing, 100 * summary$good_sequencing / summary$total_moves,
+  summary$good_success, 100 * summary$good_success / summary$total_moves
+))
+```
+
+:::: {style="display: flex; gap: 2px;"}
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2022-04-17") & layCol==1,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2022-04-17") & layCol==2,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2022-04-17") & layCol==3,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2022-04-17") & layCol==4,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2022-04-17") & layCol==5,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2022-04-17") & layCol==6,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2022-04-17") & layCol==7,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2022-04-17") & layCol==8,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2022-04-17") & layCol==9,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2022-04-17") & layCol==10,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2022-04-17") & layCol==11,])
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+renderSplash_group_progress(dt_progress_full[Date == as.Date("2022-04-17") & layCol==12,])
+```
+:::
+
+::::
+
+:::
+
+<br>
+
+```{=html}
+<div style="margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
+<h4 style="margin-top: 0;">Legend</h4>
+
+<p><strong>Preparation:</strong>
+<span style="background-color: #fff5ee; padding: 2px 8px; margin: 0 4px; border: 1px solid #ddd;">Off the cards</span>
+<span style="background-color: #FFDEAD; padding: 2px 8px; margin: 0 4px;">Needs guidance</span>
+<span style="background-color: #FFD700; padding: 2px 8px; margin: 0 4px;">Not prepped</span>
+<span style="background-color: #FFA07A; padding: 2px 8px; margin: 0 4px;">Shaky</span>
+<span style="background-color: #7FFF00; padding: 2px 8px; margin: 0 4px;">Prepped</span>
+</p>
+
+<p><strong>Sequencing:</strong>
+<span style="background-color: #ffffff; border: 1px solid #ddd; padding: 2px 8px; margin: 0 4px;">Not needed</span>
+<span style="background-color: #EE2C2C; padding: 2px 8px; margin: 0 4px; color: white;">Unused</span>
+<span style="background-color: #FFD700; padding: 2px 8px; margin: 0 4px;">Underused</span>
+<span style="background-color: #2F4F4F; padding: 2px 8px; margin: 0 4px; color: white;">Overused</span>
+<span style="background-color: #7FFF00; padding: 2px 8px; margin: 0 4px;">Good</span>
+<span style="background-color: #66CD00; padding: 2px 8px; margin: 0 4px;">Great</span>
+</p>
+
+<p><strong>Success:</strong>
+<span style="background-color: #ffffff; border: 1px solid #ddd; padding: 2px 8px; margin: 0 4px;">N/A</span>
+<span style="background-color: #FF4500; padding: 2px 8px; margin: 0 4px; color: white;">Failure</span>
+<span style="background-color: #FFD700; padding: 2px 8px; margin: 0 4px;">50-50</span>
+<span style="background-color: #BCEE68; padding: 2px 8px; margin: 0 4px;">Nearly there</span>
+<span style="background-color: #66CD00; padding: 2px 8px; margin: 0 4px;">Great</span>
+</p>
+</div>
+```

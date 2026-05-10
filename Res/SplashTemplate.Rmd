@@ -1,0 +1,100 @@
+---
+  title: "Title"
+  output: 
+    html_document:
+      css: ""
+   
+---
+
+
+```{css, echo=FALSE}
+    body .main-container {
+      max-width: 1800px !important;
+      width: 1800px !important;
+    }
+    body {
+      max-width: 1800px !important;
+    }
+    
+    div.main-container {
+      max-width: 100%;  !important;
+    }
+```
+
+
+:::: {style="display: flex;"}
+
+::: {}
+```{r,echo=F,results='markup'}
+if(dt_splash[,any(layCol==1)])
+{
+renderSplash_group(dt_splash[layCol==1,])
+}
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+if(dt_splash[,any(layCol==2)])
+{
+renderSplash_group(dt_splash[layCol==2,])
+}
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+if(dt_splash[,any(layCol==3)])
+{
+  renderSplash_group(dt_splash[layCol==3,])
+}
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+
+if(dt_splash[,any(layCol==4)])
+{
+  renderSplash_group(dt_splash[layCol==4,])
+}
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+if(dt_splash[,any(layCol==5)])
+{
+  renderSplash_group(dt_splash[layCol==5,])
+}
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+if(dt_splash[,any(layCol==6)])
+{
+  renderSplash_group(dt_splash[layCol==6,])
+}
+```
+:::
+
+::: {}
+```{r,echo=F,results='markup'}
+if(dt_splash[,any(layCol==7)])
+{
+  renderSplash_group(dt_splash[layCol==7,])
+}
+```
+:::
+::::
+
+
+```{r,echo=F,results='asis'}
+cat(paste0("<p>",dt_splashsheet[Valid==TRUE,.N],
+                  " moves: ",
+                  dt_splashsheet[(Type=="Normal" | Type == "Stub") & Valid==TRUE,.N]," base moves, ",
+                  dt_splashsheet[Valid==TRUE & Type == "Variation",.N]," variations, ",
+                  dt_splashsheet[Valid==TRUE & Type == "Addition",.N]," combinations",
+                  "</p>"))
+```

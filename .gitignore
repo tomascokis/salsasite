@@ -1,0 +1,52 @@
+# R-specific
+.Rhistory
+.RData
+.Rproj.user/
+.Rproj.user
+*.Rproj
+.env
+.Renviron
+
+# Build and output directories
+site/_site/
+_site/
+site/.quarto/
+.quarto/
+
+# Quarto cache
+*.qmd.lock
+
+# Generated/compiled outputs
+*.html
+*.pdf
+*.docx
+
+# System files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary files
+*.swp
+*.swo
+*~
+.#*
+
+# Log files
+*.log
+
+# Data and cache
+.cache/
+cache/
+*.RDS
+*.rds
+inputs/progress_updates/imported/
+
+# Node modules (if needed for npm packages)
+node_modules/
+package-lock.json
+
+# Large files
+*.zip
+*.tar.gz

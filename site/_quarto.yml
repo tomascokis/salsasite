@@ -1,0 +1,28 @@
+project:
+  type: website
+  output-dir: _site
+  resources:        # ensure these folders are copied into _site
+    - moves/**
+    - www/**
+
+website:
+  title: "Salsa Encyclopedia"
+  navbar:
+    left:
+      - text: "Home"
+        href: index.qmd
+      - text: "Progress"
+        href: progress.qmd
+      - text: "Editor"
+        href: progress_editor.html
+
+format:
+  html:
+    theme: cosmo
+    css: [www/styles.css]
+    toc: false
+    smooth-scroll: true
+execute:
+  echo: false
+  warning: false
+  message: false

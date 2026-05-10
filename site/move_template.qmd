@@ -1,0 +1,14 @@
+---
+title: "MOVE_TITLE_PLACEHOLDER"
+from: markdown+raw_html+smart
+format:
+  html:
+    toc: false
+    page-layout: full
+---
+
+<!-- MOVE_CSS -->
+
+<!-- MOVE_CONTENT -->
+
+<!-- MOVE_JS -->
