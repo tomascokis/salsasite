@@ -106,4 +106,6 @@ for (i in seq_len(total_moves)) {
   }
 }
 
-message("✅ Build complete. Open site/_site/index.html in your browser.")
+file.rename("site/_site","_site")
+
+message("✅ Build complete. Open _site/index.html in your browser.")
