@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libtiff5-dev \
     libjpeg-dev \
+    libnode-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN Rscript -e "install.packages(c( \
