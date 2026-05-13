@@ -2,6 +2,9 @@
 
 cd /salsasite
 
+echo "Starting RStudio Server..."
+/init &
+
 echo "Building salsa site..."
 Rscript /salsasite/build.R || echo "Initial build failed"
 
