@@ -20,7 +20,6 @@ site/.quarto/
 *.qmd.lock
 
 # Generated/compiled outputs
-*.html
 *.pdf
 *.docx
 
@@ -42,14 +41,7 @@ Thumbs.db
 # Data and cache
 .cache/
 cache/
-*.RDS
-*.rds
-inputs/progress_updates/imported/
 
 # Node modules (if needed for npm packages)
 node_modules/
 package-lock.json
-
-# Large files
-*.zip
-*.tar.gz
