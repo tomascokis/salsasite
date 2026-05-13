@@ -1,8 +1,5 @@
 # R/build.R
 
-library(data.table)
-library(quarto)
-
 source("header.R")
 source.all("R")
 

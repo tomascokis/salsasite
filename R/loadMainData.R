@@ -1,5 +1,3 @@
-
-
 loadMainData <- function(doc_link,move_sheet)
 {
   data = data.table(read_sheet(doc_link,sheet=move_sheet,skip=1))
@@ -35,4 +33,11 @@ loadSplashLayout <- function(doc_link, layout_sheet)
   
   return(dt_splashlayout)
 }
+
+# Sanitize ID for safe filename/URL: replace only '/' with '_' to avoid collisions
+sanitize_id <- function(x) 
+  {
+  gsub("/", "_", as.character(x), fixed = TRUE)
+}
+
 

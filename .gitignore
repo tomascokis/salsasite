@@ -7,6 +7,9 @@
 .env
 .Renviron
 
+#keys
+/keys
+
 # Build and output directories
 site/_site/
 _site/

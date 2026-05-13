@@ -1,3 +1,4 @@
+install_missing_packages(c('googlesheets4','data.table','dplyr','flextable','RCurl','readr','gt','shiny','DT','quarto'))
 
 library(googlesheets4)
 library(data.table)

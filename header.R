@@ -1,9 +1,3 @@
-
-# Sanitize ID for safe filename/URL: replace only '/' with '_' to avoid collisions
-sanitize_id <- function(x) {
-  gsub("/", "_", as.character(x), fixed = TRUE)
-}
-
 source.all <- function(folder) 
 {
   files = list.files(folder,pattern="*.R$")
@@ -21,4 +15,15 @@ source.all <- function(folder)
   return(paste0("Sourced ",length(files)," files in ", folder,"/"))
 }
 
-
+install_missing_packages <- function(packages) 
+{
+  # Find packages that are not currently installed
+  missing_packages <- packages[!packages %in% rownames(installed.packages())]
+  
+  # Install any missing packages
+  if (length(missing_packages) > 0) {
+    install.packages(missing_packages)
+  }
+  
+  invisible(missing_packages)
+}
