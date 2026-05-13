@@ -5,6 +5,8 @@ source.all("R")
 
 # ---- Load dataset ----
 
+googlesheets4::gs4_auth(path="keys/gen-lang-client-0066567594-9229ab0ef82e.json")
+
 dt_pw_raw <- loadMainData("https://docs.google.com/spreadsheets/d/1zEYvNilekcaQIihz37yZJadDJDdiRW7SymGijttQhco/edit?gid=1551769177#gid=1551769177",
                       "Moves")
 dt_splashlayout = loadSplashLayout("https://docs.google.com/spreadsheets/d/1zEYvNilekcaQIihz37yZJadDJDdiRW7SymGijttQhco/edit?gid=1551769177#gid=1551769177",
