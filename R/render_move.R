@@ -13,11 +13,11 @@
 #' @importFrom htmltools tags HTML
 #' @importFrom data.table data.table
 
-# Silence R CMD check notes for data.table and htmltools
-utils::globalVariables(c("ID", "tags"))
 
 render_move_content <- function(id, dt_pw,
-                                 videos_src_dir = "/Users/tomascokis/Dropbox/Salsa Library/Partnerwork Encyclopedia") {
+                                 videos_src_dir,
+                                 use_relative_paths) 
+{
   
   # Ensure htmltools tags are available
   tags <- htmltools::tags
@@ -97,13 +97,26 @@ render_move_content <- function(id, dt_pw,
 
     panes <- lapply(seq_along(vid_paths), function(i) {
       active <- i == 1
+      # Generate video source URL based on use_relative_paths flag
+      if (use_relative_paths) {
+        # Use relative path for web serving: ../videofolder/filename.ext
+        # Move pages are in _site/moves/, so we need ../ to go up to _site/
+        # URL-encode the filename to handle spaces and special characters
+        folder_name <- basename(videos_src_dir)
+        filename <- basename(vid_paths[i])
+        encoded_filename <- utils::URLencode(filename, reserved = TRUE)
+        vid_src <- sprintf("../%s/%s", folder_name, encoded_filename)
+      } else {
+        # Use absolute file:// path
+        vid_src <- sprintf("file://%s", vid_paths[i])
+      }
       tags$div(
         id = ids[i],
         class = paste("tab-pane fade", if (active) "show active"),
         role = "tabpanel",
         tabindex = "0",
         tags$video(controls = NA, preload = "auto", muted = NA, playsinline = NA, class = "mv-video",
-          tags$source(src = sprintf("file://%s", vid_paths[i]), type = mime_for(vid_paths[i]))
+          tags$source(src = vid_src, type = mime_for(vid_paths[i]))
         )
       )
     })

@@ -1,4 +1,5 @@
 # R/build.R
+setwd("/salsasite")s
 
 source("header.R")
 source.all("R")
@@ -26,13 +27,27 @@ renderSplash_group(dt_pw_layout)
 dt_pw$SafeID <- sanitize_id(dt_pw$ID)
 dt_pw_layout$SafeID <- sanitize_id(dt_pw_layout$ID)
 
-saveRDS(dt_pw,"site/dt_pw.RDS")
-saveRDS(dt_pw_layout,"site/dt_pw_lay.RDS")
+saveRDS(dt_pw,"data/dt_pw.RDS")
+saveRDS(dt_pw_layout,"data/dt_pw_lay.RDS")
 
 # ---- Set site directory ----
 site_dir <- "site"
 moves_dir <- file.path(site_dir, "moves")
 if (!dir.exists(moves_dir)) dir.create(moves_dir, recursive = TRUE)
+
+if(file.exists("/Users/tomascokis/Dropbox/Salsa Library/Partnerwork Encyclopedia"))
+{
+  videos_src_dir <- "/Users/tomascokis/Dropbox/Salsa Library/Partnerwork Encyclopedia"
+} else if(file.exists("videomoves"))
+{
+  videos_src_dir <- "videomoves"
+} else 
+{
+  stop("Video source directory not found. Please update the path in build.R.")
+}
+
+# Use absolute file URLs for local videos when TRUE; use relative web paths from _site/moves when FALSE.
+use_relative_links <- TRUE
 
 # ---- Render index page ----
 quarto_render(file.path(site_dir, "index.qmd"))
@@ -73,12 +88,16 @@ template_html <- paste(readLines(template_path, warn = FALSE), collapse = "\n")
 message("Generating move pages...")
 total_moves <- nrow(dt_pw)
 
-for (i in seq_len(total_moves)) {
+dir.create("site/_site")
+dir.create("site/_site/moves")
+
+for (i in seq_len(total_moves)) 
+{
   id <- dt_pw$ID[i]
   safe_id <- sanitize_id(id)
   
   # Generate content for this move
-  parts <- render_move_content(id, dt_pw)
+  parts <- render_move_content(id, dt_pw, videos_src_dir, use_relative_paths = use_relative_links)
   
   # Substitute placeholders in template
   html <- template_html
@@ -105,6 +124,15 @@ for (i in seq_len(total_moves)) {
   }
 }
 
+file.remove("_site")
+unlink("/salsasite/_site/", recursive = TRUE)
+unlink("/salsasite/_site", recursive = TRUE)
+
+
+system("rm salsasite/_site")
+system("ls")
+system("rm _site")
 file.rename("site/_site","_site")
+file.symlink(from="../videomoves", to="_site/videomoves")
 
 message("✅ Build complete. Open _site/index.html in your browser.")
