@@ -1,0 +1,22 @@
+services:
+  salsasite-dev:
+    build:
+      context: /mnt/user/fastdata/server/salsasite-dev
+      dockerfile: docker/Dockerfile.dev
+    image: salsasite-dev:live
+    container_name: salsasite-dev
+    environment:
+      PORT: 5173
+      HOST: 0.0.0.0
+      LIVE_ROOT: /server/live
+      DATA_DIR: /server/live/migration-data
+      MEDIA_ROOT: /server/live/video-moves
+      SOURCE_ROOT: /server/live/video-sources
+      POSTER_ROOT: /server/live/video-posters
+      CHOKIDAR_USEPOLLING: "true"
+      NODE_ENV: development
+    ports:
+      - "18096:5173"
+    restart: unless-stopped
+    volumes:
+      - /mnt/user/fastdata/server/salsasite-dev:/server/live

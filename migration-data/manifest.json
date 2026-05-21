@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-05-17T02:21:21Z",
+  "source": {
+    "rawMoveReference": "data_reference.xlsx",
+    "moves": "data/dt_pw.RDS",
+    "layout": "data/dt_pw_lay.RDS",
+    "progress": "inputs/progress.RDS",
+    "localVideoDirectory": "videomoves",
+    "visualReference": "_site_reference"
+  },
+  "counts": {
+    "moveRows": 595,
+    "validMoves": 595,
+    "layoutRows": 587,
+    "layoutColumns": 12,
+    "progressRows": 3228,
+    "progressSnapshots": 7,
+    "trackableMoves": 540,
+    "movesWithLocalVideo": 59
+  },
+  "routes": {
+    "home": "/",
+    "moveDetail": "/moves/[slug]",
+    "progress": "/progress",
+    "progressEditor": "/progress/editor"
+  }
+}

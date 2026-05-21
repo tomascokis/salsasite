@@ -1,0 +1,38 @@
+import { error } from '@sveltejs/kit';
+import { getMoves, getRawMoveReference } from '$lib/server/data';
+import { buildRelationshipDiagram } from '$lib/relationship-diagram';
+import { getResolvedMoveVideos } from '$lib/server/video-library';
+import { queuePosterGeneration } from '$lib/server/posters';
+
+export async function load({ params }) {
+  const moves = await getMoves();
+  const move = moves.find((entry) => entry.slug === params.slug) ?? null;
+
+  if (!move) {
+    throw error(404, 'Move not found');
+  }
+
+  const rawMoves = await getRawMoveReference();
+  const rawReference = rawMoves.find((entry) => entry.id === move.id) ?? null;
+  const relationshipDiagram = buildRelationshipDiagram(moves, move.id);
+  const videos = await getResolvedMoveVideos(move.id, moves);
+
+  videos.forEach((video) => {
+    if (!video.posterFile) {
+      void queuePosterGeneration(video.filePath);
+    }
+  });
+
+  move.videoFiles.forEach((videoFile) => {
+    if (!videos.some((video) => video.filePath === videoFile)) {
+      void queuePosterGeneration(videoFile);
+    }
+  });
+
+  return {
+    move,
+    rawReference,
+    relationshipDiagram,
+    videos
+  };
+}

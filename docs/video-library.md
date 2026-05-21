@@ -1,0 +1,371 @@
+# Video Library And Clip Editor
+
+This document describes how the app stores videos, links videos to moves, uploads source recordings, renders clips, and generates posters.
+
+## Mental Model
+
+The app has two video concepts:
+
+- `source` videos are full dance or source recordings managed through `/media`.
+- `move` videos are playable clips shown on move detail pages.
+
+Source videos are not shown directly on move pages. A source video must be sliced and rendered into one or more move clips before it appears on a move detail page.
+
+The source of truth for video relationships is a writable JSON catalog:
+
+```text
+DATA_DIR/video-library.json
+```
+
+The exported move data still defines the encyclopedia. The video catalog only defines media assets, move-to-video links, and clip definitions.
+
+## Runtime Setup
+
+In the live Unraid setup the repo is mounted once at `/server/live`. All video paths should point inside that mount.
+
+| Purpose | Env var | Container path | Host path |
+| --- | --- | --- | --- |
+| App-managed JSON state | `DATA_DIR` | `/server/live/migration-data` | `/mnt/user/fastdata/server/salsasite-dev/migration-data` |
+| Playable move clips | `MEDIA_ROOT` | `/server/live/video-moves` | `/mnt/user/fastdata/server/salsasite-dev/video-moves` |
+| Uploaded source videos | `SOURCE_ROOT` | `/server/live/video-sources` | `/mnt/user/fastdata/server/salsasite-dev/video-sources` |
+| Poster images | `POSTER_ROOT` | `/server/live/video-posters` | `/mnt/user/fastdata/server/salsasite-dev/video-posters` |
+
+The live container command should include:
+
+```sh
+-e DATA_DIR=/server/live/migration-data \
+-e MEDIA_ROOT=/server/live/video-moves \
+-e SOURCE_ROOT=/server/live/video-sources \
+-e POSTER_ROOT=/server/live/video-posters \
+-v /mnt/user/fastdata/server/salsasite-dev:/server/live
+```
+
+The dev image includes `ffmpeg`. Rendering clips and generating posters should normally happen inside the container.
+
+## Catalog Model
+
+`video-library.json` contains three arrays.
+
+| Array | Purpose |
+| --- | --- |
+| `videoAssets` | One row per real video file. |
+| `moveVideoLinks` | Ordered links from move IDs to playable move assets. |
+| `derivedClips` | Saved clip definitions created from source videos. |
+
+### `videoAssets`
+
+Each asset represents a real file under `video-moves/` or `video-sources/`.
+
+Important fields:
+
+- `kind`: `move` or `source`.
+- `filePath`: managed path such as `video-moves/ABC00001 example.mp4`.
+- `displayName`: human-readable label.
+- `originalFilename`: uploaded or discovered filename.
+- `dancers`: free-text list.
+- `timing`: required enum, `on1`, `on2`, or `other`.
+- `contentType`: required enum, `music`, `counts`, or `other`.
+- `environment`: required enum, `social` or `class`.
+- `recordDate`: optional `YYYY-MM-DD` date for when the source was actually recorded.
+- `classWorkshop`: optional free-entry class/workshop tag, with suggestions from existing source videos.
+- `tags`: optional miscellaneous source tags such as `low quality`.
+- `notes`: optional text.
+
+Existing legacy files get metadata inferred from their filenames where possible.
+
+### `moveVideoLinks`
+
+Move pages read these links to decide which videos to show. This is what enables one video asset to be used by many moves.
+
+Only links to `move` assets are shown on move pages. Links to `source` assets are ignored intentionally.
+
+### `derivedClips`
+
+Each derived clip stores both the rendered clip range and the actual move range:
+
+- `startMs` and `endMs` define the full rendered clip, including viewer context.
+- `actionStartMs` and `actionEndMs` define where the move itself happens inside that clip.
+- `sourceAssetId` points to the uploaded source video.
+- `outputAssetId` points to the rendered move video after render succeeds.
+- `status` is `pending`, `rendering`, `ready`, or `failed`.
+
+## Legacy Move Video Import
+
+Existing files under `video-moves/` continue to work without manual catalog editing.
+
+On normal library reads, the server scans `MEDIA_ROOT` for:
+
+```text
+.mp4 .m4v .mov
+```
+
+If a filename starts with a known move ID, the app creates or reuses a `move` asset and creates a move link.
+
+Example:
+
+```text
+video-moves/BK020201 Block unwrap via hip [on2, music].mp4
+```
+
+This links the file to move `BK020201`.
+
+The bootstrap process is additive. It does not delete catalog rows for missing files.
+
+## Media Workflow
+
+The Media page is:
+
+```text
+/media
+```
+
+`/upload` redirects to `/media` for compatibility with older links.
+
+Clicking a source card opens:
+
+```text
+/media/edit/[source-asset-id]
+```
+
+The intended workflow is:
+
+1. Upload a source video.
+2. Enter required metadata: timing, type, and environment.
+3. Select the source video in the library.
+4. Add one or more move clips in the editor.
+5. Save clip definitions.
+6. Render selected clips.
+7. Open the relevant move page and confirm the rendered clip appears as a tabbed video.
+
+Uploading stores the original file in `video-sources/` and creates a `source` asset. It does not automatically link that full source video to move pages.
+
+## Clip Editor
+
+The editor has one timeline and two ranges.
+
+| Range | Meaning |
+| --- | --- |
+| Move range | The exact part where the move happens. |
+| Clip range | The wider rendered clip, including context before and after the move. |
+
+New clips start with context around the move. The outer clip markers follow the move markers until the user manually edits that side.
+
+Current constraints:
+
+- The left clip marker must remain before the move start.
+- The right clip marker must remain after the move end.
+- Each side keeps about `0.5s` separation where the video boundaries allow it.
+- If the move starts near `0.00s`, the left clip marker clamps to `0.00s`.
+- If the move ends near the video end, the right clip marker clamps to the video duration.
+
+Playback behavior:
+
+- Spacebar toggles play/pause unless focus is inside an input, textarea, select, button, or editable element.
+- The playhead can be dragged even before a clip is being edited.
+- The editor attempts muted autoplay from `0.00s` when a source video loads. Browser autoplay policy can still reject this, so manual play remains available.
+- Timeline positions fall back to saved clip times while video metadata is still loading.
+
+## Rendering
+
+Saved clip definitions do not create move videos until they are rendered.
+
+Rendering is handled by the app server with `ffmpeg`. This is an in-process queue designed for the single-container Unraid setup.
+
+The render command is effectively:
+
+```text
+ffmpeg -ss <start> -t <duration> -i <source> -c:v libx264 -preset veryfast -crf 23 -c:a aac -movflags +faststart <output>
+```
+
+Output files are written to:
+
+```text
+video-moves/<moveId> <source display name> <clip-id-prefix>.mp4
+```
+
+When render succeeds:
+
+- The clip status becomes `ready`.
+- A `move` video asset is created or updated.
+- A `moveVideoLinks` row links the output asset to the target move.
+- Poster generation is queued.
+
+When render fails:
+
+- The clip status becomes `failed`.
+- The failure message is stored on the clip.
+- The clip can be rendered again after fixing the cause.
+
+If the container restarts while a job is rendering, the in-memory job is lost. The saved clip definition remains in `video-library.json`, and the clip can be rendered again from the Media page.
+
+## Move Page Resolution
+
+Move detail pages receive a resolved `videos` view model assembled at runtime.
+
+The resolver combines:
+
+- legacy move videos discovered under `video-moves/`
+- catalog move assets linked through `moveVideoLinks`
+- rendered derived clips that have `status: "ready"`
+
+For derived clips, the move page shows inherited provenance from the source asset:
+
+- dancers
+- timing
+- content type
+- environment
+- source label
+- notes
+
+The current tabbed player UI uses this resolved view model. It does not read source videos directly.
+
+## Posters
+
+Posters are stored under `POSTER_ROOT` using the same managed path as the video, with an image extension.
+
+Example:
+
+```text
+video-moves/BK020201 example.mp4
+video-posters/video-moves/BK020201 example.jpg
+```
+
+For source videos:
+
+```text
+video-sources/full dance.mp4
+video-posters/video-sources/full dance.jpg
+```
+
+The app checks these extensions:
+
+```text
+.jpg .jpeg .webp .png .avif
+```
+
+Poster generation is queued automatically for uploaded sources and rendered clips when `ffmpeg` is available.
+
+Bulk-generate move posters on Unraid:
+
+```sh
+docker exec salsasite-dev bash /server/live/scripts/generate_video_posters.sh \
+  /server/live/video-moves \
+  /server/live/video-posters/video-moves \
+  1.0
+```
+
+Bulk-generate source posters on Unraid:
+
+```sh
+docker exec salsasite-dev bash /server/live/scripts/generate_video_posters.sh \
+  /server/live/video-sources \
+  /server/live/video-posters/video-sources \
+  1.0
+```
+
+## API Summary
+
+| Route | Method | Purpose |
+| --- | --- | --- |
+| `/api/upload/library` | `GET` | Return legacy upload library data. |
+| `/api/media/library?limit=50&cursor=...` | `GET` | Return paginated Media page source cards, grouped by upload month, with tag/class suggestions. |
+| `/api/upload/source` | `POST` | Upload a source video and create a source asset. |
+| `/api/upload/source/[id]` | `PUT` | Update source metadata. |
+| `/api/upload/source/[id]` | `DELETE` | Delete source, derived clips, rendered outputs, links, and posters. |
+| `/api/upload/clips` | `POST` | Save clip definitions for a source asset. |
+| `/api/upload/render` | `POST` | Queue render jobs. |
+| `/api/upload/render?ids=...` | `GET` | Poll render status. |
+| `/media/[...path]` | `GET` | Serve move/source videos with byte-range support. |
+| `/posters/[...path]` | `GET` | Serve poster images. |
+
+## Deletion Semantics
+
+Deleting a source video removes:
+
+- the source video file
+- source poster files
+- derived clip definitions from that source
+- rendered move clips made from that source
+- posters for those rendered move clips
+- move links for those rendered move clips
+- catalog asset rows for the source and rendered outputs
+
+Deleting a source does not remove unrelated legacy move videos.
+
+## What Requires A Container Rebuild
+
+With the live-mounted setup, these do not require rebuilding the Docker image:
+
+- Svelte frontend source edits
+- server route edits
+- upload page/editor edits
+- JSON catalog changes
+- adding or deleting videos
+- adding or deleting posters
+
+These do require rebuilding or restarting depending on the change:
+
+- changes to `Dockerfile.dev`
+- installing new OS packages
+- changing container env vars
+- changing port mappings
+- changing the mounted host path
+
+## Troubleshooting
+
+`ffmpeg is required on PATH`
+
+Run render/poster commands inside the live Docker container unless `ffmpeg` is installed on the Unraid host.
+
+Move page does not show a rendered clip
+
+Confirm the clip status is `ready`, the output file exists under `video-moves/`, the clip move ID is valid, and `moveVideoLinks` links the move ID to the output asset.
+
+Legacy video file does not link to a move
+
+Confirm the filename starts with a valid move ID and has one of the scanned extensions: `.mp4`, `.m4v`, or `.mov`.
+
+Uploaded source appears on Media but not on a move page
+
+This is expected. Source videos must be sliced and rendered before they appear on move pages.
+
+Posters do not appear
+
+Confirm the matching poster exists under `video-posters/`, `ffmpeg` is available in the container, and `docker logs salsasite-dev` has no poster generation errors.
+
+Timeline markers stack at the left or will not move
+
+Confirm the browser loaded the latest frontend bundle, then hard refresh. Also confirm `/media/...` video requests return byte ranges, because browser seeking depends on range support.
+
+Docker cannot see files
+
+Confirm the single live mount exists:
+
+```text
+/mnt/user/fastdata/server/salsasite-dev:/server/live
+```
+
+Confirm env vars point inside `/server/live`:
+
+```text
+DATA_DIR=/server/live/migration-data
+MEDIA_ROOT=/server/live/video-moves
+SOURCE_ROOT=/server/live/video-sources
+POSTER_ROOT=/server/live/video-posters
+```
+
+## Important Files
+
+| File | Purpose |
+| --- | --- |
+| `frontend/src/lib/server/video-library.ts` | Catalog read/write, legacy import, clip render, deletion cleanup. |
+| `frontend/src/lib/server/posters.ts` | Poster lookup and async poster generation. |
+| `frontend/src/lib/server/paths.ts` | Runtime path resolution and managed path safety. |
+| `frontend/src/routes/media/+page.svelte` | Media gallery with source cards and upload tile. |
+| `frontend/src/routes/media/+page.server.ts` | Media page data load. |
+| `frontend/src/routes/media/edit/[id]/+page.svelte` | Source metadata and move-clip editor for one uploaded source. |
+| `frontend/src/routes/upload/+page.server.ts` | Compatibility redirect to `/media`. |
+| `frontend/src/routes/api/upload/*` | Media management API endpoints. |
+| `frontend/src/routes/media/[...path]/+server.ts` | Byte-range video serving. |
+| `frontend/src/routes/posters/[...path]/+server.ts` | Poster serving. |
+| `scripts/generate_video_posters.sh` | Bulk poster generation helper. |

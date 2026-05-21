@@ -1,0 +1,60 @@
+# Unraid Deployment
+
+## Container shape
+
+The new site is designed to run as a single Node container, not as an R runtime plus nginx.
+The preferred Unraid setup is a live-mounted container: the image provides the runtime and dependencies, while the repo files stay on the mounted share.
+
+Main files:
+
+- [docker/Dockerfile](/Volumes/fastdata/server/salsasite-dev/docker/Dockerfile)
+- [docker/start.sh](/Volumes/fastdata/server/salsasite-dev/docker/start.sh)
+- [docker/compose.yml](/Volumes/fastdata/server/salsasite-dev/docker/compose.yml)
+
+## Default runtime
+
+- Port: `3000`
+- Recommended live mount root in container: `/server/live`
+- Data directory in container: `/server/live/migration-data`
+- Move video directory in container: `/server/live/video-moves`
+- Source video directory in container: `/server/live/video-sources`
+- Poster directory in container: `/server/live/video-posters`
+
+For the full video catalog, upload, clip-render, and poster workflow, see [docs/video-library.md](/Volumes/fastdata/server/salsasite-dev/docs/video-library.md).
+
+## Unraid setup
+
+Use [docker/Dockerfile.dev](/Volumes/fastdata/server/salsasite-dev/docker/Dockerfile.dev) for the live-mounted setup, or [docker/Dockerfile](/Volumes/fastdata/server/salsasite-dev/docker/Dockerfile) if you specifically want a compiled frontend app image.
+
+Development may happen from a remote machine with the Unraid share mounted. That machine is not necessarily the Docker host. Run container lifecycle commands on the Unraid server itself, and verify the app through the exposed server URL rather than assuming a local dev server on the remote machine represents the running container.
+
+Recommended mounts:
+
+- Host repo root `/mnt/user/fastdata/server/salsasite-dev` -> container `/server/live`
+
+Recommended environment:
+
+- `PORT=3000`
+- `HOST=0.0.0.0`
+- `ORIGIN=http://your-unraid-host:3000`
+- `DATA_DIR=/server/live/migration-data`
+- `MEDIA_ROOT=/server/live/video-moves`
+- `SOURCE_ROOT=/server/live/video-sources`
+- `POSTER_ROOT=/server/live/video-posters`
+- Optional: `POSTER_TIMESTAMP_SECONDS=1.0`
+
+## Data refresh workflow
+
+The container does not need R at runtime.
+
+When the workbook, progress data, or local move/source video files change:
+
+1. Regenerate the exported contracts:
+   `Rscript R/export_app_data.R`
+   `/Users/tomascokis/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/export_data_reference.py`
+2. With the live-mounted setup, changes under `/mnt/user/fastdata/server/salsasite-dev` are read directly from the share. Rebuild only when the container dependencies or startup behavior change.
+
+## Current limitations
+
+- I could not run `npm install` or `vite build` locally in this workspace because no package manager is available on `PATH` here.
+- The app scaffold and Docker build are set up for the target container environment, but the final dependency install and compile need to happen during Docker build or in a Node environment with `npm`.
