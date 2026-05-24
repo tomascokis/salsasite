@@ -129,6 +129,10 @@
   let lastDraftBoundaryTarget: TimelineMarker | null = null;
   let videoElement: HTMLVideoElement | null = null;
   let isPlaying = false;
+  let isMuted = true;
+  let videoVolume = 1;
+  let isVolumeOpen = false;
+  let hasManuallyMutedAudio = false;
   let isLooping = false;
   let playbackError = '';
   let playerDurationMs = 0;
@@ -139,6 +143,7 @@
   let timelineViewportEndMs = 0;
   let hasManualTimelineZoom = false;
   let timelineDragTarget: TimelineMarker | null = null;
+  let resumePlaybackAfterTimelineDrag = false;
   let timelineElement: HTMLDivElement | null = null;
   let playbackAnimationFrame: number | null = null;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
@@ -148,8 +153,10 @@
   let selectedAssetKey: string | null = null;
   let mediaListElement: HTMLDivElement | null = null;
   let mediaGroups: Array<{ month: string; assets: UploadAssetView[] }> = [];
+  let availableMoves: MoveOption[] = data.moves;
 
-  const moveNameById = new Map(data.moves.map((move) => [move.id, move.name ?? move.id]));
+  let moveNameById = new Map<string, string>();
+  $: moveNameById = new Map(availableMoves.map((move) => [move.id, move.name ?? move.id]));
 
   $: selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? null;
 
@@ -394,6 +401,55 @@
   function handleDraftMoveQueryInput(rowId: string, value: string) {
     updateDraftMoveRow(rowId, { query: value });
     activeDraftMoveRowId = rowId;
+  }
+
+  async function createDraftMoveFromQuery(rowId: string, value: string) {
+    const name = value.trim();
+    if (!name) {
+      return;
+    }
+
+    activeDraftMoveRowId = rowId;
+    renderStatus = `Creating draft move "${name}"...`;
+    const response = await fetch('/api/moves/create', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'createDraftFromName',
+        name
+      })
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      renderStatus = payload.error ?? 'Could not create draft move.';
+      return;
+    }
+
+    const draftMove = payload.draft?.move;
+    if (!draftMove?.id) {
+      renderStatus = 'Draft move created, but the response did not include a move id.';
+      return;
+    }
+
+    const option: MoveOption = {
+      id: String(draftMove.id),
+      slug: String(draftMove.slug ?? draftMove.id),
+      name: draftMove.name ?? draftMove.id
+    };
+    availableMoves = [option, ...availableMoves.filter((move) => move.id !== option.id)];
+
+    const row = draftMoveRows.find((entry) => entry.id === rowId);
+    if (!row) {
+      renderStatus = `Draft move "${option.name ?? option.id}" created.`;
+      return;
+    }
+
+    updateDraftMoveRow(rowId, {
+      moveIds: row.moveIds.includes(option.id) ? row.moveIds : [...row.moveIds, option.id],
+      query: ''
+    });
+    renderStatus = `Draft move "${option.name ?? option.id}" created and selected.`;
   }
 
   function videoMetaLabel(asset: UploadAssetView) {
@@ -1040,12 +1096,59 @@
 
     autoplayedMediaPath = selectedAsset.filePath;
     videoElement.muted = true;
+    syncAudioState();
 
     try {
       await videoElement.play();
     } catch {
       // Browser autoplay policy can still reject this; manual play remains available.
     }
+  }
+
+  function syncAudioState() {
+    if (!videoElement) {
+      return;
+    }
+
+    isMuted = videoElement.muted;
+    videoVolume = videoElement.volume;
+  }
+
+  function handleVolumeInput(event: Event) {
+    if (!videoElement) {
+      return;
+    }
+
+    const nextVolume = Number((event.currentTarget as HTMLInputElement).value);
+    if (!Number.isFinite(nextVolume)) {
+      return;
+    }
+
+    const clampedVolume = Math.max(0, Math.min(1, nextVolume));
+    hasManuallyMutedAudio = clampedVolume === 0;
+    videoElement.volume = clampedVolume;
+    videoElement.muted = videoElement.volume === 0;
+    syncAudioState();
+  }
+
+  function toggleVolumeOpen() {
+    if (videoElement && videoElement.muted && videoElement.volume > 0 && !hasManuallyMutedAudio) {
+      videoElement.muted = false;
+      syncAudioState();
+    }
+    isVolumeOpen = !isVolumeOpen;
+  }
+
+  function enableMoveEditorAudio() {
+    if (!videoElement || hasManuallyMutedAudio) {
+      return;
+    }
+
+    if (videoElement.volume === 0) {
+      videoElement.volume = 0.5;
+    }
+    videoElement.muted = false;
+    syncAudioState();
   }
 
   function seekPreview(milliseconds: number) {
@@ -1270,6 +1373,15 @@
     }
 
     event.preventDefault();
+    if (target && target !== 'playhead' && videoElement && !videoElement.paused) {
+      resumePlaybackAfterTimelineDrag = true;
+      videoElement.pause();
+      isPlaying = false;
+      stopPlaybackAnimation();
+      syncPlaybackPosition();
+    } else {
+      resumePlaybackAfterTimelineDrag = false;
+    }
     const nextValue = timelineMsFromPointer(event);
     timelineDragTarget = target ?? 'playhead';
     setDraftBoundary(timelineDragTarget, nextValue);
@@ -1289,9 +1401,17 @@
 
   function stopTimelineDrag() {
     const releasedTarget = timelineDragTarget;
+    const shouldResume = resumePlaybackAfterTimelineDrag;
     timelineDragTarget = null;
+    resumePlaybackAfterTimelineDrag = false;
     if (releasedTarget && releasedTarget !== 'playhead') {
       seekPreview(draftActionStartMs);
+      if (shouldResume && videoElement) {
+        playbackError = '';
+        void videoElement.play().catch((error) => {
+          playbackError = error instanceof Error ? error.message : 'Playback could not restart.';
+        });
+      }
     }
   }
 
@@ -1350,6 +1470,7 @@
       playerDurationMs || actionStart + DEFAULT_CLIP_PADDING_MS,
       actionStart + DEFAULT_CLIP_PADDING_MS
     );
+    enableMoveEditorAudio();
     activeClipId = createDraftClipId();
     isDraftingMove = true;
     draftActionStartMs = actionStart;
@@ -1384,6 +1505,7 @@
     activeDraftMoveRowId = null;
     draftInitialSnapshot = '';
     lastDraftBoundaryTarget = null;
+    resumePlaybackAfterTimelineDrag = false;
     renderStatus = '';
   }
 
@@ -1886,6 +2008,7 @@
                       isPlaying = false;
                       stopPlaybackAnimation();
                     }}
+                    on:volumechange={syncAudioState}
                     on:error={() => (playbackError = 'This browser could not load the selected video.')}
                     on:click={() => void togglePlayback()}
                   ></video>
@@ -1897,23 +2020,6 @@
                       {activePreviewCountMarker.count}
                     </span>
                   {/if}
-                  {#if !isPlaying}
-                    <button
-                      class="editor-play-overlay"
-                      type="button"
-                      aria-label="Play source video"
-                      on:click={(event) => {
-                        event.stopPropagation();
-                        void togglePlayback();
-                      }}
-                    >
-                      Play
-                    </button>
-                  {/if}
-                  <div class="editor-video-controls" on:click={(event) => event.stopPropagation()}>
-                    <button type="button" on:click={() => void togglePlayback()}>{isPlaying ? 'Pause' : 'Play'}</button>
-                    <span>{formatRoundedSeconds(playerCurrentMs)}s / {formatRoundedSeconds(playerDurationMs)}s</span>
-                  </div>
                   {#if playbackError}
                     <p class="editor-playback-error">{playbackError}</p>
                   {/if}
@@ -1927,6 +2033,43 @@
                     <span><strong>Move</strong> {formatSeconds(draftActionStartMs)}s - {formatSeconds(draftActionEndMs)}s</span>
                     <span><strong>Length</strong> {formatSeconds(Math.max(0, draftEndMs - draftStartMs))}s</span>
                   {/if}
+                  <span class="editor-video-controls" on:click={(event) => event.stopPropagation()}>
+                    {#if !timelineDragTarget}
+                      <button
+                        class="editor-video-play"
+                        class:playing={isPlaying}
+                        type="button"
+                        aria-label={isPlaying ? 'Pause source video' : 'Play source video'}
+                        on:click={() => void togglePlayback()}
+                      >
+                        <span>{isPlaying ? 'Pause' : 'Play'}</span>
+                      </button>
+                    {/if}
+                    <span class="editor-video-volume-wrap" class:open={isVolumeOpen}>
+                      <button
+                        class="editor-video-volume-toggle"
+                        class:muted={isMuted || videoVolume === 0}
+                        type="button"
+                        aria-label="Adjust source video volume"
+                        aria-expanded={isVolumeOpen}
+                        on:click={toggleVolumeOpen}
+                      >
+                        <span>Volume</span>
+                      </button>
+                      <span class="editor-video-volume-panel">
+                        <input
+                          class="editor-video-volume"
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={videoVolume}
+                          aria-label="Source video volume"
+                          on:input={handleVolumeInput}
+                        />
+                      </span>
+                    </span>
+                  </span>
                   <span><strong>Total</strong> {formatRoundedSeconds(playerDurationMs)}s</span>
                   {#if isDraftingMove}
                     <span class:timeline-zoom-active={isTimelineZoomed()}>
@@ -2102,14 +2245,16 @@
                         </div>
                         <div class="move-link-field">
                           <MovePicker
-                            moves={data.moves}
+                            moves={availableMoves}
                             selectedIds={row.moveIds}
                             excludedIds={selectedDraftMoveIds}
                             query={row.query}
                             limit={MOVE_SUGGESTION_LIMIT}
                             selectedPlacement="inside"
+                            allowCreate={true}
                             on:focus={() => selectDraftMoveRow(row.id)}
                             on:query={(event) => handleDraftMoveQueryInput(row.id, event.detail.query)}
+                            on:create={(event) => createDraftMoveFromQuery(row.id, event.detail.query)}
                             on:select={(event) => addDraftMove(event.detail.moveId, row.id)}
                             on:remove={(event) => removeDraftMove(row.id, event.detail.moveId)}
                           />

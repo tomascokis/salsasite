@@ -2,6 +2,8 @@
 
 This document describes how the app stores videos, links videos to moves, uploads source recordings, renders clips, and generates posters.
 
+Shared media status and badge behavior must follow `docs/shared-ui-audit.md`.
+
 ## Mental Model
 
 The app has two video concepts:
@@ -139,6 +141,22 @@ The intended workflow is:
 
 Uploading stores the original file in `video-sources/` and creates a `source` asset. It does not automatically link that full source video to move pages.
 
+## Publish-To-Moves Contract
+
+- Source media can be edited freely without immediately changing move pages.
+- A source video must not appear directly on a move page just because it was uploaded.
+- New move clips start unpublished.
+- Publishing clips to moves must be an explicit action.
+- Move pages receive media clip links only after publish-to-moves.
+- Modern move metadata inherited from parent media should update on move pages only through publish-to-moves.
+- Legacy direct video links may be replaced only where an explicit migration workflow allows it.
+
+## Clip Naming Contract
+
+- Clip names should be generated automatically unless the user manually names the clip.
+- A generated clip name should respond to source metadata changes.
+- Once a clip has been manually named, automatic naming must stop overwriting that name.
+
 ## Clip Editor
 
 The editor has one timeline and two ranges.
@@ -188,6 +206,7 @@ When render succeeds:
 - The clip status becomes `ready`.
 - A `move` video asset is created or updated.
 - A `moveVideoLinks` row links the output asset to the target move.
+- Smaller-resolution move video outputs must be generated for later use.
 - Poster generation is queued.
 
 When render fails:

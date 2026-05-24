@@ -16,17 +16,30 @@
   let clientReady = false;
   let isMobileMenuOpen = false;
 
-  function isActive(href: string, pathname = $page.url.pathname) {
-    return href === '/' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  function normalizePath(pathname: string) {
+    return pathname.replace(/\/+$/, '') || '/';
+  }
+
+  function matchesRoute(href: string, pathname: string) {
+    const normalizedHref = normalizePath(href);
+    const normalizedPath = normalizePath(pathname);
+
+    return normalizedHref === '/'
+      ? normalizedPath === '/'
+      : normalizedPath === normalizedHref || normalizedPath.startsWith(`${normalizedHref}/`);
   }
 
   function activeLink(pathname = $page.url.pathname) {
-    return links.find((link) => isActive(link.href, pathname)) ?? links[0];
+    return links
+      .filter((link) => matchesRoute(link.href, pathname))
+      .sort((a, b) => normalizePath(b.href).length - normalizePath(a.href).length)[0];
   }
 
   $: currentPath = $page.url.pathname;
   $: currentLink = activeLink(currentPath);
   $: currentPath, (isMobileMenuOpen = false);
+  $: activeHref = currentLink?.href;
+  $: currentLabel = currentLink?.label ?? links[0].label;
 
   onMount(() => {
     clientReady = true;
@@ -47,8 +60,8 @@
         {#each links as link}
           <a
             href={link.href}
-            class:active={isActive(link.href)}
-            aria-current={isActive(link.href) ? 'page' : undefined}
+            class:active={link.href === activeHref}
+            aria-current={link.href === activeHref ? 'page' : undefined}
           >
             {link.label}
           </a>
@@ -62,7 +75,7 @@
           aria-expanded={isMobileMenuOpen}
           on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}
         >
-          <span>{currentLink.label}</span>
+          <span>{currentLabel}</span>
           <span aria-hidden="true">⌄</span>
         </button>
         {#if isMobileMenuOpen}
@@ -70,8 +83,8 @@
             {#each links as link}
               <a
                 href={link.href}
-                class:active={isActive(link.href)}
-                aria-current={isActive(link.href) ? 'page' : undefined}
+                class:active={link.href === activeHref}
+                aria-current={link.href === activeHref ? 'page' : undefined}
                 on:click={() => (isMobileMenuOpen = false)}
               >
                 {link.label}

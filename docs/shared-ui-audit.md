@@ -24,3 +24,18 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - Reusable editable list/grid shell for view-by-default metadata management.
 - Shared context menu interaction with right-click and long-press support.
 - Shared overview filter adapter for topic/family filtered overview pages.
+
+## Shared UI Contracts
+
+- Status language must be shared across moves and media for legacy, modern draft, modern published, processed, unprocessed, changed unpublished, and never-published states.
+- Timing, type, and environment should be displayed as badges wherever those concepts are shown on move or media surfaces.
+- Publication state, processing state, and legacy/modern markers should use the same badge/status language across move pages, media browsing, and clip editing.
+- Searchable pickers must be the shared pattern for topics, families, dancers, regions, and move selection.
+- Editable list/grid UI should be a shared pattern for metadata and dancer management surfaces that are viewable by default with small edit affordances.
+- Context menu interactions used for relationship editing must support right-click and long-press.
+- Topic and family splash pages must reuse the existing overview browsing model.
+
+## Cross-Page Contract
+
+- If a feature appears in multiple areas, its shared interaction belongs here first and page docs should reference this contract rather than redefining a different local behavior.
+- Page-specific docs may add local constraints, but they should not fork shared badge, picker, context menu, status, or overview behavior without explicit user approval.

@@ -28,6 +28,8 @@
   export let disabled = false;
   export let emptyText = 'No matching moves';
   export let moreText = 'and more...';
+  export let allowCreate = false;
+  export let createText = 'Create new move';
   export let autocapitalize: 'none' | 'characters' | 'off' | 'on' | 'sentences' | 'words' = 'off';
 
   const dispatch = createEventDispatcher<{
@@ -35,6 +37,7 @@
     remove: { moveId: string };
     query: { query: string };
     focus: Record<string, never>;
+    create: { query: string };
   }>();
 
   let activeSuggestionIndex = 0;
@@ -47,20 +50,24 @@
   $: search = moveSuggestionSearch(moves, query, excludedMoveIds, limit);
   $: suggestionResults = search.results;
   $: hasQuery = normalizedQuery.length > 0;
+  $: hasCreateOption = allowCreate && hasQuery;
+  $: suggestionIndexOffset = hasCreateOption ? 1 : 0;
+  $: optionCount = suggestionResults.length + suggestionIndexOffset;
   $: hasMoreSuggestions = search.total > suggestionResults.length;
   $: hasVisibleSelection = showSelected && selectedIds.length > 0;
   $: inputPlaceholder = hasVisibleSelection ? addPlaceholder : placeholder;
+  $: useFloatingDropdown = floatingDropdown || selectedPlacement === 'inside';
 
   $: if (query !== lastQuery) {
     lastQuery = query;
-    activeSuggestionIndex = 0;
+    activeSuggestionIndex = hasCreateOption && suggestionResults.length ? 1 : 0;
   }
 
-  $: if (activeSuggestionIndex >= suggestionResults.length) {
-    activeSuggestionIndex = Math.max(0, suggestionResults.length - 1);
+  $: if (activeSuggestionIndex >= optionCount) {
+    activeSuggestionIndex = Math.max(0, optionCount - 1);
   }
 
-  $: if (floatingDropdown && hasQuery) {
+  $: if (useFloatingDropdown && hasQuery) {
     void scheduleFloatingDropdownUpdate();
   }
 
@@ -80,13 +87,13 @@
   }
 
   async function scheduleFloatingDropdownUpdate() {
-    if (!floatingDropdown) return;
+    if (!useFloatingDropdown) return;
     await tick();
     updateFloatingDropdown();
   }
 
   function updateFloatingDropdown() {
-    if (!floatingDropdown || !inputWrapElement) return;
+    if (!useFloatingDropdown || !inputWrapElement) return;
     const rect = inputWrapElement.getBoundingClientRect();
     floatingDropdownStyle = [
       `position: fixed`,
@@ -145,23 +152,38 @@
     dispatch('remove', { moveId });
   }
 
+  function createMove() {
+    if (!hasCreateOption) {
+      return;
+    }
+
+    dispatch('create', { query: normalizedQuery });
+    setQuery('');
+  }
+
   function handleInput(event: Event) {
     setQuery((event.currentTarget as HTMLInputElement).value);
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && hasQuery && suggestionResults.length) {
+    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && hasQuery && optionCount) {
       event.preventDefault();
       const delta = event.key === 'ArrowDown' ? 1 : -1;
       activeSuggestionIndex =
-        (activeSuggestionIndex + delta + suggestionResults.length) % suggestionResults.length;
+        (activeSuggestionIndex + delta + optionCount) % optionCount;
       return;
     }
 
     if (event.key === 'Enter') {
       event.preventDefault();
+      if (hasCreateOption && activeSuggestionIndex === 0) {
+        createMove();
+        return;
+      }
+
+      const suggestionIndex = activeSuggestionIndex - suggestionIndexOffset;
       if (suggestionResults.length) {
-        selectMove(suggestionResults[activeSuggestionIndex]?.id ?? suggestionResults[0].id);
+        selectMove(suggestionResults[suggestionIndex]?.id ?? suggestionResults[0].id);
         return;
       }
 
@@ -239,22 +261,39 @@
     {#if hasQuery}
       <div
         class="move-picker-dropdown"
-        class:move-picker-dropdown-floating={floatingDropdown}
-        style={floatingDropdown ? floatingDropdownStyle : undefined}
+        class:move-picker-dropdown-floating={useFloatingDropdown}
+        style={useFloatingDropdown ? floatingDropdownStyle : undefined}
         role="listbox"
         aria-label="Matching moves"
       >
+        {#if hasCreateOption}
+          <button
+            type="button"
+            role="option"
+            class="move-picker-option move-picker-create-option"
+            class:active={activeSuggestionIndex === 0}
+            aria-selected={activeSuggestionIndex === 0}
+            on:mousedown|preventDefault
+            on:click={createMove}
+            on:mouseenter={() => (activeSuggestionIndex = 0)}
+          >
+            <span class="move-picker-option-text">
+              <strong>{createText}</strong>
+              <span>{normalizedQuery}</span>
+            </span>
+          </button>
+        {/if}
         {#if suggestionResults.length}
           {#each suggestionResults as move, index}
             <button
               type="button"
               role="option"
               class="move-picker-option"
-              class:active={index === activeSuggestionIndex}
-              aria-selected={index === activeSuggestionIndex}
+              class:active={index + suggestionIndexOffset === activeSuggestionIndex}
+              aria-selected={index + suggestionIndexOffset === activeSuggestionIndex}
               on:mousedown|preventDefault
               on:click={() => selectMove(move.id)}
-              on:mouseenter={() => (activeSuggestionIndex = index)}
+              on:mouseenter={() => (activeSuggestionIndex = index + suggestionIndexOffset)}
             >
               {#if showPoster}
                 <span class="move-picker-option-poster" aria-hidden="true">
@@ -276,7 +315,7 @@
           {#if hasMoreSuggestions}
             <span class="move-picker-more">{moreText}</span>
           {/if}
-        {:else}
+        {:else if !hasCreateOption}
           <span class="move-picker-empty">{emptyText}</span>
         {/if}
       </div>

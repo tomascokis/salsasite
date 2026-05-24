@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { getMoves } from '$lib/server/data';
+import { listMoveDrafts } from '$lib/server/move-editor';
 import { saveSourceClips } from '$lib/server/video-library';
 import type { ClipCountMarker, ClipCropRect, CountOverlayPlacement, CountTimingPreset } from '$lib/types';
 
@@ -60,8 +61,11 @@ export async function POST({ request }) {
     return json({ error: 'sourceAssetId is required.' }, { status: 400 });
   }
 
-  const moves = await getMoves();
-  const knownMoveIds = new Set(moves.map((move) => move.id.toUpperCase()));
+  const [moves, moveDrafts] = await Promise.all([getMoves(), listMoveDrafts()]);
+  const knownMoveIds = new Set([
+    ...moves.map((move) => move.id.toUpperCase()),
+    ...moveDrafts.map((draft) => draft.move.id.toUpperCase())
+  ]);
 
   const clips: Array<{
     id?: string;

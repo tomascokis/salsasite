@@ -10,6 +10,7 @@ import {
   sourceSuggestions,
   uploadMonthKey
 } from '../src/lib/video-library-utils.js';
+import { draftMoveIdFromName, generatedMoveIdStem } from '../src/lib/move-id-utils.js';
 
 test('legacy source metadata defaults normalize safely', () => {
   assert.equal(normalizeDateString(undefined), null);
@@ -85,6 +86,22 @@ test('move suggestion search reports when more results exist', () => {
   });
 });
 
+test('move suggestion search matches the inline move editor query', () => {
+  const moves = [
+    { id: 'ILT00001', slug: 'ILT00001', name: 'Inline turn' },
+    { id: 'ILT00020', slug: 'ILT00020', name: 'Waist tap inline turn' },
+    { id: 'WTH00001', slug: 'WTH00001', name: 'Walkthrough' }
+  ];
+
+  assert.deepEqual(moveSuggestionSearch(moves, 'inline turn', [], 8), {
+    results: [
+      { id: 'ILT00001', slug: 'ILT00001', name: 'Inline turn' },
+      { id: 'ILT00020', slug: 'ILT00020', name: 'Waist tap inline turn' }
+    ],
+    total: 2
+  });
+});
+
 test('move suggestion search ranks exact and phrase name matches first', () => {
   const moves = [
     { id: 'CB040003', slug: 'CB040003', name: 'CBL /left turn waist-pass' },
@@ -112,6 +129,12 @@ test('move suggestions exclude multiple selected moves', () => {
   assert.deepEqual(moveSuggestions(moves, 'right', ['RT000001', 'RT000003']), [
     { id: 'RT000002', slug: 'RT000002', name: 'Right turn two' }
   ]);
+});
+
+test('draft move ids are generated from typed move names', () => {
+  assert.equal(generatedMoveIdStem('Inline turn'), 'INLINETURN');
+  assert.equal(generatedMoveIdStem('  left-turn / copa  '), 'LEFTTURNCOPA');
+  assert.equal(draftMoveIdFromName('Inline turn', ['INLINETURN', 'INLINETURN2']), 'INLINETURN3');
 });
 
 test('upload month grouping uses stable UTC month labels', () => {

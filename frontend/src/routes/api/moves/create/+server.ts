@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
+import { draftMoveIdFromName } from '$lib/move-id-utils.js';
 import { getMoves } from '$lib/server/data';
-import { publishMoveDraft, saveMoveDraft } from '$lib/server/move-editor';
+import { listMoveDrafts, publishMoveDraft, saveMoveDraft } from '$lib/server/move-editor';
 
 export async function POST({ request }) {
   const body = await request.json();
@@ -11,6 +12,21 @@ export async function POST({ request }) {
       const moves = await getMoves();
       const move = await publishMoveDraft(moves, String(body.draftId ?? ''), body.move);
       return json({ ok: true, move });
+    }
+
+    if (action === 'createDraftFromName') {
+      const name = String(body.name ?? '').trim();
+      if (!name) {
+        throw new Error('Move name is required.');
+      }
+
+      const [moves, drafts] = await Promise.all([getMoves(), listMoveDrafts()]);
+      const id = draftMoveIdFromName(name, [
+        ...moves.map((move) => move.id),
+        ...drafts.map((draft) => draft.move.id)
+      ]);
+      const draft = await saveMoveDraft({ id, name });
+      return json({ ok: true, draft });
     }
 
     const draft = await saveMoveDraft({

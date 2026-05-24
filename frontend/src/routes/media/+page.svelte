@@ -236,29 +236,51 @@
 <div class="media-gallery-page">
   <div class="media-gallery-scroll" bind:this={mediaListElement} on:scroll={handleMediaScroll}>
     <section class="media-filter-bar" aria-label="Media filters">
-      <div class="segmented-control compact" role="radiogroup" aria-label="Publication status">
-        <button type="button" class:active={publicationFilter === 'all'} on:click={() => (publicationFilter = 'all')}>All</button>
-        <button type="button" class:active={publicationFilter === 'published'} on:click={() => (publicationFilter = 'published')}>Published</button>
-        <button type="button" class:active={publicationFilter === 'draft'} on:click={() => (publicationFilter = 'draft')}>Draft</button>
-        <button type="button" class:active={publicationFilter === 'unpublished'} on:click={() => (publicationFilter = 'unpublished')}>Unpublished</button>
+      <div class="media-filter-controls">
+        <div class="media-filter-group">
+          <span class="media-filter-label">Status</span>
+          <div class="segmented-control compact media-filter-segment" role="radiogroup" aria-label="Publication status">
+            <button type="button" class:active={publicationFilter === 'all'} on:click={() => (publicationFilter = 'all')}>All</button>
+            <button type="button" class:active={publicationFilter === 'published'} on:click={() => (publicationFilter = 'published')}>Published</button>
+            <button type="button" class:active={publicationFilter === 'draft'} on:click={() => (publicationFilter = 'draft')}>Draft</button>
+            <button type="button" class:active={publicationFilter === 'unpublished'} on:click={() => (publicationFilter = 'unpublished')}>Unpublished</button>
+          </div>
+          <select class="media-filter-select media-filter-status-select" bind:value={publicationFilter} aria-label="Publication status">
+            <option value="all">All</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+            <option value="unpublished">Unpublished</option>
+          </select>
+        </div>
+        <div class="media-filter-group">
+          <span class="media-filter-label">Type</span>
+          <div class="segmented-control compact media-filter-segment" role="radiogroup" aria-label="Environment">
+            <button type="button" class:active={environmentFilter === 'all'} on:click={() => (environmentFilter = 'all')}>All</button>
+            <button type="button" class:active={environmentFilter === 'class'} on:click={() => (environmentFilter = 'class')}>Classes</button>
+            <button type="button" class:active={environmentFilter === 'social'} on:click={() => (environmentFilter = 'social')}>Socials</button>
+          </div>
+          <select class="media-filter-select media-filter-type-select" bind:value={environmentFilter} aria-label="Environment">
+            <option value="all">All</option>
+            <option value="class">Classes</option>
+            <option value="social">Socials</option>
+          </select>
+        </div>
       </div>
-      <div class="segmented-control compact" role="radiogroup" aria-label="Environment">
-        <button type="button" class:active={environmentFilter === 'all'} on:click={() => (environmentFilter = 'all')}>All types</button>
-        <button type="button" class:active={environmentFilter === 'class'} on:click={() => (environmentFilter = 'class')}>Classes</button>
-        <button type="button" class:active={environmentFilter === 'social'} on:click={() => (environmentFilter = 'social')}>Socials</button>
+      <div class="media-filter-dancer">
+        <span class="media-filter-label">Dancer</span>
+        <SearchablePicker
+          options={dancerOptions}
+          selectedIds={selectedDancerIds}
+          query={dancerQuery}
+          placeholder="Any dancer"
+          addPlaceholder="Add dancer"
+          ariaLabel="Filter by dancer"
+          selectedPlacement="inside"
+          on:query={(event) => (dancerQuery = event.detail.query)}
+          on:select={(event) => (selectedDancerIds = [...selectedDancerIds, event.detail.id])}
+          on:remove={(event) => (selectedDancerIds = selectedDancerIds.filter((id) => id !== event.detail.id))}
+        />
       </div>
-      <SearchablePicker
-        options={dancerOptions}
-        selectedIds={selectedDancerIds}
-        query={dancerQuery}
-        placeholder="Filter dancers"
-        addPlaceholder="Add dancer"
-        ariaLabel="Filter by dancer"
-        selectedPlacement="inside"
-        on:query={(event) => (dancerQuery = event.detail.query)}
-        on:select={(event) => (selectedDancerIds = [...selectedDancerIds, event.detail.id])}
-        on:remove={(event) => (selectedDancerIds = selectedDancerIds.filter((id) => id !== event.detail.id))}
-      />
       <span class="muted media-filter-count">{filteredAssets.length} / {totalAssets}</span>
     </section>
 

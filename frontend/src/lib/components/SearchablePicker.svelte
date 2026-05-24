@@ -43,6 +43,7 @@
   $: hasMoreSuggestions = matches.total > suggestionResults.length;
   $: hasVisibleSelection = showSelected && selectedIds.length > 0;
   $: inputPlaceholder = hasVisibleSelection ? addPlaceholder : placeholder;
+  $: useFloatingDropdown = floatingDropdown || selectedPlacement === 'inside';
 
   $: if (query !== lastQuery) {
     lastQuery = query;
@@ -53,7 +54,7 @@
     activeSuggestionIndex = Math.max(0, suggestionResults.length - 1);
   }
 
-  $: if (floatingDropdown && hasQuery) {
+  $: if (useFloatingDropdown && hasQuery) {
     void scheduleFloatingDropdownUpdate();
   }
 
@@ -140,13 +141,13 @@
   }
 
   async function scheduleFloatingDropdownUpdate() {
-    if (!floatingDropdown) return;
+    if (!useFloatingDropdown) return;
     await tick();
     updateFloatingDropdown();
   }
 
   function updateFloatingDropdown() {
-    if (!floatingDropdown || !inputWrapElement) return;
+    if (!useFloatingDropdown || !inputWrapElement) return;
     const rect = inputWrapElement.getBoundingClientRect();
     floatingDropdownStyle = [
       'position: fixed',
@@ -243,8 +244,8 @@
     {#if hasQuery}
       <div
         class="searchable-picker-dropdown"
-        class:searchable-picker-dropdown-floating={floatingDropdown}
-        style={floatingDropdown ? floatingDropdownStyle : undefined}
+        class:searchable-picker-dropdown-floating={useFloatingDropdown}
+        style={useFloatingDropdown ? floatingDropdownStyle : undefined}
         role="listbox"
         aria-label="Search matches"
       >

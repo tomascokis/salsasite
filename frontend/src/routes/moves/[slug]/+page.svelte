@@ -79,28 +79,49 @@
     return `/media/${encodeURIComponent(file)}`;
   }
 
-  function timingBadgeClass(entry: MoveVideoEntry) {
-    return `badge-timing-${entry.timing}`;
-  }
-
-  function contentBadgeClass(entry: MoveVideoEntry) {
-    return `badge-content-${entry.contentType}`;
-  }
-
-  function environmentBadgeClass(entry: MoveVideoEntry) {
-    return `badge-environment-${entry.environment}`;
-  }
-
-  function videoContentStatus(entry: MoveVideoEntry): 'modern-published' | 'legacy' {
-    return entry.isDerived ? 'modern-published' : 'legacy';
-  }
-
   function clipEditUrl(entry: MoveVideoEntry) {
     if (!entry.sourceAssetId || !entry.clipId) {
       return null;
     }
 
     return `/media/edit/${encodeURIComponent(entry.sourceAssetId)}?clip=${encodeURIComponent(entry.clipId)}`;
+  }
+
+  function videoDancers(entry: MoveVideoEntry) {
+    const dancers = entry.sourceDancers.length ? entry.sourceDancers : entry.dancers;
+    return dancers.length ? dancers.join(', ') : null;
+  }
+
+  function videoOriginSummary(entry: MoveVideoEntry) {
+    if (entry.isDerived) {
+      return `Derived from ${entry.sourceDisplayName ?? 'source video'}`;
+    }
+
+    return entry.kind === 'source' ? 'Full source video' : 'Standalone move video';
+  }
+
+  function videoTabLabel(entry: MoveVideoEntry) {
+    return [entry.timingLabel, entry.contentTypeLabel].filter(Boolean).join(', ') || entry.displayName;
+  }
+
+  function videoTabContext(entry: MoveVideoEntry) {
+    return videoDancers(entry);
+  }
+
+  function videoMetaRows(entry: MoveVideoEntry) {
+    const rows: Array<[string, string | null]> = [
+      ['Dancers', videoDancers(entry)],
+      ['Origin', videoOriginSummary(entry)],
+      ['Recorded', entry.sourceRecordDate ?? entry.recordDate],
+      ['Class', entry.sourceClassWorkshop ?? entry.classWorkshop],
+      [
+        'Tags',
+        entry.sourceTags.length ? entry.sourceTags.join(', ') : entry.tags.length ? entry.tags.join(', ') : null
+      ],
+      ['Notes', entry.sourceNotes ?? entry.notes]
+    ];
+
+    return rows.filter((row): row is [string, string] => Boolean(row[1]));
   }
 
   function posterUrl(file: string) {
@@ -302,29 +323,41 @@
       </div>
       <div class="media-stage">
         {#if videos.length}
-          {#if videos.length > 1}
-            <div class="tab-list">
-              {#each videos as video, index}
-                <button
-                  type="button"
-                  class:active={selectedVideo === index}
-                  on:click={() => {
-                    selectedVideo = index;
-                    showCountOverlay = false;
-                    currentVideoMs = 0;
-                  }}
-                >
-                  <span class="video-tab-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <circle cx="12" cy="12" r="9"></circle>
-                      <path d="M10 8.7L16 12l-6 3.3z"></path>
-                    </svg>
-                  </span>
-                  <span class="video-tab-label">Video {index + 1}</span>
-                </button>
-              {/each}
-            </div>
-          {/if}
+          <div class="tab-list video-tab-list">
+            {#each videos as video, index}
+              <button
+                type="button"
+                class:active={selectedVideo === index}
+                aria-label={`${videoTabLabel(video)} video details`}
+                on:click={() => {
+                  selectedVideo = index;
+                  showCountOverlay = false;
+                  currentVideoMs = 0;
+                }}
+              >
+                <span class="video-tab-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <path d="M10 8.7L16 12l-6 3.3z"></path>
+                  </svg>
+                </span>
+                <span class="video-tab-text">
+                  <span class="video-tab-label">{videoTabLabel(video)}</span>
+                  {#if videoTabContext(video)}
+                    <span class="video-tab-context">{videoTabContext(video)}</span>
+                  {/if}
+                </span>
+                <span class="video-tab-popover" role="tooltip">
+                  {#each videoMetaRows(video) as [label, value]}
+                    <span class="video-tab-meta-row" class:notes={label === 'Notes'}>
+                      <strong>{label}</strong>
+                      <span>{value}</span>
+                    </span>
+                  {/each}
+                </span>
+              </button>
+            {/each}
+          </div>
           {#key `${videos[selectedVideo]?.filePath ?? ''}::${currentPosterUrl() ?? ''}`}
             <div class="video-frame">
               <video
@@ -344,76 +377,20 @@
             </div>
           {/key}
 
-          {#if selectedVideoEntry}
-            <div class="video-provenance">
-              <div class="video-provenance-row">
-                <strong>Timing</strong>
-                <ContentBadge label={selectedVideoEntry.timingLabel} className={timingBadgeClass(selectedVideoEntry)} />
-              </div>
-              <div class="video-provenance-row">
-                <strong>Type</strong>
-                <ContentBadge label={selectedVideoEntry.contentTypeLabel} className={contentBadgeClass(selectedVideoEntry)} />
-              </div>
-              <div class="video-provenance-row">
-                <strong>Environment</strong>
-                <ContentBadge label={selectedVideoEntry.environmentLabel} className={environmentBadgeClass(selectedVideoEntry)} />
-              </div>
-              <div class="video-provenance-row">
-                <strong>Dancers</strong>
-                <span>{selectedVideoEntry.sourceDancers.length ? selectedVideoEntry.sourceDancers.join(', ') : selectedVideoEntry.dancers.length ? selectedVideoEntry.dancers.join(', ') : 'Not recorded'}</span>
-              </div>
-              <div class="video-provenance-row">
-                <strong>Origin</strong>
-                <span class="video-origin-summary">
-                  <ContentBadge status={videoContentStatus(selectedVideoEntry)} />
-                  {#if selectedVideoEntry.isDerived}
-                    <span>Derived from {selectedVideoEntry.sourceDisplayName ?? 'source video'}</span>
-                    {#if selectedClipEditUrl}
-                      <a class="pill video-clip-edit-link" href={selectedClipEditUrl}>Go to clip</a>
-                    {/if}
-                  {:else if selectedVideoEntry.kind === 'source'}
-                    <span>Full source video</span>
-                  {:else}
-                    <span>Standalone move video</span>
-                  {/if}
-                </span>
-              </div>
+          {#if selectedVideoEntry && (selectedVideoEntry.countMarkers.length || selectedClipEditUrl)}
+            <div class="video-actions">
               {#if selectedVideoEntry.countMarkers.length}
-                <div class="video-provenance-row">
-                  <strong>Counts</strong>
-                  <button
-                    type="button"
-                    class="pill video-count-toggle"
-                    aria-pressed={showCountOverlay}
-                    on:click={() => (showCountOverlay = !showCountOverlay)}
-                  >
-                    {showCountOverlay ? 'Hide overlay' : 'Show overlay'}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  class="pill video-count-toggle"
+                  aria-pressed={showCountOverlay}
+                  on:click={() => (showCountOverlay = !showCountOverlay)}
+                >
+                  {showCountOverlay ? 'Hide counts' : 'Show counts'}
+                </button>
               {/if}
-              {#if selectedVideoEntry.sourceRecordDate || selectedVideoEntry.recordDate}
-                <div class="video-provenance-row">
-                  <strong>Recorded</strong>
-                  <span>{selectedVideoEntry.sourceRecordDate ?? selectedVideoEntry.recordDate}</span>
-                </div>
-              {/if}
-              {#if selectedVideoEntry.sourceClassWorkshop || selectedVideoEntry.classWorkshop}
-                <div class="video-provenance-row">
-                  <strong>Class</strong>
-                  <span>{selectedVideoEntry.sourceClassWorkshop ?? selectedVideoEntry.classWorkshop}</span>
-                </div>
-              {/if}
-              {#if selectedVideoEntry.sourceTags.length || selectedVideoEntry.tags.length}
-                <div class="video-provenance-row">
-                  <strong>Tags</strong>
-                  <span>{selectedVideoEntry.sourceTags.length ? selectedVideoEntry.sourceTags.join(', ') : selectedVideoEntry.tags.join(', ')}</span>
-                </div>
-              {/if}
-              {#if selectedVideoEntry.sourceNotes || selectedVideoEntry.notes}
-                <div class="video-provenance-row notes">
-                  <strong>Notes</strong>
-                  <span>{selectedVideoEntry.sourceNotes ?? selectedVideoEntry.notes}</span>
-                </div>
+              {#if selectedClipEditUrl}
+                <a class="pill video-clip-edit-link" href={selectedClipEditUrl}>Go to clip</a>
               {/if}
             </div>
           {/if}
