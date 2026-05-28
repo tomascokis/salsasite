@@ -20,6 +20,7 @@
     id: string;
     slug: string;
     name: string | null;
+    isDraft?: boolean;
   };
 
   type UploadAssetView = {
@@ -54,9 +55,11 @@
   };
   type TimelineMarker = 'clipStart' | 'clipEnd' | 'moveStart' | 'moveEnd' | 'playhead';
   type CountModeStep = 'idle' | 'placing';
+  type ClipChangeState = 'new' | 'edited';
   const MOVE_SUGGESTION_LIMIT = 8;
   const CLIP_MOVE_BUFFER_MS = 500;
   const DEFAULT_CLIP_PADDING_MS = 5000;
+  const PLAYBACK_CONTEXT_WINDOW_MS = 2500;
   const COUNT_PRESET_SEQUENCES: Record<CountTimingPreset, string[]> = {
     'on2-default': ['6', '7', '1', '2', '3', '5'],
     'on2-all': ['6', '7', '1', '2', '3', '4', '5', '6', '7', '8'],
@@ -89,7 +92,6 @@
   let saveStatus = '';
   let detectStatus = '';
   let renderStatus = '';
-  let publishStatus = '';
   let deleteStatus = '';
   let uploadFile: File | null = null;
   let editDisplayName = '';
@@ -101,7 +103,6 @@
   let editSourceUrl = '';
   let editCreatedAt = '';
   let editRecordDate = '';
-  let editClassWorkshop = '';
   let editTags: string[] = [];
   let editTagDraft = '';
   let editNotes = '';
@@ -109,6 +110,7 @@
   let isUploadingDragOver = false;
   let isLoadingMore = false;
   let clipRows: ClipWithUi[] = [];
+  let persistedClipRows: DerivedClip[] = [];
   let activeClipId: string | null = null;
   let isCroppingClip = false;
   let cropDragStart: { x: number; y: number } | null = null;
@@ -143,6 +145,8 @@
   let timelineViewportEndMs = 0;
   let hasManualTimelineZoom = false;
   let timelineDragTarget: TimelineMarker | null = null;
+  let timelineDragPreviousMs: number | null = null;
+  let timelineDragSnapConsumed = false;
   let resumePlaybackAfterTimelineDrag = false;
   let timelineElement: HTMLDivElement | null = null;
   let playbackAnimationFrame: number | null = null;
@@ -154,6 +158,13 @@
   let mediaListElement: HTMLDivElement | null = null;
   let mediaGroups: Array<{ month: string; assets: UploadAssetView[] }> = [];
   let availableMoves: MoveOption[] = data.moves;
+  let playbackMoveClips: ClipWithUi[] = [];
+  let currentPlaybackMove: ClipWithUi | null = null;
+  let previousPlaybackMove: ClipWithUi | null = null;
+  let nextPlaybackMove: ClipWithUi | null = null;
+  let visiblePreviousPlaybackMove: ClipWithUi | null = null;
+  let visibleNextPlaybackMove: ClipWithUi | null = null;
+  let showPlaybackMoveContext = false;
 
   let moveNameById = new Map<string, string>();
   $: moveNameById = new Map(availableMoves.map((move) => [move.id, move.name ?? move.id]));
@@ -167,6 +178,36 @@
   $: activeCountMarkers = activeSavedClip?.countMarkers ?? [];
   $: currentCountMarker = activeSavedClip ? activeCountMarkers[countModeIndex] ?? null : null;
   $: activePreviewCountMarker = activeVisibleCountMarker(activeCountMarkers, playerCurrentMs);
+  $: visibleSavedTimelineClips =
+    isDraftingMove && activeClipId ? clipRows.filter((clip) => clip.id !== activeClipId) : clipRows;
+  $: playbackMoveClips = sortedPlaybackClips(clipRows);
+  $: currentPlaybackMove = playbackMoveClips.find(
+    (clip) => playerCurrentMs >= clipActionStartMs(clip) && playerCurrentMs <= clipActionEndMs(clip)
+  ) ?? null;
+  $: previousPlaybackMove = currentPlaybackMove
+    ? playbackMoveClips[playbackMoveClips.findIndex((clip) => clip.id === currentPlaybackMove?.id) - 1] ?? null
+    : lastClipBefore(playbackMoveClips, playerCurrentMs);
+  $: nextPlaybackMove = currentPlaybackMove
+    ? playbackMoveClips[playbackMoveClips.findIndex((clip) => clip.id === currentPlaybackMove?.id) + 1] ?? null
+    : playbackMoveClips.find((clip) => clipActionStartMs(clip) > playerCurrentMs) ?? null;
+  $: visiblePreviousPlaybackMove =
+    previousPlaybackMove && playerCurrentMs - clipActionEndMs(previousPlaybackMove) <= PLAYBACK_CONTEXT_WINDOW_MS
+      ? previousPlaybackMove
+      : null;
+  $: visibleNextPlaybackMove =
+    nextPlaybackMove && clipActionStartMs(nextPlaybackMove) - playerCurrentMs <= PLAYBACK_CONTEXT_WINDOW_MS
+      ? nextPlaybackMove
+      : null;
+  $: showPlaybackMoveContext = Boolean(currentPlaybackMove || visiblePreviousPlaybackMove || visibleNextPlaybackMove);
+  $: timelineScaleKey = `${isDraftingMove ? 'editing' : 'full'}:${playerDurationMs}:${timelineViewportStartMs}:${timelineViewportEndMs}`;
+  $: clipChangeStates = new Map(
+    selectedAsset
+      ? clipRows
+          .map((clip): [string, ClipChangeState | null] => [clip.id, clipChangeState(clip, persistedClipRows)])
+          .filter((entry): entry is [string, ClipChangeState] => Boolean(entry[1]))
+      : []
+  );
+  $: hasUnsavedClipRowChanges = selectedAsset ? hasUnsavedClipChanges(persistedClipRows) : false;
 
   $: selectedDraftMoveIds = draftMoveRows
     .flatMap((row) => row.moveIds)
@@ -183,8 +224,14 @@
   $: hasSaveableDraftChanges =
     hasDraftChanges && draftMoveRows.some((row) => row.moveIds.some((moveId) => moveNameById.has(moveId)) && row.endMs > row.startMs);
 
-  $: if (!isDraftingMove && hasManualTimelineZoom) {
-    resetTimelineZoom();
+  $: if (!isDraftingMove) {
+    const timelineDurationMs = inferredTimelineDurationMs();
+    if (
+      timelineDurationMs &&
+      (hasManualTimelineZoom || timelineViewportStartMs !== 0 || timelineViewportEndMs !== timelineDurationMs)
+    ) {
+      resetTimelineZoom();
+    }
   }
 
   $: if (!isDraftingMove && isLooping) {
@@ -204,14 +251,13 @@
     editSourceUrl = selectedAsset.sourceUrl ?? '';
     editCreatedAt = dateInputValue(selectedAsset.createdAt);
     editRecordDate = selectedAsset.recordDate ?? '';
-    editClassWorkshop = selectedAsset.classWorkshop ?? '';
     editTags = [...selectedAsset.tags];
     editTagDraft = '';
     editNotes = selectedAsset.notes ?? '';
     detectStatus = '';
-    publishStatus = '';
     isEditingMetadata = false;
     clipRows = selectedAsset.clips.map((clip) => ({ ...clip, selected: false }));
+    persistedClipRows = selectedAsset.clips.map((clip) => ({ ...clip }));
     draftMoveRows = [];
     activeDraftMoveRowId = null;
     activeClipId = null;
@@ -241,9 +287,8 @@
     }
     if (data.selectedClipId && clipRows.some((clip) => clip.id === data.selectedClipId)) {
       const clip = clipRows.find((entry) => entry.id === data.selectedClipId);
-      activeClipId = data.selectedClipId;
       if (clip) {
-        seekPreview(clip.actionStartMs ?? clip.startMs);
+        openSavedClipEditor(clip);
       }
     }
   }
@@ -435,7 +480,8 @@
     const option: MoveOption = {
       id: String(draftMove.id),
       slug: String(draftMove.slug ?? draftMove.id),
-      name: draftMove.name ?? draftMove.id
+      name: draftMove.name ?? draftMove.id,
+      isDraft: true
     };
     availableMoves = [option, ...availableMoves.filter((move) => move.id !== option.id)];
 
@@ -487,8 +533,68 @@
     return clip.label?.trim() || moveNameById.get(clip.moveId) || clip.moveId;
   }
 
-  function readyPublishableClips() {
-    return clipRows.filter((clip) => clip.status === 'ready' && clip.outputAssetId && clipPublicationStatus(clip) !== 'modern-published');
+  function playbackMoveName(clip: DerivedClip) {
+    return moveNameById.get(clip.moveId) || clip.moveId;
+  }
+
+  function clipActionStartMs(clip: DerivedClip) {
+    return clip.actionStartMs ?? clip.startMs;
+  }
+
+  function clipActionEndMs(clip: DerivedClip) {
+    return clip.actionEndMs ?? clip.endMs;
+  }
+
+  function sortedPlaybackClips(clips: ClipWithUi[]) {
+    return [...clips].sort((left, right) => {
+      const startDelta = clipActionStartMs(left) - clipActionStartMs(right);
+      return startDelta || clipActionEndMs(left) - clipActionEndMs(right) || left.id.localeCompare(right.id);
+    });
+  }
+
+  function lastClipBefore(clips: ClipWithUi[], milliseconds: number) {
+    for (let index = clips.length - 1; index >= 0; index -= 1) {
+      if (clipActionEndMs(clips[index]) < milliseconds) {
+        return clips[index];
+      }
+    }
+
+    return null;
+  }
+
+  function clipSaveSignature(clip: DerivedClip) {
+    return JSON.stringify([
+      clip.moveId,
+      clip.label ?? '',
+      clip.manuallyNamed ? 'manual' : 'generated',
+      clip.startMs,
+      clip.endMs,
+      clip.actionStartMs ?? '',
+      clip.actionEndMs ?? '',
+      clip.cropRect ? [clip.cropRect.x, clip.cropRect.y, clip.cropRect.width, clip.cropRect.height] : null,
+      clip.countMarkers.map((marker) => [marker.id, marker.count, marker.ms, marker.clear]),
+      clip.countOverlayPlacement,
+      clip.countTimingPreset
+    ]);
+  }
+
+  function clipChangeState(clip: DerivedClip, savedClips: DerivedClip[]): ClipChangeState | null {
+    const savedClip = savedClips.find((entry) => entry.id === clip.id);
+    if (!savedClip) return 'new';
+    return clipSaveSignature(clip) === clipSaveSignature(savedClip) ? null : 'edited';
+  }
+
+  function hasUnsavedClipChanges(savedClips: DerivedClip[]) {
+    if (clipRows.length !== savedClips.length) return true;
+    const currentIds = new Set(clipRows.map((clip) => clip.id));
+    if (savedClips.some((clip) => !currentIds.has(clip.id))) return true;
+    return clipRows.some((clip) => Boolean(clipChangeState(clip, savedClips)));
+  }
+
+  function clipChangeLabel(state: ClipChangeState | null | undefined) {
+    if (state === 'new') return 'New';
+    if (state === 'edited') return 'Edited';
+    return 'Saved';
   }
 
   function updateClipLabel(clipId: string, value: string) {
@@ -519,7 +625,40 @@
     activeClipId = clip.id;
     countMode = 'idle';
     countModeIndex = 0;
-    seekPreview(clip.actionStartMs ?? clip.startMs);
+    seekPreview(clipActionStartMs(clip));
+  }
+
+  function openSavedClipEditor(clip: DerivedClip) {
+    const actionStart = clipActionStartMs(clip);
+    const actionEnd = clipActionEndMs(clip);
+    const row = {
+      ...createDraftMoveRow(actionStart, actionEnd),
+      moveIds: [clip.moveId],
+      query: ''
+    };
+
+    activeClipId = clip.id;
+    isDraftingMove = true;
+    draftMoveRows = [row];
+    activeDraftMoveRowId = row.id;
+    draftActionStartMs = actionStart;
+    draftActionEndMs = actionEnd;
+    draftStartMs = clampClipStartMs(clip.startMs);
+    draftEndMs = clampClipEndMs(clip.endMs);
+    clipStartContextMs = Math.max(CLIP_MOVE_BUFFER_MS, actionStart - clip.startMs);
+    clipEndContextMs = Math.max(CLIP_MOVE_BUFFER_MS, clip.endMs - actionEnd);
+    autoClipStart = false;
+    autoClipEnd = false;
+    countMode = 'idle';
+    countModeIndex = 0;
+    isCroppingClip = false;
+    resetTimelineZoom();
+    draftInitialSnapshot = JSON.stringify([
+      draftMoveRows.map((draftRow) => [draftRow.id, draftRow.moveIds, draftRow.query, draftRow.startMs, draftRow.endMs]),
+      draftStartMs,
+      draftEndMs
+    ]);
+    seekPreview(actionStart);
   }
 
   function removeSavedClip(clipId: string) {
@@ -880,7 +1019,6 @@
     formData.set('originType', 'self-recorded');
     formData.set('sourceUrl', '');
     formData.set('recordDate', '');
-    formData.set('classWorkshop', '');
     formData.set('tags', '');
     formData.set('notes', '');
 
@@ -923,7 +1061,6 @@
         sourceUrl: editSourceUrl,
         createdAt: editCreatedAt,
         recordDate: editRecordDate,
-        classWorkshop: editClassWorkshop,
         tags: editTags,
         notes: editNotes
       })
@@ -1023,6 +1160,12 @@
     if (!timelineDurationMs) {
       timelineViewportStartMs = 0;
       timelineViewportEndMs = 0;
+      return;
+    }
+
+    if (!isDraftingMove) {
+      timelineViewportStartMs = 0;
+      timelineViewportEndMs = timelineDurationMs;
       return;
     }
 
@@ -1258,8 +1401,8 @@
     draftEndMs = clampClipEndMs(draftActionEndMs + clipEndContextMs);
   }
 
-  function setDraftBoundary(target: TimelineMarker, valueMs: number, seek = true) {
-    const nextValue = clampMs(valueMs);
+  function setDraftBoundary(target: TimelineMarker, valueMs: number, seek = true, snap = true) {
+    const nextValue = clampMs(snap ? snapMoveBoundaryForDrag(target, valueMs) : valueMs);
     lastDraftBoundaryTarget = target;
     if (target === 'playhead') {
       seekPreview(nextValue);
@@ -1304,6 +1447,57 @@
     if (seek) seekPreview(draftActionEndMs);
   }
 
+  function moveBoundarySnapCandidates(target: TimelineMarker) {
+    if (target !== 'moveStart' && target !== 'moveEnd') {
+      return [];
+    }
+
+    const boundaries = [
+      ...draftMoveRows
+        .filter((row) => row.id !== activeDraftMoveRowId)
+        .flatMap((row) => [row.startMs, row.endMs]),
+      ...visibleSavedTimelineClips.flatMap((clip) => [clipActionStartMs(clip), clipActionEndMs(clip)])
+    ];
+    const minimum = target === 'moveEnd' ? draftActionStartMs + 250 : 0;
+    const maximum = target === 'moveStart' ? Math.max(0, draftActionEndMs - 250) : inferredTimelineDurationMs();
+
+    return Array.from(new Set(boundaries.map((value) => Math.round(value))))
+      .filter((value) => value >= minimum && value <= maximum)
+      .sort((left, right) => left - right);
+  }
+
+  function snapMoveBoundaryForDrag(target: TimelineMarker, valueMs: number) {
+    if (
+      timelineDragSnapConsumed ||
+      timelineDragPreviousMs === null ||
+      (target !== 'moveStart' && target !== 'moveEnd')
+    ) {
+      timelineDragPreviousMs = valueMs;
+      return valueMs;
+    }
+
+    const previousMs = timelineDragPreviousMs;
+    const direction = Math.sign(valueMs - previousMs);
+    if (!direction) {
+      return valueMs;
+    }
+
+    const boundaries = moveBoundarySnapCandidates(target);
+    const snapped =
+      direction > 0
+        ? boundaries.find((boundary) => boundary > previousMs && boundary <= valueMs)
+        : [...boundaries].reverse().find((boundary) => boundary < previousMs && boundary >= valueMs);
+
+    if (snapped === undefined) {
+      timelineDragPreviousMs = valueMs;
+      return valueMs;
+    }
+
+    timelineDragSnapConsumed = true;
+    timelineDragPreviousMs = snapped;
+    return snapped;
+  }
+
   function percentForMs(milliseconds: number) {
     ensureTimelineViewport();
     const span = timelineViewportEndMs - timelineViewportStartMs;
@@ -1333,22 +1527,32 @@
     return duration > 0 && span > 0 && span < duration - 1;
   }
 
-  function timelineOverviewLeft() {
+  function timelineOverviewLeft(_scaleKey = '') {
     const duration = inferredTimelineDurationMs();
     return duration ? Math.max(0, Math.min(100, (timelineViewportStartMs / duration) * 100)) : 0;
   }
 
-  function timelineOverviewWidth() {
+  function timelineOverviewWidth(_scaleKey = '') {
     const duration = inferredTimelineDurationMs();
     return duration ? Math.max(0, Math.min(100, (timelineViewportDurationMs() / duration) * 100)) : 100;
   }
 
-  function markerLeftStyle(milliseconds: number) {
+  function timelineRangeStyle(startMs: number, endMs: number, _scaleKey = '') {
+    return `left: ${percentForMs(startMs)}%; width: ${clipPercentWidth(startMs, endMs)}%`;
+  }
+
+  function markerLeftStyle(milliseconds: number, _scaleKey = '') {
     return `left: ${percentForMs(milliseconds)}%`;
   }
 
-  function draftMoveRangeStyle(row: DraftMoveRow) {
-    return `left: ${percentForMs(row.startMs)}%; width: ${clipPercentWidth(row.startMs, row.endMs)}%`;
+  function draftMoveRangeStyle(row: DraftMoveRow, scaleKey = '') {
+    return timelineRangeStyle(row.startMs, row.endMs, scaleKey);
+  }
+
+  function savedClipRangeStyle(clip: DerivedClip, scaleKey = '') {
+    const startMs = clip.actionStartMs ?? clip.startMs;
+    const endMs = clip.actionEndMs ?? clip.endMs;
+    return timelineRangeStyle(startMs, endMs, scaleKey);
   }
 
   function timelineMsFromPointer(event: PointerEvent) {
@@ -1382,9 +1586,17 @@
     } else {
       resumePlaybackAfterTimelineDrag = false;
     }
-    const nextValue = timelineMsFromPointer(event);
     timelineDragTarget = target ?? 'playhead';
-    setDraftBoundary(timelineDragTarget, nextValue);
+    timelineDragSnapConsumed = false;
+    timelineDragPreviousMs =
+      timelineDragTarget === 'moveStart'
+        ? draftActionStartMs
+        : timelineDragTarget === 'moveEnd'
+          ? draftActionEndMs
+          : timelineMsFromPointer(event);
+    const nextValue = timelineMsFromPointer(event);
+    setDraftBoundary(timelineDragTarget, nextValue, true, false);
+    timelineDragPreviousMs = nextValue;
   }
 
   function startPlayheadDrag(event: PointerEvent) {
@@ -1403,6 +1615,8 @@
     const releasedTarget = timelineDragTarget;
     const shouldResume = resumePlaybackAfterTimelineDrag;
     timelineDragTarget = null;
+    timelineDragPreviousMs = null;
+    timelineDragSnapConsumed = false;
     resumePlaybackAfterTimelineDrag = false;
     if (releasedTarget && releasedTarget !== 'playhead') {
       seekPreview(draftActionStartMs);
@@ -1562,8 +1776,8 @@
       return null;
     }
 
-    const existingClip = clipRows.find((clip) => clip.id === activeClipId) ?? null;
-    const remainingClips = clipRows.filter((clip) => clip.id !== activeClipId);
+    const existingClipIndex = clipRows.findIndex((clip) => clip.id === activeClipId);
+    const existingClip = existingClipIndex >= 0 ? clipRows[existingClipIndex] : null;
     let firstGeneratedClip = true;
     const nextClips = moveRows.flatMap((row) => {
       const clipStartMs = Math.max(0, Math.round(row.startMs - Math.max(clipStartContextMs, CLIP_MOVE_BUFFER_MS)));
@@ -1605,7 +1819,11 @@
       });
     });
 
-    return [...remainingClips, ...nextClips];
+    if (existingClipIndex < 0) {
+      return [...clipRows, ...nextClips];
+    }
+
+    return [...clipRows.slice(0, existingClipIndex), ...nextClips, ...clipRows.slice(existingClipIndex + 1)];
   }
 
   async function saveMovesAndQueueRender(continueAdding = false) {
@@ -1647,6 +1865,7 @@
       return;
     }
 
+    persistedClipRows = payload.clips.map((clip: DerivedClip) => ({ ...clip }));
     clipRows = payload.clips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
     const clipIds = clipRows.map((clip) => clip.id).filter(Boolean);
     activeClipId = null;
@@ -1687,7 +1906,7 @@
     clipRows = clipRows.map((clip) =>
       queuedIds.has(clip.id) ? { ...clip, status: 'pending', error: null } : clip
     );
-    renderStatus = 'Rendering...';
+    renderStatus = 'Rendering and publishing...';
     startPolling();
     if (continueAdding) {
       startNewMoveClip();
@@ -1701,7 +1920,7 @@
       return;
     }
 
-    renderStatus = 'Saving clip names...';
+    renderStatus = 'Saving clip changes...';
     const response = await fetch('/api/upload/clips', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -1726,36 +1945,13 @@
     const payload = await response.json();
 
     if (!response.ok) {
-      renderStatus = payload.error ?? 'Could not save clip names.';
+      renderStatus = payload.error ?? 'Could not save clip changes.';
       return;
     }
 
+    persistedClipRows = payload.clips.map((clip: DerivedClip) => ({ ...clip }));
     clipRows = payload.clips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
-    renderStatus = 'Clip names saved.';
-    await refreshLibrary(selectedAsset.id);
-  }
-
-  async function publishReadyClips() {
-    const publishable = readyPublishableClips();
-    if (!publishable.length || !selectedAsset) {
-      publishStatus = 'Render clips before publishing.';
-      return;
-    }
-
-    publishStatus = 'Publishing to moves...';
-    const response = await fetch('/api/upload/publish', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ clipIds: publishable.map((clip) => clip.id) })
-    });
-    const payload = await response.json();
-
-    if (!response.ok) {
-      publishStatus = payload.error ?? 'Could not publish clips.';
-      return;
-    }
-
-    publishStatus = `Published ${payload.clips?.length ?? publishable.length} clip${publishable.length === 1 ? '' : 's'} to moves.`;
+    renderStatus = 'Clip changes saved and published.';
     await refreshLibrary(selectedAsset.id);
   }
 
@@ -1834,7 +2030,7 @@
       return;
     }
 
-    renderStatus = 'Render complete.';
+    renderStatus = 'Render complete and published to moves.';
     stopPolling();
     await refreshLibrary(selectedAssetId);
   }
@@ -2114,12 +2310,33 @@
                     </span>
                   {/if}
                 </div>
+                {#if !isDraftingMove && playbackMoveClips.length}
+                  <div class="timeline-now-playing" aria-label="Current move context">
+                    <div class="timeline-context-slot timeline-context-slot-previous">
+                      {#if visiblePreviousPlaybackMove}
+                        <div class="timeline-context-box timeline-context-side timeline-context-previous">
+                          <strong>{playbackMoveName(visiblePreviousPlaybackMove)}</strong>
+                        </div>
+                      {/if}
+                    </div>
+                    <div class="timeline-context-box timeline-context-current" class:empty={!currentPlaybackMove}>
+                      <strong>{currentPlaybackMove ? playbackMoveName(currentPlaybackMove) : '—'}</strong>
+                    </div>
+                    <div class="timeline-context-slot timeline-context-slot-next">
+                      {#if visibleNextPlaybackMove}
+                        <div class="timeline-context-box timeline-context-side timeline-context-next">
+                          <strong>{playbackMoveName(visibleNextPlaybackMove)}</strong>
+                        </div>
+                      {/if}
+                    </div>
+                  </div>
+                {/if}
                 {#if isTimelineZoomed()}
                   <div class="timeline-overview zoomed" aria-hidden="true">
                     <span class="timeline-overview-track">
                       <span
                         class="timeline-overview-window"
-                        style={`left: ${timelineOverviewLeft()}%; width: ${timelineOverviewWidth()}%`}
+                        style={`left: ${timelineOverviewLeft(timelineScaleKey)}%; width: ${timelineOverviewWidth(timelineScaleKey)}%`}
                       ></span>
                     </span>
                   </div>
@@ -2139,27 +2356,44 @@
                   on:wheel={handleTimelineWheel}
                 >
                   <div class="clip-timeline-track"></div>
+                  {#each visibleSavedTimelineClips as clip (clip.id)}
+                    <button
+                      type="button"
+                      class="clip-timeline-selection saved-move-range"
+                      class:active={activeClipId === clip.id}
+                      class:changed={Boolean(clipChangeStates.get(clip.id))}
+                      style={savedClipRangeStyle(clip, timelineScaleKey)}
+                      aria-label={`${clipDisplayName(clip)} ${clipChangeLabel(clipChangeStates.get(clip.id)).toLowerCase()} clip`}
+                      title={`${clipDisplayName(clip)} · ${clipChangeLabel(clipChangeStates.get(clip.id))}`}
+                      on:pointerdown={(event) => event.stopPropagation()}
+                      on:click={(event) => {
+                        event.stopPropagation();
+                        openSavedClipEditor(clip);
+                      }}
+                    ></button>
+                  {/each}
                   {#if isDraftingMove}
                     <div
                       class="clip-timeline-selection clip-range"
-                      style={`left: ${percentForMs(draftStartMs)}%; width: ${clipPercentWidth(draftStartMs, draftEndMs)}%`}
+                      style={timelineRangeStyle(draftStartMs, draftEndMs, timelineScaleKey)}
                     ></div>
                     {#each draftMoveRows as row (row.id)}
                       <div
                         class="clip-timeline-selection move-range"
                         class:active={row.id === activeDraftMoveRowId}
+                        class:changed={hasSaveableDraftChanges}
                         class:secondary={row.id !== activeDraftMoveRowId}
-                        style={draftMoveRangeStyle(row)}
+                        style={draftMoveRangeStyle(row, timelineScaleKey)}
                         on:dblclick={(event) => editDraftMoveRowFromTimeline(event, row.id)}
                       ></div>
                     {/each}
                   {/if}
-                  <div class="clip-timeline-playhead" style={markerLeftStyle(playerCurrentMs)}></div>
+                  <div class="clip-timeline-playhead" style={markerLeftStyle(playerCurrentMs, timelineScaleKey)}></div>
                   <div
                     role="button"
                     tabindex={playerDurationMs ? 0 : -1}
                     class="clip-timeline-playhead-handle"
-                    style={markerLeftStyle(playerCurrentMs)}
+                    style={markerLeftStyle(playerCurrentMs, timelineScaleKey)}
                     aria-label="Drag playback position"
                     title="Playback position"
                     on:pointerdown={(event) => (event.stopPropagation(), startPlayheadDrag(event))}
@@ -2168,7 +2402,7 @@
                   <button
                     type="button"
                     class="clip-timeline-marker clip-marker"
-                    style={markerLeftStyle(draftStartMs)}
+                    style={markerLeftStyle(draftStartMs, timelineScaleKey)}
                     aria-label="Drag clip start"
                     title="Clip starts"
                     on:pointerdown={(event) => (event.stopPropagation(), startTimelineDrag(event, 'clipStart'))}
@@ -2181,7 +2415,7 @@
                   <button
                     type="button"
                     class="clip-timeline-marker clip-marker"
-                    style={markerLeftStyle(draftEndMs)}
+                    style={markerLeftStyle(draftEndMs, timelineScaleKey)}
                     aria-label="Drag clip end"
                     title="Clip ends"
                     on:pointerdown={(event) => (event.stopPropagation(), startTimelineDrag(event, 'clipEnd'))}
@@ -2194,7 +2428,7 @@
                   <button
                     type="button"
                     class="clip-timeline-marker move-marker"
-                    style={markerLeftStyle(draftActionStartMs)}
+                    style={markerLeftStyle(draftActionStartMs, timelineScaleKey)}
                     aria-label="Drag move start"
                     title="Move starts"
                     on:pointerdown={(event) => (event.stopPropagation(), startTimelineDrag(event, 'moveStart'))}
@@ -2207,7 +2441,7 @@
                   <button
                     type="button"
                     class="clip-timeline-marker move-marker"
-                    style={markerLeftStyle(draftActionEndMs)}
+                    style={markerLeftStyle(draftActionEndMs, timelineScaleKey)}
                     aria-label="Drag move end"
                     title="Move ends"
                     on:pointerdown={(event) => (event.stopPropagation(), startTimelineDrag(event, 'moveEnd'))}
@@ -2229,6 +2463,11 @@
                     {/if}
                   {:else}
                     <button class="timeline-move-action" type="button" on:click={addMoreMoves}>Edit moves</button>
+                  {/if}
+                  {#if hasUnsavedClipRowChanges}
+                    <button class="timeline-move-action primary" type="button" on:click={() => void saveClipLabelChanges()}>
+                      Save clip changes
+                    </button>
                   {/if}
                 </div>
                 {#if isDraftingMove}
@@ -2266,6 +2505,30 @@
                         {/if}
                       </div>
                     {/each}
+                    {#each visibleSavedTimelineClips as clip (clip.id)}
+                      <div class="draft-move-row saved-editor-row">
+                        <button
+                          class="move-start-display saved-editor-start"
+                          type="button"
+                          on:click={() => openSavedClipEditor(clip)}
+                        >
+                          <strong>{formatTenthSeconds(clipActionStartMs(clip))}s</strong>
+                        </button>
+                        <button
+                          class="move-link-field saved-editor-move"
+                          type="button"
+                          on:click={() => openSavedClipEditor(clip)}
+                        >
+                          <span class="move-chip move-picker-inline-chip saved-editor-chip">
+                            {clip.moveId} · {moveNameById.get(clip.moveId) ?? clip.moveId}
+                          </span>
+                          <span class="saved-editor-placeholder">Add another move</span>
+                        </button>
+                        <button class="draft-edit-button" type="button" on:click={() => openSavedClipEditor(clip)}>
+                          Edit
+                        </button>
+                      </div>
+                    {/each}
                     <button class="draft-add-move-button" type="button" on:click={() => void addMoreMoves()}>Add move</button>
                   </div>
                 {/if}
@@ -2274,130 +2537,6 @@
                 {/if}
               </div>
             </div>
-
-            {#if selectedAsset.clips.length || clipRows.length}
-              <div class="meta-card upload-card media-clips-card">
-                <div class="panel-header">
-                  <div class="panel-heading-row">
-                    <h3>Move clips</h3>
-                    <button
-                      class="header-button"
-                      type="button"
-                      disabled={!readyPublishableClips().length}
-                      on:click={() => void publishReadyClips()}
-                    >
-                      Publish to moves
-                    </button>
-                  </div>
-                  {#if publishStatus}
-                    <p class="muted">{publishStatus}</p>
-                  {/if}
-                </div>
-                {#if clipRows.length}
-                  <div class="media-clip-list">
-                    {#each clipRows as clip}
-                      <div class={`media-clip-row ${clipPublicationClass(clip)}`} class:active={activeClipId === clip.id}>
-                        <button
-                          class="media-clip-time"
-                          type="button"
-                          on:click={() => selectSavedClip(clip)}
-                        >
-                          {formatTenthSeconds(clip.actionStartMs ?? clip.startMs)}s
-                        </button>
-                        <div class="media-clip-main">
-                          <input
-                            aria-label={`Clip name for ${clip.moveId}`}
-                            value={clipDisplayName(clip)}
-                            on:input={(event) => updateClipLabel(clip.id, (event.currentTarget as HTMLInputElement).value)}
-                          />
-                          <span>{clip.moveId} · {moveNameById.get(clip.moveId) ?? clip.moveId}</span>
-                        </div>
-                        <div class="content-badge-list media-clip-badges">
-                          <ContentBadge status={clipPublicationStatus(clip)} />
-                          <ContentBadge status={processingStatusFor(clip.status)} />
-                          {#if clip.status === 'failed' && clip.error}
-                            <ContentBadge label="Failed" tone="danger" title={clip.error} />
-                          {/if}
-                        </div>
-                        <button class="media-clip-delete" type="button" on:click={() => removeSavedClip(clip.id)}>
-                          Delete
-                        </button>
-                      </div>
-                    {/each}
-                  </div>
-                {:else}
-                  <p class="muted">No move tracks. Save clip changes to remove all tracks from this source video.</p>
-                {/if}
-                {#if activeSavedClip}
-                  <div class="clip-tools-panel">
-                    <div class="clip-tools-row">
-                      <strong>{clipDisplayName(activeSavedClip)}</strong>
-                      <button type="button" class:active={isCroppingClip} on:click={() => (isCroppingClip = !isCroppingClip)}>
-                        Crop
-                      </button>
-                      <button type="button" on:click={clearActiveCrop} disabled={!activeSavedClip.cropRect}>Clear crop</button>
-                    </div>
-                    <div class="clip-tools-row">
-                      <label>
-                        <span>Timing</span>
-                        <select
-                          value={activeSavedClip.countTimingPreset}
-                          on:change={(event) => setActiveCountPreset((event.currentTarget as HTMLSelectElement).value as CountTimingPreset)}
-                        >
-                          {#each Object.keys(COUNT_PRESET_SEQUENCES) as preset}
-                            <option value={preset}>{presetLabel(preset as CountTimingPreset)}</option>
-                          {/each}
-                        </select>
-                      </label>
-                      <label>
-                        <span>Marker</span>
-                        <select
-                          value={activeSavedClip.countOverlayPlacement}
-                          on:change={(event) => setActiveCountPlacement((event.currentTarget as HTMLSelectElement).value as CountOverlayPlacement)}
-                        >
-                          {#each ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as placement}
-                            <option value={placement}>{countPlacementLabel(placement as CountOverlayPlacement)}</option>
-                          {/each}
-                        </select>
-                      </label>
-                      <button type="button" class:active={countMode === 'placing'} on:click={startCountMode}>Place counts</button>
-                      <button type="button" on:click={finishCountMode} disabled={countMode !== 'placing'}>Finish</button>
-                      <button type="button" on:click={clearCountMarkers} disabled={!activeSavedClip.countMarkers.length}>Clear counts</button>
-                    </div>
-                    {#if countMode === 'placing' && currentCountMarker}
-                      <div class="clip-count-workflow">
-                        <strong>{currentCountMarker.count}</strong>
-                        <span>{countModeIndex + 1} / {activeSavedClip.countMarkers.length}</span>
-                        <button type="button" on:click={placeCurrentCount}>Place</button>
-                      </div>
-                    {/if}
-                    {#if activeSavedClip.countMarkers.length}
-                      <div class="clip-count-marker-list">
-                        {#each activeSavedClip.countMarkers as marker, index}
-                          <button
-                            type="button"
-                            class:active={index === countModeIndex && countMode === 'placing'}
-                            on:click={() => {
-                              countModeIndex = index;
-                              seekPreview(marker.ms);
-                            }}
-                          >
-                            {marker.count} · {formatTenthSeconds(marker.ms)}s
-                          </button>
-                          <label class="clear-count-toggle">
-                            <input type="checkbox" checked={marker.clear} on:change={() => toggleCountClear(marker.id)} />
-                            <span>Clear</span>
-                          </label>
-                        {/each}
-                      </div>
-                    {/if}
-                  </div>
-                {/if}
-                <div class="upload-actions">
-                  <button type="button" on:click={() => void saveClipLabelChanges()}>Save clip changes</button>
-                </div>
-              </div>
-            {/if}
 
             <div class="meta-card upload-card media-properties-card">
               <div class="panel-header">
@@ -2419,7 +2558,7 @@
                     <input bind:value={editDancers} placeholder="Comma separated" />
                   </label>
                   <div class="segmented-field">
-                    <span class="segmented-label">Source</span>
+                    <span class="segmented-label source-segmented-label">Source</span>
                     <div class="segmented-control" role="radiogroup" aria-label="Source">
                       <button
                         type="button"
@@ -2502,10 +2641,6 @@
                     <input type="date" bind:value={editRecordDate} />
                   </label>
                   <label>
-                    <span>Class/workshop</span>
-                    <input list="class-workshop-options" bind:value={editClassWorkshop} />
-                  </label>
-                  <label>
                     <span>Other tags</span>
                     <input
                       list="media-tag-options"
@@ -2554,10 +2689,6 @@
                     <dt>Source URL</dt>
                     <dd><a href={selectedAsset.sourceUrl} target="_blank" rel="noreferrer">{sourceUrlLabel(selectedAsset.sourceUrl)}</a></dd>
                   {/if}
-                  {#if selectedAsset.classWorkshop}
-                    <dt>Class/workshop</dt>
-                    <dd>{selectedAsset.classWorkshop}</dd>
-                  {/if}
                   {#if selectedAsset.tags.length}
                     <dt>Tags</dt>
                     <dd>{selectedAsset.tags.join(', ')}</dd>
@@ -2580,11 +2711,6 @@
     </div>
   </section>
 
-  <datalist id="class-workshop-options">
-    {#each suggestions.classWorkshops as classWorkshop}
-      <option value={classWorkshop}></option>
-    {/each}
-  </datalist>
   <datalist id="media-tag-options">
     {#each suggestions.tags as tag}
       <option value={tag}></option>

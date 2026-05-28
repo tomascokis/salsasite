@@ -39,6 +39,7 @@ import {
   sourceSuggestions,
   uploadMonthKey
 } from '$lib/video-library-utils';
+import { publicationStatusFor } from '$lib/content-status';
 
 const LIBRARY_FILENAME = 'video-library.json';
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.m4v', '.mov']);
@@ -186,6 +187,25 @@ function normalizeCountMarkers(value: unknown): ClipCountMarker[] {
     })
     .filter((entry): entry is ClipCountMarker => Boolean(entry))
     .sort((left, right) => left.ms - right.ms);
+}
+
+function cropRectsEqual(left: ClipCropRect | null, right: ClipCropRect | null) {
+  if (!left || !right) {
+    return left === right;
+  }
+
+  return left.x === right.x && left.y === right.y && left.width === right.width && left.height === right.height;
+}
+
+function countMarkersEqual(left: ClipCountMarker[], right: ClipCountMarker[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((marker, index) => {
+    const other = right[index];
+    return other && marker.count === other.count && marker.ms === other.ms && marker.clear === other.clear;
+  });
 }
 
 function inferMetadataFromText(value: string) {
@@ -446,6 +466,42 @@ function ensureMoveLink(library: VideoLibrary, moveId: string, assetId: string) 
   return link;
 }
 
+function publishClipToMove(library: VideoLibrary, clip: DerivedClip, publishedAt: string) {
+  if (clip.status !== 'ready' || !clip.outputAssetId) {
+    throw new Error('Only rendered clips can be published.');
+  }
+
+  const outputAsset = library.videoAssets.find((asset) => asset.id === clip.outputAssetId && asset.kind === 'move');
+  const sourceAsset = library.videoAssets.find((asset) => asset.id === clip.sourceAssetId && asset.kind === 'source');
+  if (!outputAsset || !sourceAsset) {
+    throw new Error('Rendered clip asset not found.');
+  }
+
+  outputAsset.displayName = clip.label?.trim() || sourceAsset.displayName;
+  outputAsset.dancers = [...sourceAsset.dancers];
+  outputAsset.timing = sourceAsset.timing;
+  outputAsset.contentType = sourceAsset.contentType;
+  outputAsset.environment = sourceAsset.environment;
+  outputAsset.originType = sourceAsset.originType;
+  outputAsset.sourceUrl = sourceAsset.sourceUrl;
+  outputAsset.recordDate = sourceAsset.recordDate;
+  outputAsset.classWorkshop = sourceAsset.classWorkshop;
+  outputAsset.tags = [...sourceAsset.tags];
+  outputAsset.notes = sourceAsset.notes;
+
+  if (clip.publishedAssetId && clip.publishedAssetId !== clip.outputAssetId) {
+    library.moveVideoLinks = library.moveVideoLinks.filter((link) => link.assetId !== clip.publishedAssetId);
+  }
+
+  ensureMoveLink(library, clip.moveId, outputAsset.id);
+  clip.publishedAssetId = outputAsset.id;
+  clip.publishedLowResFilePath = clip.lowResOutputFilePath;
+  clip.publishedLowResPaddedFilePath = clip.lowResPaddedOutputFilePath;
+  clip.publishedAt = publishedAt;
+  clip.updatedAt = publishedAt;
+  return clip;
+}
+
 async function bootstrapLegacyMoveAssets(library: VideoLibrary, moves: MoveRecord[]) {
   const moveIds = new Set(moves.map((move) => move.id.toUpperCase()));
   const files = await walkVideoFiles(resolveMediaRoot(), MOVE_VIDEO_PREFIX);
@@ -562,6 +618,8 @@ export async function getResolvedMoveVideos(moveId: string, moves: MoveRecord[])
       contentTypeLabel: contentTypeLabel(sourceAsset?.contentType ?? asset.contentType),
       environmentLabel: environmentLabel(sourceAsset?.environment ?? asset.environment),
       clipId: clip?.id ?? null,
+      clipStartMs: clip?.publishedAssetId === asset.id ? clip.startMs : null,
+      clipActionStartMs: clip?.publishedAssetId === asset.id ? clip.actionStartMs : null,
       countMarkers: clip?.publishedAssetId === asset.id ? clip.countMarkers : [],
       countOverlayPlacement: clip?.countOverlayPlacement ?? 'top-left',
       moveId
@@ -572,8 +630,23 @@ export async function getResolvedMoveVideos(moveId: string, moves: MoveRecord[])
 }
 
 export async function buildResolvedMoveVideoIndex(moves: MoveRecord[]) {
+  const metadataIndex = await buildResolvedMoveVideoMetadataIndex(moves);
+  return new Map([...metadataIndex.entries()].map(([moveId, metadata]) => [moveId, metadata.files]));
+}
+
+export async function buildResolvedMoveVideoMetadataIndex(moves: MoveRecord[]) {
   const library = await getVideoLibrary(moves);
-  const byMoveId = new Map<string, string[]>();
+  const byMoveId = new Map<string, { files: string[]; previewFile: string | null }>();
+  const clipByAssetId = new Map<string, DerivedClip>();
+
+  library.derivedClips.forEach((clip) => {
+    if (clip.outputAssetId) {
+      clipByAssetId.set(clip.outputAssetId, clip);
+    }
+    if (clip.publishedAssetId) {
+      clipByAssetId.set(clip.publishedAssetId, clip);
+    }
+  });
 
   for (const move of moves) {
     const links = library.moveVideoLinks
@@ -587,7 +660,21 @@ export async function buildResolvedMoveVideoIndex(moves: MoveRecord[]) {
       })
       .filter((value): value is string => Boolean(value))
       .map((value) => normalizeManagedVideoPath(value));
-    byMoveId.set(move.id.toUpperCase(), assetFiles);
+
+    const previewFile =
+      links
+        .map((entry) => {
+          const asset = library.videoAssets.find((candidate) => candidate.id === entry.assetId);
+          if (!asset || asset.kind === 'source') {
+            return null;
+          }
+
+          const clip = clipByAssetId.get(asset.id);
+          return normalizeManagedVideoPath(clip?.publishedLowResFilePath ?? asset.filePath);
+        })
+        .find((value): value is string => Boolean(value)) ?? null;
+
+    byMoveId.set(move.id.toUpperCase(), { files: assetFiles, previewFile });
   }
 
   return byMoveId;
@@ -934,8 +1021,14 @@ export async function saveSourceClips(input: {
         existing.startMs !== startMs ||
         existing.endMs !== endMs ||
         existing.actionStartMs !== actionStartMs ||
-        existing.actionEndMs !== actionEndMs;
-      const changed = renderChanged || existing?.label !== label || existing?.manuallyNamed !== manuallyNamed;
+        existing.actionEndMs !== actionEndMs ||
+        !cropRectsEqual(existing.cropRect, cropRect);
+      const metadataChanged =
+        !existing ||
+        !countMarkersEqual(existing.countMarkers, countMarkers) ||
+        existing.countOverlayPlacement !== countOverlayPlacement ||
+        existing.countTimingPreset !== countTimingPreset;
+      const changed = renderChanged || metadataChanged || existing?.label !== label || existing?.manuallyNamed !== manuallyNamed;
       const timestamp = changed ? nowIso() : existing.updatedAt;
 
       return {
@@ -986,6 +1079,12 @@ export async function saveSourceClips(input: {
     library.derivedClips = library.derivedClips.filter((clip) => clip.sourceAssetId !== input.sourceAssetId).concat(nextClips);
     library.moveVideoLinks = library.moveVideoLinks.filter((link) => !removedAssetIds.has(link.assetId));
     library.videoAssets = library.videoAssets.filter((asset) => !removedAssetIds.has(asset.id));
+    const publishedAt = nowIso();
+    nextClips.forEach((clip) => {
+      if (clip.status === 'ready' && clip.outputAssetId && clipPublicationStatus(clip) !== 'modern-published') {
+        publishClipToMove(library, clip, publishedAt);
+      }
+    });
     sortLibrary(library);
     await Promise.all([
       ...removedAssets.map((asset) => deleteManagedVideoFiles(asset.filePath)),
@@ -1001,7 +1100,35 @@ function clipOutputRelativePath(moveId: string, sourceDisplayName: string, clipI
   return `${moveId} ${safeDisplay} ${clipId.slice(0, 8)}${safeSuffix ? ` ${safeSuffix}` : ''}${CLIP_OUTPUT_EXTENSION}`;
 }
 
-async function renderVideoSegment(inputAbsolutePath: string, outputAbsolutePath: string, startMs: number, durationMs: number, lowRes = false) {
+function videoFilterArgs(cropRect: ClipCropRect | null, lowRes: boolean) {
+  const filters: string[] = [];
+
+  if (cropRect) {
+    filters.push(
+      [
+        `crop=iw*${cropRect.width.toFixed(6)}`,
+        `ih*${cropRect.height.toFixed(6)}`,
+        `iw*${cropRect.x.toFixed(6)}`,
+        `ih*${cropRect.y.toFixed(6)}`
+      ].join(':')
+    );
+  }
+
+  if (lowRes) {
+    filters.push('scale=-2:360');
+  }
+
+  return filters.join(',');
+}
+
+async function renderVideoSegment(
+  inputAbsolutePath: string,
+  outputAbsolutePath: string,
+  startMs: number,
+  durationMs: number,
+  lowRes = false,
+  cropRect: ClipCropRect | null = null
+) {
   await fs.mkdir(path.dirname(outputAbsolutePath), { recursive: true });
 
   const args = [
@@ -1023,8 +1150,9 @@ async function renderVideoSegment(inputAbsolutePath: string, outputAbsolutePath:
     lowRes ? '29' : '23'
   ];
 
-  if (lowRes) {
-    args.push('-vf', 'scale=-2:360');
+  const filters = videoFilterArgs(cropRect, lowRes);
+  if (filters) {
+    args.push('-vf', filters);
   }
 
   args.push('-c:a', 'aac', '-movflags', '+faststart', outputAbsolutePath);
@@ -1094,9 +1222,9 @@ async function renderClip(clipId: string) {
     }
   });
 
-  await renderVideoSegment(inputAbsolutePath, outputAbsolutePath, clip.startMs, durationMs);
-  await renderVideoSegment(inputAbsolutePath, lowResPaddedOutputAbsolutePath, clip.startMs, durationMs, true);
-  await renderVideoSegment(inputAbsolutePath, lowResOutputAbsolutePath, actionStartMs, actionDurationMs, true);
+  await renderVideoSegment(inputAbsolutePath, outputAbsolutePath, clip.startMs, durationMs, false, clip.cropRect);
+  await renderVideoSegment(inputAbsolutePath, lowResPaddedOutputAbsolutePath, clip.startMs, durationMs, true, clip.cropRect);
+  await renderVideoSegment(inputAbsolutePath, lowResOutputAbsolutePath, actionStartMs, actionDurationMs, true, clip.cropRect);
 
   await mutateLibrary((mutableLibrary) => {
     const mutableClip = mutableLibrary.derivedClips.find((entry) => entry.id === clipId);
@@ -1147,11 +1275,13 @@ async function renderClip(clipId: string) {
       outputAsset.notes = source.notes;
     }
 
+    const publishedAt = nowIso();
     mutableClip.status = 'ready';
     mutableClip.error = null;
     mutableClip.lowResOutputFilePath = lowResOutputRelativePath;
     mutableClip.lowResPaddedOutputFilePath = lowResPaddedOutputRelativePath;
-    mutableClip.updatedAt = nowIso();
+    mutableClip.updatedAt = publishedAt;
+    publishClipToMove(mutableLibrary, mutableClip, publishedAt);
     sortLibrary(mutableLibrary);
   });
 
@@ -1202,41 +1332,7 @@ export async function publishClipsToMoves(clipIds: string[]) {
         return;
       }
 
-      if (clip.status !== 'ready' || !clip.outputAssetId) {
-        throw new Error('Only rendered clips can be published.');
-      }
-
-      const outputAsset = library.videoAssets.find((asset) => asset.id === clip.outputAssetId && asset.kind === 'move');
-      const sourceAsset = library.videoAssets.find((asset) => asset.id === clip.sourceAssetId && asset.kind === 'source');
-      if (!outputAsset || !sourceAsset) {
-        throw new Error('Rendered clip asset not found.');
-      }
-
-      outputAsset.displayName = clip.label?.trim() || sourceAsset.displayName;
-      outputAsset.dancers = [...sourceAsset.dancers];
-      outputAsset.timing = sourceAsset.timing;
-      outputAsset.contentType = sourceAsset.contentType;
-      outputAsset.environment = sourceAsset.environment;
-      outputAsset.originType = sourceAsset.originType;
-      outputAsset.sourceUrl = sourceAsset.sourceUrl;
-      outputAsset.recordDate = sourceAsset.recordDate;
-      outputAsset.classWorkshop = sourceAsset.classWorkshop;
-      outputAsset.tags = [...sourceAsset.tags];
-      outputAsset.notes = sourceAsset.notes;
-
-      if (clip.publishedAssetId && clip.publishedAssetId !== clip.outputAssetId) {
-        library.moveVideoLinks = library.moveVideoLinks.filter(
-          (link) => !(link.moveId === clip.moveId && link.assetId === clip.publishedAssetId)
-        );
-      }
-
-      ensureMoveLink(library, clip.moveId, outputAsset.id);
-      clip.publishedAssetId = outputAsset.id;
-      clip.publishedLowResFilePath = clip.lowResOutputFilePath;
-      clip.publishedLowResPaddedFilePath = clip.lowResPaddedOutputFilePath;
-      clip.publishedAt = publishedAt;
-      clip.updatedAt = publishedAt;
-      publishedClips.push({ ...clip });
+      publishedClips.push({ ...publishClipToMove(library, clip, publishedAt) });
     });
 
     sortLibrary(library);
@@ -1274,16 +1370,52 @@ export async function getUploadPageData(moves: MoveRecord[]) {
   };
 }
 
-export async function getMediaLibraryPage(moves: MoveRecord[], input?: { limit?: number; cursor?: string | null }) {
+type MediaLibraryPageFilter = {
+  limit?: number;
+  cursor?: string | null;
+  publication?: 'all' | 'published' | 'unpublished' | 'draft';
+  environment?: 'all' | VideoEnvironment;
+  dancers?: string[];
+};
+
+function clipPublicationStatus(clip: DerivedClip) {
+  return publicationStatusFor({
+    isModern: true,
+    publishedAt: clip.publishedAt,
+    updatedAt: clip.updatedAt
+  });
+}
+
+function sourceAssetPublicationStatus(asset: VideoAsset, clips: DerivedClip[]) {
+  const sourceClips = clips.filter((clip) => clip.sourceAssetId === asset.id);
+  if (!sourceClips.length) return 'unpublished';
+  if (sourceClips.some((clip) => clipPublicationStatus(clip) === 'changed-unpublished')) return 'draft';
+  if (sourceClips.some((clip) => clipPublicationStatus(clip) === 'modern-published')) return 'published';
+  return 'unpublished';
+}
+
+export async function getMediaLibraryPage(moves: MoveRecord[], input?: MediaLibraryPageFilter) {
   const library = await getVideoLibrary(moves);
   const limit = Math.max(1, Math.min(100, Math.floor(input?.limit ?? 50)));
   const offset = Math.max(0, Number.parseInt(input?.cursor ?? '0', 10) || 0);
+  const publication = input?.publication ?? 'all';
+  const environment = input?.environment ?? 'all';
+  const selectedDancers = new Set((input?.dancers ?? []).map((dancer) => dancer.trim()).filter(Boolean));
   const sourceAssets = library.videoAssets
     .filter((asset) => asset.kind === 'source')
+    .filter((asset) => {
+      if (publication !== 'all' && sourceAssetPublicationStatus(asset, library.derivedClips) !== publication) return false;
+      if (environment !== 'all' && asset.environment !== environment) return false;
+      if (selectedDancers.size && !Array.from(selectedDancers).every((dancer) => asset.dancers.includes(dancer))) return false;
+      return true;
+    })
     .sort((left, right) => {
       const byDate = right.createdAt.localeCompare(left.createdAt);
       return byDate || right.displayName.localeCompare(left.displayName);
     });
+  const dancerOptions = Array.from(
+    new Set(library.videoAssets.filter((asset) => asset.kind === 'source').flatMap((asset) => asset.dancers))
+  ).sort((left, right) => left.localeCompare(right));
   const pageAssets = sourceAssets.slice(offset, offset + limit);
   const assets = await Promise.all(
     pageAssets.map(async (asset) => {
@@ -1320,6 +1452,7 @@ export async function getMediaLibraryPage(moves: MoveRecord[], input?: { limit?:
     groups,
     total: sourceAssets.length,
     nextCursor: offset + limit < sourceAssets.length ? String(offset + limit) : null,
+    dancerOptions,
     suggestions: sourceSuggestions(library.videoAssets)
   };
 }

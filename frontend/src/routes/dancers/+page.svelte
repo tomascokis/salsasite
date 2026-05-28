@@ -1,6 +1,6 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
-  import ContentBadge from '$lib/components/ContentBadge.svelte';
+  import EditableList from '$lib/components/EditableList.svelte';
   import SearchablePicker from '$lib/components/SearchablePicker.svelte';
   import type { DancerLevel, DancerProfile, DancerRole } from '$lib/types';
 
@@ -39,6 +39,7 @@
   let role: DancerRole = 'unknown';
   let level: DancerLevel = 'unknown';
   let region = '';
+  let regionQuery = '';
 
   $: selectedDancer = dancers.find((dancer) => dancer.id === selectedId) ?? null;
   $: pickerOptions = dancers.map(
@@ -50,6 +51,23 @@
         .join(' · ')
     })
   );
+  $: dancerListItems = dancers.map((dancer) => ({
+    id: dancer.id,
+    title: dancer.displayName,
+    meta: `${dancer.moves.length} moves · ${dancer.dances.length} dances`,
+    badges: dancer.role !== 'unknown' ? [{ label: roleLabel(dancer.role) }] : [],
+    active: selectedId === dancer.id
+  }));
+  $: regionOptions = Array.from(new Set(dancers.map((dancer) => dancer.region).filter((value): value is string => Boolean(value))))
+    .sort((left, right) => left.localeCompare(right))
+    .map((value) => ({ id: value, label: value }));
+  $: selectedRegionIds = region ? [region] : [];
+  $: selectedMoveItems = selectedDancer?.moves.map((move) => ({
+    id: move.id,
+    title: move.name ?? move.id,
+    meta: move.topic,
+    badges: [{ label: move.id }]
+  })) ?? [];
 
   $: if (data.dancers !== dancers) {
     dancers = data.dancers;
@@ -81,6 +99,7 @@
     role = 'unknown';
     level = 'unknown';
     region = '';
+    regionQuery = '';
     isEditing = true;
     status = '';
   }
@@ -93,6 +112,7 @@
     role = selectedDancer.role;
     level = selectedDancer.level;
     region = selectedDancer.region ?? '';
+    regionQuery = '';
     isEditing = true;
     status = '';
   }
@@ -165,23 +185,16 @@
         }}
       />
 
-      <div class="editable-list dancer-entry-list">
-        {#each dancers as dancer}
-          <button type="button" class="editable-list-row dancer-entry-row" class:active={selectedId === dancer.id} on:click={() => selectDancer(dancer)}>
-            <span class="editable-list-main">
-              <span class="editable-list-title-row">
-                <strong>{dancer.displayName}</strong>
-                {#if dancer.role !== 'unknown'}
-                  <ContentBadge label={roleLabel(dancer.role)} tone="info" />
-                {/if}
-              </span>
-              <span class="editable-list-meta">
-                {dancer.moves.length} moves · {dancer.dances.length} dances
-              </span>
-            </span>
-          </button>
-        {/each}
-      </div>
+      <EditableList
+        items={dancerListItems}
+        showEdit={false}
+        selectable={true}
+        emptyText="No dancers yet."
+        on:select={(event) => {
+          const dancer = dancers.find((candidate) => candidate.id === event.detail.id);
+          if (dancer) selectDancer(dancer);
+        }}
+      />
     </aside>
 
     <main class="dancer-profile">
@@ -205,7 +218,29 @@
             </label>
             <label>
               <span>Region</span>
-              <input bind:value={region} />
+              <SearchablePicker
+                options={regionOptions}
+                selectedIds={selectedRegionIds}
+                query={regionQuery}
+                placeholder="Choose or type region"
+                addPlaceholder="Change region"
+                ariaLabel="Region"
+                allowCreate={true}
+                createLabel="Use region"
+                on:query={(event) => (regionQuery = event.detail.query)}
+                on:select={(event) => {
+                  region = event.detail.option.label;
+                  regionQuery = '';
+                }}
+                on:create={(event) => {
+                  region = event.detail.value;
+                  regionQuery = '';
+                }}
+                on:remove={() => {
+                  region = '';
+                  regionQuery = '';
+                }}
+              />
             </label>
             <label>
               <span>Role</span>
@@ -294,21 +329,9 @@
             <h3>Moves</h3>
           </div>
           {#if selectedDancer.moves.length}
-            <div class="editable-list">
-              {#each selectedDancer.moves as move}
-                <a class="editable-list-row dancer-move-row" href={`/moves/${move.slug}`}>
-                  <span class="editable-list-main">
-                    <span class="editable-list-title-row">
-                      <strong>{move.name ?? move.id}</strong>
-                      <ContentBadge label={move.id} />
-                    </span>
-                    {#if move.topic}
-                      <span class="editable-list-meta">{move.topic}</span>
-                    {/if}
-                  </span>
-                </a>
-              {/each}
-            </div>
+            <EditableList items={selectedMoveItems} showEdit={true} emptyText="No moves are associated with this dancer yet.">
+              <a slot="edit" let:item href={`/moves/${selectedDancer.moves.find((move) => move.id === item.id)?.slug}`}>Open</a>
+            </EditableList>
           {:else}
             <p class="muted">No moves are associated with this dancer yet.</p>
           {/if}

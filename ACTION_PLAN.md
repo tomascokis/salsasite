@@ -110,8 +110,8 @@ Dancers should be viewable by default, with a small edit button to change parame
 | MediaEdit-1 | Make media editor deep-linkable to a clip | Needed for Go to Clip from move pages. | Infra-1 |
 | MediaEdit-2 | Auto-name clips unless manually named | Example: "Arti and Samara May class #3". | Dancer-2 |
 | MediaEdit-3 | Update generated clip names when metadata changes | Should stop updating once a manual name is applied. | MediaEdit-2 |
-| MediaEdit-4 | Make new clips unpublished by default | Publication should be explicit. | Infra-2 |
-| MediaEdit-5 | Add Publish to Moves workflow | Metadata and links push down only when this button is pressed. | MoveView-4 |
+| MediaEdit-4 | Make new clips unpublished by default | Saved definitions stay unpublished until they render. | Infra-2 |
+| MediaEdit-5 | Auto-publish rendered clips to moves | Metadata and links push down automatically when clips render successfully or ready clips are saved. | MoveView-4 |
 | MediaEdit-6 | Generate low-res move videos | Generate padded and unpadded smaller-resolution versions. | MediaEdit-5 |
 | MediaEdit-7 | Add draft state for changed published clips | Changed-but-unpublished clips get an orange border. | Infra-2, MediaEdit-5 |
 | MediaEdit-8 | Mark never-published move clips | Never-published clips get a yellow border. | Infra-2, MediaEdit-5 |
@@ -155,7 +155,7 @@ Legacy clips have already been precut from longer videos. The migration process 
 | Migration-6 | Scan across all legacy video files | Find matches between new video and legacy move clips. | Migration-5 |
 | Migration-7 | Create draft move tracks for matches | Add appropriate move tracks into the video clip. | Migration-6 |
 | Migration-8 | Apply inherited metadata as draft updates | Dancers, timing, and other metadata should update pending publish. | Migration-7 |
-| Migration-9 | Replace legacy direct video link after publish | Do not replace or expose modern links until Publish to Moves is pressed. | Migration-7, MediaEdit-5 |
+| Migration-9 | Replace legacy direct video link after automatic publish | Do not replace legacy links until the modern clip has rendered and published. | Migration-7, MediaEdit-5 |
 
 ## Security And Admin
 
@@ -246,9 +246,9 @@ Actions:
 
 ### Publish To Moves
 
-Media clips can be edited freely. Metadata and links are not pushed down to move pages until Publish to Moves is pressed.
+Media clip definitions can be edited freely before render. Rendered clips publish automatically to move pages when rendering succeeds, and ready clips publish automatically when saved without needing a new render.
 
-Before publish:
+Before render/publish:
 
 - New move clips are unpublished.
 - Changed published clips become draft.
@@ -281,7 +281,7 @@ Count overlays are metadata-driven and generated live.
 
 Migration should never silently replace visible move content.
 
-The scan process can detect matches and create draft move tracks, but replacing legacy direct video links and exposing modern links should happen only after Publish to Moves.
+The scan process can detect matches and create draft move tracks, but replacing legacy direct video links and exposing modern links should happen only after the modern clip renders and publishes.
 
 ## Suggested First Implementation Slice
 
@@ -292,6 +292,6 @@ The best first slice is small but representative:
 3. Add badges to move viewing.
 4. Add topic/family dropdowns to move editing.
 5. Add published/draft/unpublished status model for clips.
-6. Add Publish to Moves as the first explicit media-to-move contract.
+6. Add automatic rendered-clip publishing as the first media-to-move contract.
 
 This slice exercises the main design direction without committing immediately to the harder video processing, count overlay, or migration work.

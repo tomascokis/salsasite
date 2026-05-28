@@ -1,10 +1,14 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { goto, invalidateAll } from '$app/navigation';
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import AutoResizeTextarea from '$lib/components/AutoResizeTextarea.svelte';
   import ContextMenu from '$lib/components/ContextMenu.svelte';
+  import MoveConnectionDiagramEditor from '$lib/components/MoveConnectionDiagramEditor.svelte';
   import MovePicker from '$lib/components/MovePicker.svelte';
+  import MoveTypeControl from '$lib/components/MoveTypeControl.svelte';
   import SearchablePicker from '$lib/components/SearchablePicker.svelte';
+  import { draftMoveIdFromName } from '$lib/move-id-utils.js';
   import type { MetadataEntry, MoveRecord, SiteMetadata } from '$lib/types';
 
   type MoveDraft = {
@@ -17,6 +21,10 @@
   type MoveCardRecord = MoveRecord & {
     posterFile: string | null;
   };
+
+  type ReviewMoveEntry =
+    | { kind: 'draft'; draft: MoveDraft; move: MoveRecord }
+    | { kind: 'published'; move: MoveCardRecord };
 
   type SelectedEditor =
     | { kind: 'draft'; id: string }
@@ -49,20 +57,22 @@
   let parentIds: string[] = [];
   let childIds: string[] = [];
   let relatedMoveIds: string[] = [];
-  let parentDraft = '';
-  let childDraft = '';
-  let relatedDraft = '';
   let topicQuery = '';
   let familyQuery = '';
+  let positionsQuery = '';
+  let tagsQuery = '';
+  let sourceQuery = '';
   let status = '';
   let isSaving = false;
   let pinSearch = '';
   let pinnedMoveIds = [...data.recentMoveIds];
+  let reviewMoveEntries: ReviewMoveEntry[] = [];
   let isReviewOpen = false;
-  let isCardPaneMinimized = false;
-  let lastWindowScrollY = 0;
+  let isReviewListOpen = true;
+  let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastAutosaveSignature = '';
   const pinnedStorageKey = 'salsa-encyclopedia:pinned-create-moves';
-  const typeOptions = ['Addition', 'Variation', ''];
+  const autosaveDelayMs = 900;
   const levelOptions = ['', '1', '2', '3', '4', '5'];
   const relationshipMenuItems = [
     { id: 'parent', label: 'Add as parent' },
@@ -73,10 +83,53 @@
   $: pinnedMoves = pinnedMoveIds
     .map((moveId) => data.moves.find((move) => move.id === moveId))
     .filter((move): move is MoveCardRecord => Boolean(move));
+  $: reviewMoveEntries = [
+    ...drafts.filter((draft) => draft.move.reviewFlag).map((draft) => ({ kind: 'draft' as const, draft, move: draft.move })),
+    ...data.moves.filter((move) => move.reviewFlag).map((move) => ({ kind: 'published' as const, move }))
+  ];
   $: topicOptions = data.metadata.topics.map(metadataOption);
   $: familyOptions = data.metadata.families.map(metadataOption);
+  $: positionOptions = uniqueMoveTextOptions(data.moves.map((move) => move.positions));
+  $: sourceOptions = uniqueMoveTextOptions(data.moves.map((move) => move.source));
+  $: tagOptions = uniqueMoveTextOptions(data.moves.flatMap((move) => splitTagText(move.tags ?? '')));
   $: selectedTopicIds = topic ? matchingMetadataIds(data.metadata.topics, topic) : [];
   $: selectedFamilyIds = group ? matchingMetadataIds(data.metadata.families, group) : [];
+  $: selectedPositionIds = positions ? [positions] : [];
+  $: selectedSourceIds = source ? [source] : [];
+  $: selectedTagIds = splitTagText(tags);
+  $: currentMoveId = normalizeMoveId(id);
+  $: connectionMove = {
+    id: currentMoveId || '__DRAFT_MOVE__',
+    slug: currentMoveId || 'draft-move',
+    name: name || currentMoveId || 'Draft move',
+    topic,
+    level,
+    type,
+    category: null,
+    group,
+    baseMove: null,
+    components: null,
+    parentIds,
+    childIds,
+    relatedMoveIds,
+    positions,
+    seeAlso: null,
+    tags,
+    description,
+    source,
+    comments,
+    reviewFlag,
+    reviewNotes,
+    moveOrder: null,
+    topicCol: null,
+    topicOrder: null,
+    familyOrder: null,
+    valid: true,
+    errors: null,
+    hasLocalVideo: false,
+    videoFiles: [],
+    videoLinks: []
+  };
   $: idCollisionMove = currentMoveId
     ? data.moves.find((move) => move.id === currentMoveId && selectedEditor?.id !== currentMoveId)
     : null;
@@ -86,6 +139,34 @@
   $: idCollisionWarning = currentMoveId && (idCollisionMove || idCollisionDraft)
     ? `ID ${currentMoveId} is already used by ${idCollisionMove?.name ?? idCollisionDraft?.move.name ?? 'another move'}.`
     : '';
+  $: publishDisabledReason = !name.trim()
+    ? 'Add a move name before publishing.'
+    : !currentMoveId
+      ? 'Add a move ID before publishing.'
+      : idCollisionWarning
+        ? idCollisionWarning
+        : '';
+  $: canPublishDraft = !publishDisabledReason;
+  $: {
+    selectedEditor;
+    id;
+    name;
+    topic;
+    level;
+    type;
+    group;
+    positions;
+    tags;
+    source;
+    description;
+    comments;
+    reviewFlag;
+    reviewNotes;
+    parentIds;
+    childIds;
+    relatedMoveIds;
+    scheduleDraftAutosave();
+  }
 
   function metadataOption(entry: MetadataEntry) {
     return {
@@ -100,6 +181,90 @@
     return entries.filter((entry) => entry.name.trim().toLocaleLowerCase() === normalized).map((entry) => entry.id);
   }
 
+  function uniqueMoveTextOptions(values: Array<string | null | undefined>) {
+    return Array.from(new Set(values.map((value) => String(value ?? '').trim()).filter(Boolean)))
+      .sort((left, right) => left.localeCompare(right))
+      .map((value) => ({ id: value, label: value }));
+  }
+
+  function splitTagText(value: string | null | undefined) {
+    return String(value ?? '')
+      .split(/[,;]+/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  function currentDraftAutosaveSignature() {
+    if (!selectedEditor || selectedEditor.kind === 'published') {
+      return '';
+    }
+    return JSON.stringify({
+      editor: selectedEditor,
+      move: currentMovePayload()
+    });
+  }
+
+  function clearAutosaveTimer() {
+    if (!autosaveTimer) return;
+    clearTimeout(autosaveTimer);
+    autosaveTimer = null;
+  }
+
+  function resetDraftAutosaveBaseline() {
+    clearAutosaveTimer();
+    lastAutosaveSignature = currentDraftAutosaveSignature();
+  }
+
+  function existingMoveIdsForDraftId() {
+    const selectedDraftId = selectedEditor?.kind === 'draft' ? selectedEditor.id : null;
+    return [
+      ...data.moves.map((move) => move.id),
+      ...drafts.filter((draft) => draft.draftId !== selectedDraftId).map((draft) => draft.move.id)
+    ];
+  }
+
+  function ensureDraftAutosaveId() {
+    if (currentMoveId) return true;
+    const generatedId = draftMoveIdFromName(name, existingMoveIdsForDraftId());
+    if (!name.trim() || !generatedId) return false;
+    id = generatedId;
+    return true;
+  }
+
+  function scheduleDraftAutosave() {
+    if (!browser || !selectedEditor || selectedEditor.kind === 'published') return;
+    const signature = currentDraftAutosaveSignature();
+    if (!signature || signature === lastAutosaveSignature) return;
+    clearAutosaveTimer();
+    autosaveTimer = setTimeout(() => {
+      autosaveTimer = null;
+      void autosaveDraft(signature);
+    }, autosaveDelayMs);
+  }
+
+  async function autosaveDraft(expectedSignature: string) {
+    if (!selectedEditor || selectedEditor.kind === 'published') return;
+    if (expectedSignature !== currentDraftAutosaveSignature()) return;
+    if (!ensureDraftAutosaveId() || idCollisionWarning) return;
+    await saveDraft({ automatic: true });
+  }
+
+  function addTagValue(value: string) {
+    const next = value.trim();
+    if (!next) return;
+    const existing = splitTagText(tags);
+    if (!existing.some((entry) => entry.toLocaleLowerCase() === next.toLocaleLowerCase())) {
+      tags = [...existing, next].join(', ');
+    }
+    tagsQuery = '';
+  }
+
+  function removeTagValue(value: string) {
+    tags = splitTagText(tags)
+      .filter((entry) => entry !== value)
+      .join(', ');
+  }
+
   onMount(() => {
     if (!browser) return;
     try {
@@ -110,6 +275,10 @@
     } catch {
       pinnedMoveIds = [...data.recentMoveIds];
     }
+  });
+
+  onDestroy(() => {
+    clearAutosaveTimer();
   });
 
   $: if (browser) {
@@ -133,32 +302,6 @@
     pinSearch = '';
   }
 
-  function handlePageScroll() {
-    if (!browser) return;
-    if (window.innerWidth > 720) {
-      isCardPaneMinimized = false;
-      lastWindowScrollY = window.scrollY;
-      return;
-    }
-
-    const nextScrollY = window.scrollY;
-    if (nextScrollY <= 4) {
-      isCardPaneMinimized = false;
-      lastWindowScrollY = nextScrollY;
-      return;
-    }
-
-    const delta = nextScrollY - lastWindowScrollY;
-    if (Math.abs(delta) < 8) {
-      return;
-    }
-
-    if (delta > 0 && nextScrollY > 120) {
-      isCardPaneMinimized = true;
-    }
-    lastWindowScrollY = nextScrollY;
-  }
-
   function hasMoveSearchMatch(move: MoveCardRecord) {
     const query = pinSearch.trim().toLocaleLowerCase();
     if (!query) return false;
@@ -172,16 +315,7 @@
   $: editorTitle =
     selectedEditor?.kind === 'published'
       ? 'Edit move'
-      : selectedEditor?.kind === 'draft'
-        ? 'Edit draft'
-        : 'Create move';
-
-  $: editorSubtitle =
-    selectedEditor?.kind === 'published'
-      ? id
-      : selectedEditor?.kind === 'draft'
-        ? 'Draft move'
-        : 'New draft';
+      : 'Draft move';
 
   function posterUrl(file: string) {
     return `/posters/${encodeURIComponent(file)}`;
@@ -190,8 +324,6 @@
   function normalizeMoveId(value: string) {
     return value.trim().toUpperCase();
   }
-
-  $: currentMoveId = normalizeMoveId(id);
 
   function loadMoveValues(move: MoveRecord) {
     id = move.id;
@@ -210,11 +342,11 @@
     parentIds = [...move.parentIds];
     childIds = [...move.childIds];
     relatedMoveIds = [...move.relatedMoveIds];
-    parentDraft = '';
-    childDraft = '';
-    relatedDraft = '';
     topicQuery = '';
     familyQuery = '';
+    positionsQuery = '';
+    tagsQuery = '';
+    sourceQuery = '';
     isReviewOpen = reviewFlag;
     status = '';
   }
@@ -258,43 +390,50 @@
     parentIds = [];
     childIds = [];
     relatedMoveIds = [];
-    parentDraft = '';
-    childDraft = '';
-    relatedDraft = '';
     topicQuery = '';
     familyQuery = '';
+    positionsQuery = '';
+    tagsQuery = '';
+    sourceQuery = '';
     isReviewOpen = false;
     status = '';
+    resetDraftAutosaveBaseline();
   }
 
   function loadDraft(draft: MoveDraft) {
     selectedEditor = { kind: 'draft', id: draft.draftId };
     loadMoveValues(draft.move);
+    resetDraftAutosaveBaseline();
   }
 
   function loadPublishedMove(move: MoveRecord) {
     selectedEditor = { kind: 'published', id: move.id };
     loadMoveValues(move);
+    resetDraftAutosaveBaseline();
   }
 
-  function addConnection(kind: 'parent' | 'child' | 'related', selectedMoveId?: string) {
-    const draft = selectedMoveId ?? (kind === 'parent' ? parentDraft : kind === 'child' ? childDraft : relatedDraft);
-    const moveId = normalizeMoveId(draft);
+  function loadReviewMove(entry: ReviewMoveEntry) {
+    if (entry.kind === 'draft') {
+      loadDraft(entry.draft);
+      return;
+    }
+    loadPublishedMove(entry.move);
+  }
+
+  function addConnection(kind: 'parent' | 'child' | 'related', selectedMoveId: string) {
+    const moveId = normalizeMoveId(selectedMoveId);
     if (!moveId || moveId === currentMoveId || !data.moves.some((move) => move.id === moveId)) {
       return;
     }
 
     if (kind === 'parent' && !parentIds.includes(moveId)) {
       parentIds = [...parentIds, moveId].sort();
-      parentDraft = '';
     }
     if (kind === 'child' && !childIds.includes(moveId)) {
       childIds = [...childIds, moveId].sort();
-      childDraft = '';
     }
     if (kind === 'related' && !relatedMoveIds.includes(moveId)) {
       relatedMoveIds = [...relatedMoveIds, moveId].sort();
-      relatedDraft = '';
     }
   }
 
@@ -304,10 +443,10 @@
     if (kind === 'related') relatedMoveIds = relatedMoveIds.filter((entry) => entry !== moveId);
   }
 
-  function updateConnectionQuery(kind: 'parent' | 'child' | 'related', query: string) {
-    if (kind === 'parent') parentDraft = query;
-    if (kind === 'child') childDraft = query;
-    if (kind === 'related') relatedDraft = query;
+  function removeConnectionByMoveId(moveId: string) {
+    parentIds = parentIds.filter((entry) => entry !== moveId);
+    childIds = childIds.filter((entry) => entry !== moveId);
+    relatedMoveIds = relatedMoveIds.filter((entry) => entry !== moveId);
   }
 
   function addConnectionFromPinned(moveId: string, actionId: string) {
@@ -316,9 +455,13 @@
     }
   }
 
-  async function saveDraft() {
+  async function saveDraft(options: { automatic?: boolean } = {}) {
+    if (!ensureDraftAutosaveId() || idCollisionWarning) {
+      return false;
+    }
+
     isSaving = true;
-    status = 'Saving draft...';
+    status = options.automatic ? 'Autosaving draft...' : 'Saving draft...';
     const response = await fetch('/api/moves/create', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -333,12 +476,14 @@
 
     if (!response.ok) {
       status = payload.error ?? 'Could not save draft.';
-      return;
+      return false;
     }
 
     selectedEditor = { kind: 'draft', id: payload.draft.draftId };
     drafts = [payload.draft, ...drafts.filter((draft) => draft.draftId !== payload.draft.draftId)];
-    status = 'Draft saved.';
+    lastAutosaveSignature = currentDraftAutosaveSignature();
+    status = options.automatic ? 'Draft autosaved.' : 'Draft saved.';
+    return true;
   }
 
   async function savePublishedMove() {
@@ -366,6 +511,41 @@
     await goto(`/moves/${payload.move.slug}`);
   }
 
+  async function deleteDraft() {
+    if (selectedEditor?.kind !== 'draft') {
+      return;
+    }
+
+    const draftId = selectedEditor.id;
+    const draftLabel = name.trim() || id.trim() || 'this draft';
+    if (browser && !window.confirm(`Delete draft "${draftLabel}"?`)) {
+      return;
+    }
+
+    isSaving = true;
+    status = 'Deleting draft...';
+    const response = await fetch('/api/moves/create', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'deleteDraft',
+        draftId
+      })
+    });
+    const payload = await response.json();
+    isSaving = false;
+
+    if (!response.ok) {
+      status = payload.error ?? 'Could not delete draft.';
+      return;
+    }
+
+    drafts = drafts.filter((draft) => draft.draftId !== draftId);
+    selectedEditor = null;
+    status = '';
+    await invalidateAll();
+  }
+
   async function publishDraft() {
     if (selectedEditor?.kind === 'published') {
       await savePublishedMove();
@@ -373,7 +553,7 @@
     }
 
     if (selectedEditor?.kind !== 'draft') {
-      await saveDraft();
+      await saveDraft({ automatic: false });
     }
     if (selectedEditor?.kind !== 'draft') {
       return;
@@ -401,20 +581,23 @@
     await invalidateAll();
     await goto(`/moves/${payload.move.slug}`);
   }
+
+  function toggleReviewFlag() {
+    reviewFlag = !reviewFlag;
+    isReviewOpen = reviewFlag;
+  }
 </script>
 
 <svelte:head>
   <title>Create move | Salsa Encyclopedia</title>
 </svelte:head>
 
-<svelte:window on:scroll={handlePageScroll} on:resize={handlePageScroll} />
-
 <div class="move-create-page">
   <div class="move-editor-topbar">
     <a class="pill move-backlink" href="/moves/create/metadata">Topics and families</a>
   </div>
   <div class="move-create-layout">
-    <aside class="panel meta-card move-draft-sidebar move-card-pane" class:minimized={isCardPaneMinimized}>
+    <aside class="panel meta-card move-draft-sidebar move-card-pane">
       <div class="panel-header">
         <div class="media-properties-title">
           <h3>Moves</h3>
@@ -450,24 +633,43 @@
         </div>
       </div>
 
-      {#if selectedEditor}
-        <div class="move-card-section review-sidebar-section">
-          <button type="button" class="review-toggle" on:click={() => (isReviewOpen = !isReviewOpen)}>
-            <span>Review</span>
-            <span>{reviewFlag ? 'Flagged' : 'Hidden'}</span>
+      <div class="move-card-section">
+        <div class="move-card-section-heading">
+          <h4>Review</h4>
+          <button
+            type="button"
+            class="move-card-collapse-button"
+            aria-label={isReviewListOpen ? 'Collapse review moves' : 'Expand review moves'}
+            aria-expanded={isReviewListOpen}
+            on:click={() => (isReviewListOpen = !isReviewListOpen)}
+          >
+            <span aria-hidden="true"></span>
           </button>
-          {#if isReviewOpen}
-            <label class="review-checkbox">
-              <input type="checkbox" bind:checked={reviewFlag} />
-              <span>Flag this move</span>
-            </label>
-            <label class="move-form-field">
-              <span>Review notes</span>
-              <textarea bind:value={reviewNotes}></textarea>
-            </label>
-          {/if}
         </div>
-      {/if}
+        {#if isReviewListOpen && reviewMoveEntries.length}
+          <div class="move-card-grid">
+            {#each reviewMoveEntries as entry}
+              <button
+                type="button"
+                class="media-gallery-card move-gallery-card review-move-card"
+                class:active={(entry.kind === 'draft' && selectedEditor?.kind === 'draft' && selectedEditor.id === entry.draft.draftId) ||
+                  (entry.kind === 'published' && selectedEditor?.kind === 'published' && selectedEditor.id === entry.move.id)}
+                on:click={() => loadReviewMove(entry)}
+              >
+                <span class="media-gallery-card-body">
+                  <strong>{entry.move.name ?? entry.move.id}</strong>
+                  <span>{entry.kind === 'draft' ? 'Draft' : entry.move.id}</span>
+                  {#if entry.move.reviewNotes}
+                    <span>{entry.move.reviewNotes}</span>
+                  {/if}
+                </span>
+              </button>
+            {/each}
+          </div>
+        {:else if isReviewListOpen}
+          <p class="move-card-empty">No moves marked</p>
+        {/if}
+      </div>
 
       <div class="move-card-section">
         <div class="move-card-section-heading">
@@ -539,8 +741,7 @@
         <section class="panel meta-card move-editor-card move-editor-workspace">
           <header class="move-editor-hero">
             <div>
-              <span class="move-editor-kicker">{editorSubtitle}</span>
-              <h2>{name || editorTitle}</h2>
+              <h2>{editorTitle}</h2>
             </div>
             {#if status}
               <span class="move-editor-status">{status}</span>
@@ -552,7 +753,7 @@
               <span>Name</span>
               <input bind:value={name} placeholder="Move name" />
             </label>
-            <label class="move-form-field">
+            <label class="move-form-field move-form-id">
               <span>ID</span>
               <input bind:value={id} autocapitalize="characters" disabled={selectedEditor.kind === 'published'} placeholder="MOVE0001" />
               {#if idCollisionWarning}
@@ -563,18 +764,23 @@
               <span>Level</span>
               <select bind:value={level}>
                 {#each levelOptions as option}
-                  <option value={option}>{option || 'Unspecified'}</option>
+                  <option value={option}>{option || '—'}</option>
                 {/each}
               </select>
+            </label>
+            <label class="move-form-field move-form-type move-form-type-mobile">
+              <span>Type</span>
+              <MoveTypeControl bind:value={type} />
             </label>
           </div>
 
           <div class="move-editor-section">
-            <div class="move-section-heading">
-              <h3>Details</h3>
-            </div>
             <div class="move-detail-grid">
-              <label class="move-form-field">
+              <label class="move-form-field move-form-type move-form-type-desktop">
+                <span>Type</span>
+                <MoveTypeControl bind:value={type} />
+              </label>
+              <label class="move-form-field move-form-topic">
                 <span>Topic</span>
                 <SearchablePicker
                   options={topicOptions}
@@ -594,17 +800,7 @@
                   }}
                 />
               </label>
-              <label class="move-form-field">
-                <span>Type</span>
-                <span class="segmented-control move-segmented-control">
-                  {#each typeOptions as option}
-                    <button type="button" class:active={type === option} on:click={() => (type = option)}>
-                      {option || 'Neither'}
-                    </button>
-                  {/each}
-                </span>
-              </label>
-              <label class="move-form-field">
+              <label class="move-form-field move-form-family">
                 <span>Family</span>
                 <SearchablePicker
                   options={familyOptions}
@@ -624,33 +820,88 @@
                   }}
                 />
               </label>
-              <label class="move-form-field">
+              <label class="move-form-field move-form-positions">
                 <span>Positions</span>
-                <input bind:value={positions} />
+                <SearchablePicker
+                  options={positionOptions}
+                  selectedIds={selectedPositionIds}
+                  query={positionsQuery}
+                  placeholder=""
+                  addPlaceholder=""
+                  ariaLabel="Positions"
+                  allowCreate={true}
+                  createLabel="Use position"
+                  on:query={(event) => (positionsQuery = event.detail.query)}
+                  on:select={(event) => {
+                    positions = event.detail.option.label;
+                    positionsQuery = '';
+                  }}
+                  on:create={(event) => {
+                    positions = event.detail.value;
+                    positionsQuery = '';
+                  }}
+                  on:remove={() => {
+                    positions = '';
+                    positionsQuery = '';
+                  }}
+                />
               </label>
-              <label class="move-form-field">
+              <label class="move-form-field move-form-tags">
                 <span>Tags</span>
-                <input bind:value={tags} />
+                <SearchablePicker
+                  options={tagOptions}
+                  selectedIds={selectedTagIds}
+                  query={tagsQuery}
+                  placeholder="Add tags"
+                  addPlaceholder="Add tags"
+                  ariaLabel="Tags"
+                  selectedPlacement="inside"
+                  allowCreate={true}
+                  createLabel="Add tag"
+                  on:query={(event) => (tagsQuery = event.detail.query)}
+                  on:select={(event) => addTagValue(event.detail.option.label)}
+                  on:create={(event) => addTagValue(event.detail.value)}
+                  on:remove={(event) => removeTagValue(event.detail.id)}
+                />
               </label>
-              <label class="move-form-field">
-                <span>Source</span>
-                <input bind:value={source} />
+              <label class="move-form-field move-form-authorship">
+                <span>Authorship</span>
+                <SearchablePicker
+                  options={sourceOptions}
+                  selectedIds={selectedSourceIds}
+                  query={sourceQuery}
+                  placeholder=""
+                  addPlaceholder=""
+                  ariaLabel="Authorship"
+                  allowCreate={true}
+                  createLabel="Use authorship"
+                  on:query={(event) => (sourceQuery = event.detail.query)}
+                  on:select={(event) => {
+                    source = event.detail.option.label;
+                    sourceQuery = '';
+                  }}
+                  on:create={(event) => {
+                    source = event.detail.value;
+                    sourceQuery = '';
+                  }}
+                  on:remove={() => {
+                    source = '';
+                    sourceQuery = '';
+                  }}
+                />
               </label>
             </div>
           </div>
 
           <div class="move-editor-section">
-            <div class="move-section-heading">
-              <h3>Notes</h3>
-            </div>
             <div class="move-notes-grid">
               <label class="move-form-field">
                 <span>Description</span>
-                <textarea bind:value={description}></textarea>
+                <AutoResizeTextarea bind:value={description} rows={1} />
               </label>
               <label class="move-form-field">
                 <span>Comments</span>
-                <textarea bind:value={comments}></textarea>
+                <AutoResizeTextarea bind:value={comments} rows={1} />
               </label>
             </div>
           </div>
@@ -660,55 +911,54 @@
               <h3>Connections</h3>
             </div>
 
-            <div class="connection-editor-grid">
-              <div class="connection-editor">
-                <h4>Parents</h4>
-                <MovePicker
-                  moves={data.moves}
-                  selectedIds={parentIds}
-                  excludedIds={currentMoveId ? [currentMoveId] : []}
-                  query={parentDraft}
-                  on:query={(event) => updateConnectionQuery('parent', event.detail.query)}
-                  on:select={(event) => addConnection('parent', event.detail.moveId)}
-                  on:remove={(event) => removeConnection('parent', event.detail.moveId)}
-                />
-              </div>
-
-              <div class="connection-editor">
-                <h4>Children</h4>
-                <MovePicker
-                  moves={data.moves}
-                  selectedIds={childIds}
-                  excludedIds={currentMoveId ? [currentMoveId] : []}
-                  query={childDraft}
-                  on:query={(event) => updateConnectionQuery('child', event.detail.query)}
-                  on:select={(event) => addConnection('child', event.detail.moveId)}
-                  on:remove={(event) => removeConnection('child', event.detail.moveId)}
-                />
-              </div>
-
-              <div class="connection-editor">
-                <h4>Related moves</h4>
-                <MovePicker
-                  moves={data.moves}
-                  selectedIds={relatedMoveIds}
-                  excludedIds={currentMoveId ? [currentMoveId] : []}
-                  query={relatedDraft}
-                  on:query={(event) => updateConnectionQuery('related', event.detail.query)}
-                  on:select={(event) => addConnection('related', event.detail.moveId)}
-                  on:remove={(event) => removeConnection('related', event.detail.moveId)}
-                />
-              </div>
-            </div>
+            <MoveConnectionDiagramEditor
+              moves={data.moves}
+              currentMove={connectionMove}
+              {parentIds}
+              {childIds}
+              {relatedMoveIds}
+              on:add={(event) => addConnection(event.detail.kind, event.detail.moveId)}
+              on:remove={(event) => removeConnectionByMoveId(event.detail.moveId)}
+            />
           </div>
 
           <footer class="move-editor-actions" aria-label="Move editor actions">
             {#if selectedEditor.kind === 'published'}
               <button class="header-button" type="button" disabled={isSaving} on:click={savePublishedMove}>Save changes</button>
             {:else}
-              <button class="header-button" type="button" disabled={isSaving} on:click={publishDraft}>Publish</button>
+              <button
+                class="header-button"
+                type="button"
+                disabled={isSaving || !canPublishDraft}
+                title={publishDisabledReason}
+                on:click={publishDraft}
+              >
+                Publish
+              </button>
+              {#if selectedEditor.kind === 'draft'}
+                <button class="header-button danger-button" type="button" disabled={isSaving} on:click={deleteDraft}>Delete</button>
+              {/if}
             {/if}
+            <button
+              class="header-button review-button"
+              class:active={reviewFlag}
+              type="button"
+              aria-pressed={reviewFlag}
+              disabled={isSaving}
+              on:click={toggleReviewFlag}
+            >
+              {reviewFlag ? 'Marked for review' : 'Mark for review'}
+            </button>
           </footer>
+
+          {#if reviewFlag || isReviewOpen}
+            <div class="move-editor-section move-review-section">
+              <label class="move-form-field">
+                <span>Review notes</span>
+                <textarea bind:value={reviewNotes}></textarea>
+              </label>
+            </div>
+          {/if}
         </section>
       {:else}
         <section class="panel meta-card move-editor-empty">

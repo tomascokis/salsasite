@@ -1,6 +1,6 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
-  import ContentBadge from '$lib/components/ContentBadge.svelte';
+  import EditableList from '$lib/components/EditableList.svelte';
   import SearchablePicker from '$lib/components/SearchablePicker.svelte';
   import type { MetadataEntry, MetadataKind, SiteMetadata } from '$lib/types';
 
@@ -32,6 +32,16 @@
       secondary: `${entry.moveCount} moves`
     })
   );
+  $: entryListItems = entries.map((entry) => ({
+    id: entry.id,
+    title: entry.name,
+    meta: entry.description,
+    badges: [
+      { label: `${entry.moveCount} moves` },
+      ...(entry.source === 'custom' ? [{ label: 'Custom' }] : [])
+    ],
+    active: selectedId === entry.id
+  }));
 
   $: if (selectedEntry) {
     name = selectedEntry.name;
@@ -131,24 +141,16 @@
         }}
       />
 
-      <div class="editable-list metadata-entry-list">
-        {#each entries as entry}
-          <button type="button" class="editable-list-row metadata-entry-row" class:active={selectedId === entry.id} on:click={() => selectEntry(entry)}>
-            <span class="editable-list-main">
-              <span class="editable-list-title-row">
-                <strong>{entry.name}</strong>
-                <ContentBadge label={`${entry.moveCount} moves`} />
-                {#if entry.source === 'custom'}
-                  <ContentBadge label="Custom" tone="info" />
-                {/if}
-              </span>
-              {#if entry.description}
-                <span class="editable-list-meta">{entry.description}</span>
-              {/if}
-            </span>
-          </button>
-        {/each}
-      </div>
+      <EditableList
+        items={entryListItems}
+        showEdit={false}
+        selectable={true}
+        emptyText={`No ${selectedKind === 'topic' ? 'topics' : 'families'} yet.`}
+        on:select={(event) => {
+          const entry = entries.find((candidate) => candidate.id === event.detail.id);
+          if (entry) selectEntry(entry);
+        }}
+      />
     </aside>
 
     <main class="panel meta-card metadata-editor-panel">

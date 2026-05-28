@@ -1,10 +1,16 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { createEventDispatcher } from 'svelte';
   import { tick } from 'svelte';
   import type { RelationshipDiagram } from '$lib/types';
   import { buildRelationshipDot } from '$lib/relationship-diagram';
 
   export let diagram: RelationshipDiagram;
+  export let removableNodeIds: string[] = [];
+
+  const dispatch = createEventDispatcher<{
+    remove: { moveId: string };
+  }>();
 
   let svgMarkup = '';
   let renderError = '';
@@ -17,6 +23,14 @@
   let renderToken = 0;
   let lastDot = '';
   let dot = '';
+  let nodeActionPositions: Array<{ id: string; label: string; left: number; top: number }> = [];
+  let hoveredPreview: {
+    id: string;
+    name: string;
+    videoFile: string | null;
+    left: number;
+    top: number;
+  } | null = null;
   type VizInstance = {
     renderString: (input: string, options?: Record<string, string>) => string;
   };
@@ -61,6 +75,35 @@
     return vizPromise;
   }
 
+  function mediaUrl(file: string) {
+    return `/media/${encodeURIComponent(file)}`;
+  }
+
+  function diagramNodeById(id: string) {
+    return diagram.nodes.find((node) => node.id === id) ?? null;
+  }
+
+  function nodeIdFromElement(node: Element) {
+    return node instanceof SVGElement
+      ? node.dataset.nodeId ?? node.querySelector('title')?.textContent?.trim() ?? ''
+      : '';
+  }
+
+  function prepareSvgNodes(container: HTMLDivElement | null) {
+    const svg = container?.querySelector('svg');
+    if (!(svg instanceof SVGSVGElement)) {
+      return;
+    }
+
+    svg.querySelectorAll('g.node').forEach((node) => {
+      const title = node.querySelector('title');
+      if (node instanceof SVGElement && title?.textContent?.trim()) {
+        node.dataset.nodeId = title.textContent.trim();
+      }
+      title?.remove();
+    });
+  }
+
   function wheelZoom(event: WheelEvent, target: 'normal' | 'fullscreen') {
     if (!event.ctrlKey && !event.metaKey) {
       return;
@@ -100,7 +143,10 @@
     };
 
     const onPointerDown = (event: PointerEvent) => {
-      if (event.button !== 0 || (event.target instanceof Element && event.target.closest('a'))) {
+      if (
+        event.button !== 0 ||
+        (event.target instanceof Element && event.target.closest('a, button, input, select, textarea'))
+      ) {
         return;
       }
 
@@ -174,8 +220,85 @@
 
     svg.querySelectorAll('a').forEach((anchor) => {
       anchor.setAttribute('target', '_self');
+      anchor.removeAttribute('title');
+      anchor.removeAttribute('xlink:title');
       anchor.classList.add('relationship-link');
     });
+
+    prepareSvgNodes(container);
+
+    if (container === surface) {
+      updateNodeActionPositions();
+    }
+  }
+
+  function updateNodeActionPositions() {
+    if (!surface || !removableNodeIds.length) {
+      nodeActionPositions = [];
+      return;
+    }
+
+    const removable = new Set(removableNodeIds);
+    const surfaceRect = surface.getBoundingClientRect();
+    const nextPositions: Array<{ id: string; label: string; left: number; top: number }> = [];
+
+    surface.querySelectorAll('g.node').forEach((node) => {
+      const nodeId = nodeIdFromElement(node);
+      if (!nodeId || !removable.has(nodeId)) {
+        return;
+      }
+
+      const nodeRect = node.getBoundingClientRect();
+      const diagramNode = diagramNodeById(nodeId);
+      nextPositions.push({
+        id: nodeId,
+        label: diagramNode?.name ?? diagramNode?.label ?? nodeId,
+        left: nodeRect.right - surfaceRect.left - 10,
+        top: nodeRect.top - surfaceRect.top - 10
+      });
+    });
+
+    nodeActionPositions = nextPositions;
+  }
+
+  function updateHoveredPreview(event: PointerEvent) {
+    if (!surface) {
+      hoveredPreview = null;
+      return;
+    }
+
+    const target = event.target;
+    const node = target instanceof Element ? target.closest('g.node') : null;
+    if (!(node instanceof SVGElement) || !surface.contains(node)) {
+      hoveredPreview = null;
+      return;
+    }
+
+    const nodeId = nodeIdFromElement(node);
+    const diagramNode = nodeId ? diagramNodeById(nodeId) : null;
+    if (!diagramNode || diagramNode.isSummary) {
+      hoveredPreview = null;
+      return;
+    }
+
+    const nodeRect = node.getBoundingClientRect();
+    const previewWidth = 240;
+    const previewHeight = 190;
+    const minLeft = 8;
+    const maxLeft = window.innerWidth - previewWidth - 8;
+    const minTop = 8;
+    const maxTop = window.innerHeight - previewHeight - 8;
+    const belowTop = nodeRect.bottom + 8;
+    const aboveTop = nodeRect.top - previewHeight - 8;
+    const unclampedTop = belowTop <= maxTop ? belowTop : aboveTop;
+
+    hoveredPreview = {
+      id: diagramNode.id,
+      name: diagramNode.name || diagramNode.label,
+      videoFile: diagramNode.previewVideoFile ?? null,
+      left: Math.max(minLeft, Math.min(nodeRect.left, Math.max(minLeft, maxLeft))),
+      top: Math.max(minTop, Math.min(unclampedTop, Math.max(minTop, maxTop)))
+    };
   }
 
   async function renderDiagram(dot: string) {
@@ -245,6 +368,10 @@
     sizeSvg(surface, zoom);
   }
 
+  $: if (browser && surface && removableNodeIds) {
+    void tick().then(updateNodeActionPositions);
+  }
+
   $: if (browser && fullscreenSurface && fullscreenOpen) {
     sizeSvg(fullscreenSurface, fullscreenZoom);
   }
@@ -263,14 +390,6 @@
     <span class="relationship-summary">
       {diagram.meta.nodeCount} moves · {diagram.meta.edgeCount} links
     </span>
-    <div class="relationship-toolbar-actions">
-      <button type="button" on:click={() => setZoom(zoom - 0.15, 'normal')}>−</button>
-      <button type="button" on:click={() => setZoom(1, 'normal')}>100%</button>
-      <button type="button" on:click={() => setZoom(zoom + 0.15, 'normal')}>+</button>
-      {#if diagram.meta.isLarge}
-        <button type="button" on:click={openFullscreen}>Fullscreen</button>
-      {/if}
-    </div>
   </div>
 
   {#if loading}
@@ -285,8 +404,59 @@
       on:wheel={(event) => wheelZoom(event, 'normal')}
       use:scrollDrag
     >
-      <div class="relationship-surface" bind:this={surface}>
+      <slot name="overlay" />
+      <div class="relationship-toolbar-actions relationship-zoom-overlay">
+        <button type="button" on:click={() => setZoom(zoom - 0.15, 'normal')}>−</button>
+        <button type="button" on:click={() => setZoom(1, 'normal')}>100%</button>
+        <button type="button" on:click={() => setZoom(zoom + 0.15, 'normal')}>+</button>
+        {#if diagram.meta.isLarge}
+          <button type="button" on:click={openFullscreen}>Fullscreen</button>
+        {/if}
+      </div>
+      <div
+        class="relationship-surface"
+        bind:this={surface}
+        on:pointermove={updateHoveredPreview}
+        on:pointerleave={() => (hoveredPreview = null)}
+      >
         {@html svgMarkup}
+        {#if hoveredPreview}
+          <div
+            class="relationship-node-preview"
+            style={`left: ${hoveredPreview.left}px; top: ${hoveredPreview.top}px;`}
+            aria-hidden="true"
+          >
+            {#if hoveredPreview.videoFile}
+              <video
+                class="relationship-node-preview-video"
+                src={mediaUrl(hoveredPreview.videoFile)}
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="metadata"
+              ></video>
+            {:else}
+              <div class="relationship-node-preview-empty">No video</div>
+            {/if}
+            <div class="relationship-node-preview-body">
+              <strong>{hoveredPreview.name}</strong>
+              <span>{hoveredPreview.id}</span>
+            </div>
+          </div>
+        {/if}
+        {#each nodeActionPositions as action}
+          <button
+            type="button"
+            class="relationship-node-remove"
+            style={`left: ${action.left}px; top: ${action.top}px;`}
+            aria-label={`Remove ${action.label}`}
+            on:pointerdown|stopPropagation
+            on:click|preventDefault|stopPropagation={() => dispatch('remove', { moveId: action.id })}
+          >
+            x
+          </button>
+        {/each}
       </div>
     </div>
   {/if}

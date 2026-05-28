@@ -22,12 +22,15 @@
   export let disabled = false;
   export let emptyText = 'No matches';
   export let moreText = 'and more...';
+  export let allowCreate = false;
+  export let createLabel = 'Use';
 
   const dispatch = createEventDispatcher<{
     select: { option: SearchablePickerOption; id: string };
     remove: { id: string };
     query: { query: string };
     focus: Record<string, never>;
+    create: { value: string };
   }>();
 
   let activeSuggestionIndex = 0;
@@ -40,6 +43,11 @@
   $: matches = searchOptions(options, normalizedQuery, unavailableIds, limit);
   $: suggestionResults = matches.results;
   $: hasQuery = normalizedQuery.length > 0;
+  $: hasExactAvailableMatch = options.some(
+    (option) => normalizeId(option.id) === normalizeId(query) || normalizeId(option.label) === normalizeId(query)
+  );
+  $: canCreate = allowCreate && hasQuery && !hasExactAvailableMatch && !unavailableIds.has(normalizeId(query));
+  $: suggestionCount = suggestionResults.length + (canCreate ? 1 : 0);
   $: hasMoreSuggestions = matches.total > suggestionResults.length;
   $: hasVisibleSelection = showSelected && selectedIds.length > 0;
   $: inputPlaceholder = hasVisibleSelection ? addPlaceholder : placeholder;
@@ -50,8 +58,8 @@
     activeSuggestionIndex = 0;
   }
 
-  $: if (activeSuggestionIndex >= suggestionResults.length) {
-    activeSuggestionIndex = Math.max(0, suggestionResults.length - 1);
+  $: if (activeSuggestionIndex >= suggestionCount) {
+    activeSuggestionIndex = Math.max(0, suggestionCount - 1);
   }
 
   $: if (useFloatingDropdown && hasQuery) {
@@ -167,22 +175,34 @@
     setQuery('');
   }
 
+  function createOption() {
+    const value = query.trim();
+    if (!value || !allowCreate) {
+      return;
+    }
+
+    dispatch('create', { value });
+    setQuery('');
+  }
+
   function removeOption(id: string) {
     dispatch('remove', { id });
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && hasQuery && suggestionResults.length) {
+    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && hasQuery && suggestionCount) {
       event.preventDefault();
       const delta = event.key === 'ArrowDown' ? 1 : -1;
-      activeSuggestionIndex = (activeSuggestionIndex + delta + suggestionResults.length) % suggestionResults.length;
+      activeSuggestionIndex = (activeSuggestionIndex + delta + suggestionCount) % suggestionCount;
       return;
     }
 
     if (event.key === 'Enter') {
       event.preventDefault();
-      if (suggestionResults.length) {
+      if (activeSuggestionIndex < suggestionResults.length && suggestionResults.length) {
         selectOption(suggestionResults[activeSuggestionIndex]?.id ?? suggestionResults[0].id);
+      } else if (canCreate) {
+        createOption();
       }
       return;
     }
@@ -249,7 +269,7 @@
         role="listbox"
         aria-label="Search matches"
       >
-        {#if suggestionResults.length}
+        {#if suggestionResults.length || canCreate}
           {#each suggestionResults as option, index}
             <button
               type="button"
@@ -274,6 +294,22 @@
               </span>
             </button>
           {/each}
+          {#if canCreate}
+            <button
+              type="button"
+              role="option"
+              class="searchable-picker-option"
+              class:active={activeSuggestionIndex === suggestionResults.length}
+              aria-selected={activeSuggestionIndex === suggestionResults.length}
+              on:mousedown|preventDefault
+              on:click={createOption}
+              on:mouseenter={() => (activeSuggestionIndex = suggestionResults.length)}
+            >
+              <span class="searchable-picker-option-text">
+                <strong>{createLabel} "{query.trim()}"</strong>
+              </span>
+            </button>
+          {/if}
           {#if hasMoreSuggestions}
             <span class="searchable-picker-more">{moreText}</span>
           {/if}

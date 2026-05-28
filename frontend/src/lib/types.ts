@@ -29,6 +29,7 @@ export interface MoveRecord {
   hasLocalVideo: boolean;
   videoFiles: string[];
   videoLinks: string[];
+  previewVideoFile?: string | null;
 }
 
 export type MetadataKind = 'topic' | 'family';
@@ -198,6 +199,8 @@ export interface MoveVideoEntry {
   contentTypeLabel: string;
   environmentLabel: string;
   clipId: string | null;
+  clipStartMs: number | null;
+  clipActionStartMs: number | null;
   countMarkers: ClipCountMarker[];
   countOverlayPlacement: CountOverlayPlacement;
   moveId: string;
@@ -206,8 +209,10 @@ export interface MoveVideoEntry {
 export interface RelationshipDiagramNode {
   id: string;
   label: string;
+  name: string;
   slug: string | null;
   hasVideo: boolean;
+  previewVideoFile: string | null;
   isCurrent: boolean;
   isSummary?: boolean;
 }

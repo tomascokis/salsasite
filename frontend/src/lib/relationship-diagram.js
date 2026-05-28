@@ -143,8 +143,10 @@ function collapseLargeLeafRows(edges) {
     summaryNodes.push({
       id: summaryId,
       label: `(and ${collapsedLeafChildIds.length} other moves...)`,
+      name: `(and ${collapsedLeafChildIds.length} other moves...)`,
       slug: null,
       hasVideo: false,
+      previewVideoFile: null,
       isCurrent: false,
       isSummary: true
     });
@@ -235,8 +237,10 @@ export function buildRelationshipDiagram(moves, currentMoveId) {
     return {
       id: nodeId,
       label: hasVideo ? `${name} ▶` : name,
+      name,
       slug: move?.slug ?? null,
       hasVideo,
+      previewVideoFile: move?.previewVideoFile ?? move?.videoFiles?.[0] ?? null,
       isCurrent: nodeId === currentMoveId
     };
   });
@@ -290,8 +294,7 @@ export function buildRelationshipDot(diagram) {
     if (node.slug && !node.isSummary) {
       attrs.push(
         `URL="${escapeDotValue(`/moves/${node.slug}`)}"`,
-        'target="_self"',
-        `tooltip="${escapeDotValue(node.label)}"`
+        'target="_self"'
       );
     }
 

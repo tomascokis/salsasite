@@ -1,5 +1,6 @@
 <script lang="ts">
   import ContentBadge from './ContentBadge.svelte';
+  import { createEventDispatcher } from 'svelte';
   import type { ContentStatusKey } from '$lib/content-status';
 
   type EditableListBadge = {
@@ -13,6 +14,7 @@
     description?: string | null;
     meta?: string | null;
     badges?: EditableListBadge[];
+    active?: boolean;
   };
 
   export let items: EditableListItem[] = [];
@@ -21,12 +23,31 @@
   export let removeLabel = 'Remove';
   export let showEdit = true;
   export let showRemove = false;
+  export let selectable = false;
+
+  const dispatch = createEventDispatcher<{
+    select: { item: EditableListItem; id: string };
+  }>();
 </script>
 
 <div class="editable-list">
   {#if items.length}
     {#each items as item (item.id)}
-      <article class="editable-list-row">
+      <article
+        class="editable-list-row"
+        class:active={item.active}
+        class:selectable={selectable}
+        role={selectable ? 'button' : undefined}
+        tabindex={selectable ? 0 : undefined}
+        on:click={() => {
+          if (selectable) dispatch('select', { item, id: item.id });
+        }}
+        on:keydown={(event) => {
+          if (!selectable || (event.key !== 'Enter' && event.key !== ' ')) return;
+          event.preventDefault();
+          dispatch('select', { item, id: item.id });
+        }}
+      >
         <div class="editable-list-main">
           <div class="editable-list-title-row">
             <strong>{item.title}</strong>

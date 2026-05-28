@@ -69,11 +69,17 @@ Important fields:
 - `contentType`: required enum, `music`, `counts`, or `other`.
 - `environment`: required enum, `social` or `class`.
 - `recordDate`: optional `YYYY-MM-DD` date for when the source was actually recorded.
-- `classWorkshop`: optional free-entry class/workshop tag, with suggestions from existing source videos.
+- `classWorkshop`: legacy optional source-context text retained in stored data, but not shown or edited in the media editor UI.
 - `tags`: optional miscellaneous source tags such as `low quality`.
 - `notes`: optional text.
 
 Existing legacy files get metadata inferred from their filenames where possible.
+
+### Media Editor Metadata Controls
+
+- The Source metadata label in the media editor should use accent-colored text instead of muted grey.
+- Timing, Type, and Environment segmented buttons should render the configured badge color when selected and a 50% mix with white when not selected.
+- The media editor should not show a class/workshop field.
 
 ### `moveVideoLinks`
 
@@ -129,6 +135,14 @@ Clicking a source card opens:
 /media/edit/[source-asset-id]
 ```
 
+### Media Gallery Layout Contract
+
+- Source cards and the add-source tile must use the same stable card track size.
+- Media gallery source cards should use a compact card track, about three quarters of the previous large-card width.
+- Compact source cards should prioritize the poster and title; secondary metadata may be hidden to keep the card footprint small.
+- Resizing the window should add or remove source-card columns without making existing cards stretch into oversized tracks.
+- Source posters must keep a fixed `16 / 9` frame and fit the poster image inside that frame.
+
 The intended workflow is:
 
 1. Upload a source video.
@@ -143,12 +157,13 @@ Uploading stores the original file in `video-sources/` and creates a `source` as
 
 ## Publish-To-Moves Contract
 
-- Source media can be edited freely without immediately changing move pages.
+- Source media upload and metadata editing still do not link the full source video directly to move pages.
 - A source video must not appear directly on a move page just because it was uploaded.
-- New move clips start unpublished.
-- Publishing clips to moves must be an explicit action.
-- Move pages receive media clip links only after publish-to-moves.
-- Modern move metadata inherited from parent media should update on move pages only through publish-to-moves.
+- New move clips start unpublished while they are only saved definitions.
+- Rendered move clips publish to their move pages automatically as part of the normal save/render flow.
+- Ready clips that are saved without needing a new render publish automatically during that save.
+- Move pages receive media clip links only after a clip has rendered successfully.
+- Modern move metadata inherited from parent media should update on move pages automatically when a ready clip is saved or rendered.
 - Legacy direct video links may be replaced only where an explicit migration workflow allows it.
 
 ## Clip Naming Contract
@@ -175,11 +190,17 @@ Current constraints:
 - Each side keeps about `0.5s` separation where the video boundaries allow it.
 - If the move starts near `0.00s`, the left clip marker clamps to `0.00s`.
 - If the move ends near the video end, the right clip marker clamps to the video duration.
+- Draft move editor rows must keep the Start time, Moves picker content, and Edit control in separate aligned columns; saved clip rows and selected move chips must not inherit generic button chrome that creates nested boxes or visual overlap.
+- Timeline move ranges that are currently open for editing must remain orange, while move ranges that are not currently open for editing must appear green.
+- When dragging a move start or move end marker, crossing another move boundary must snap to that boundary once for that drag. After that first snap, moving away during the same drag must not keep snapping.
 
 Playback behavior:
 
 - Spacebar toggles play/pause unless focus is inside an input, textarea, select, button, or editable element.
 - The playhead can be dragged even before a clip is being edited.
+- In playback mode, when a source video has saved move clips, a compact centered boxed move-context strip must appear above the timeline without visible labels: the center current-move box is always visible and shows `—` when the playhead is not within a move range, while previous/next boxes appear only when that move ended or starts within 2.5 seconds of the playhead.
+- The playback move-context strip must reserve stable left, center, and right slots so the current-move box remains centered even when only previous or next is visible.
+- Previous and next move boxes in the playback move-context strip must be visibly shorter than the center current-move box.
 - The editor attempts muted autoplay from `0.00s` when a source video loads. Browser autoplay policy can still reject this, so manual play remains available.
 - Timeline positions fall back to saved clip times while video metadata is still loading.
 
@@ -205,6 +226,7 @@ When render succeeds:
 
 - The clip status becomes `ready`.
 - A `move` video asset is created or updated.
+- The rendered clip is automatically published to the target move.
 - A `moveVideoLinks` row links the output asset to the target move.
 - Smaller-resolution move video outputs must be generated for later use.
 - Poster generation is queued.

@@ -116,8 +116,12 @@ async function readStore() {
 }
 
 async function writeStore(store: MoveEditStore) {
-  await fs.mkdir(resolveDataDir(), { recursive: true });
-  await fs.writeFile(storePath(), `${JSON.stringify(store, null, 2)}\n`);
+  const dataDir = resolveDataDir();
+  const targetPath = storePath();
+  const temporaryPath = path.join(dataDir, `.${STORE_FILENAME}.${process.pid}.${Date.now()}.tmp`);
+  await fs.mkdir(dataDir, { recursive: true });
+  await fs.writeFile(temporaryPath, `${JSON.stringify(store, null, 2)}\n`);
+  await fs.rename(temporaryPath, targetPath);
 }
 
 function movePatchFromInput(input: EditableMoveInput): MovePatch {
@@ -282,6 +286,18 @@ export async function listMoveDrafts() {
 export async function listCreatedMoveIds() {
   const store = await readStore();
   return store.createdMoves.map((move) => move.id);
+}
+
+export async function deleteMoveDraft(draftId: string) {
+  const store = await readStore();
+  const existingDraft = store.drafts.find((draft) => draft.draftId === draftId);
+  if (!existingDraft) {
+    throw new Error('Draft not found.');
+  }
+
+  store.drafts = store.drafts.filter((draft) => draft.draftId !== draftId);
+  await writeStore(store);
+  return existingDraft;
 }
 
 export async function saveMoveDraft(input: EditableMoveInput & { draftId?: string }) {

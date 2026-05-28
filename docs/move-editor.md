@@ -29,17 +29,19 @@ Creating a move from the move-search dropdown must keep the user in the media ed
 - Create a saved draft move immediately.
 - Generate a stable draft move ID from the typed name, avoiding collisions with published moves and existing drafts.
 - Add the newly created draft move to the current move row immediately.
+- Draft move chips in the media editor must show `[Draft]` in place of the generated draft move ID.
 - Draft moves must be accepted by the move editor wherever published moves are accepted for clip definitions.
 - Existing draft moves should be loaded into the media editor as valid searchable move options.
 - Draft moves remain editable later on the Create move page.
 
 ## Editing Layout
 
-Entering move-editing mode should make the video easier to inspect.
+Entering move-editing mode should preserve the user's spatial context while enabling precise clip controls.
 
-- When move editing is enabled, the video area should enlarge.
-- The enlargement should be animated smoothly.
-- The side metadata panel may collapse while editing to give the video more room.
+- When move editing is enabled, the video player must stay at its current layout size.
+- Edit mode must not expand the player, collapse side panels, or change the media editor grid just to provide more video room.
+- Edit mode must keep the timeline and clip controls visible without the video dominating the viewport.
+- The side metadata card must remain fully inside the viewport; its rounded corners and edit control must not be clipped by horizontal overflow.
 - The layout must remain usable on mobile; the video/editor must not overflow horizontally or push controls off-screen.
 - Mobile layout should prefer a single-column editor with compact controls.
 
@@ -85,6 +87,12 @@ The move editor saves clip definitions before rendering.
 - Clip rows are saveable when they contain at least one valid published move or draft move and the row range has positive duration.
 - Saving clip definitions may target draft move IDs.
 - Rendering and publishing behavior can still depend on later completion of the draft move workflow, but the editor must not block clip definition work just because a move is still a draft.
+- Saved clips must remain visible in the timeline after they are created, in the same lower timeline lane where move ranges appear during editing.
+- Outside active move editing, saved clips must be positioned against the full source-video timeline, not a stale edit zoom or clip viewport.
+- While the move editor is open, previously saved clips must also appear as compact rows in the editor form so they can be selected for editing from the same surface as new draft rows.
+- Creating or editing a clip must not turn existing clips into a large alternate representation; new or edited clips should receive only a small unsaved marker until the user saves the clip changes.
+- When editing an existing saved clip, its old saved timeline range must be hidden; the active draft range is the clip's temporary timeline representation until saved.
+- The editor must not show a separate `Move clips` card/list for saved clips; the timeline is the clip list.
 
 ## Timeline Zoom
 

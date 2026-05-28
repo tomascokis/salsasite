@@ -38,7 +38,8 @@ export async function load({ params, url }) {
     .map((move) => ({
       id: move.id,
       slug: move.slug,
-      name: move.name
+      name: move.name,
+      isDraft: true
     }));
 
   return {

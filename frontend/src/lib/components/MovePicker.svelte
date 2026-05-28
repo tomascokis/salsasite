@@ -9,6 +9,7 @@
     posterFile?: string | null;
     thumbnailUrl?: string | null;
     level?: string | null;
+    isDraft?: boolean;
   };
 
   export let moves: MoveOption[] = [];
@@ -80,6 +81,10 @@
     return moves.find((move) => normalizeMoveId(move.id) === normalized) ?? null;
   }
 
+  function isDraftMove(move: MoveOption) {
+    return Boolean(move.isDraft);
+  }
+
   function setQuery(value: string) {
     query = value;
     dispatch('query', { query });
@@ -95,17 +100,29 @@
   function updateFloatingDropdown() {
     if (!useFloatingDropdown || !inputWrapElement) return;
     const rect = inputWrapElement.getBoundingClientRect();
+    const gap = 4;
+    const viewportPadding = 8;
+    const maxDropdownHeight = 352;
+    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const availableAbove = rect.top - viewportPadding;
+    const openAbove = availableBelow < 220 && availableAbove > availableBelow;
+    const availableHeight = Math.max(80, Math.min(maxDropdownHeight, openAbove ? availableAbove - gap : availableBelow - gap));
     floatingDropdownStyle = [
       `position: fixed`,
-      `top: ${rect.bottom + 4}px`,
       `left: ${rect.left}px`,
-      `width: ${rect.width}px`
+      `width: ${rect.width}px`,
+      `max-height: ${availableHeight}px`,
+      openAbove ? 'top: auto' : 'bottom: auto',
+      openAbove ? `bottom: ${window.innerHeight - rect.top + gap}px` : `top: ${rect.bottom + gap}px`
     ].join('; ');
   }
 
   function moveLabel(moveId: string) {
     const move = findMove(moveId);
     if (!move) return moveId;
+    if (isDraftMove(move)) {
+      return showName && move.name ? `[Draft] ${move.name}` : '[Draft]';
+    }
     if (showId && showName && move.name) return `${move.id} ${move.name}`;
     if (showName && move.name) return move.name;
     if (showId) return move.id;
@@ -120,7 +137,9 @@
 
   function secondaryLabel(move: MoveOption) {
     const parts: string[] = [];
-    if (showId && primaryLabel(move) !== move.id) {
+    if (isDraftMove(move)) {
+      parts.push('[Draft]');
+    } else if (showId && primaryLabel(move) !== move.id) {
       parts.push(move.id);
     }
     if (showName && move.name && primaryLabel(move) !== move.name) {

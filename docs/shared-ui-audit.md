@@ -31,6 +31,7 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - Timing, type, and environment should be displayed as badges wherever those concepts are shown on move or media surfaces.
 - Publication state, processing state, and legacy/modern markers should use the same badge/status language across move pages, media browsing, and clip editing.
 - Searchable pickers must be the shared pattern for topics, families, dancers, regions, and move selection.
+- Move picker `No preview` poster placeholders must center the text within the thumbnail area.
 - Editable list/grid UI should be a shared pattern for metadata and dancer management surfaces that are viewable by default with small edit affordances.
 - Context menu interactions used for relationship editing must support right-click and long-press.
 - Topic and family splash pages must reuse the existing overview browsing model.

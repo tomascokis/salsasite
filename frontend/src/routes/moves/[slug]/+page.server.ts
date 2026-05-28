@@ -3,6 +3,7 @@ import { getMoves, getRawMoveReference } from '$lib/server/data';
 import { buildRelationshipDiagram } from '$lib/relationship-diagram';
 import { getResolvedMoveVideos } from '$lib/server/video-library';
 import { queuePosterGeneration } from '$lib/server/posters';
+import { getSiteMetadata } from '$lib/server/metadata';
 
 export async function load({ params }) {
   const moves = await getMoves();
@@ -15,6 +16,7 @@ export async function load({ params }) {
   const rawMoves = await getRawMoveReference();
   const rawReference = rawMoves.find((entry) => entry.id === move.id) ?? null;
   const relationshipDiagram = buildRelationshipDiagram(moves, move.id);
+  const metadata = await getSiteMetadata(moves, rawMoves);
   const videos = await getResolvedMoveVideos(move.id, moves);
 
   videos.forEach((video) => {
@@ -33,6 +35,15 @@ export async function load({ params }) {
     move,
     rawReference,
     relationshipDiagram,
+    metadata,
+    moves: moves.map((entry) => ({
+      id: entry.id,
+      slug: entry.slug,
+      name: entry.name,
+      positions: entry.positions,
+      tags: entry.tags,
+      source: entry.source
+    })),
     videos
   };
 }

@@ -14,10 +14,6 @@ export async function load({ params }) {
   return {
     move,
     metadata,
-    moves: moves.map((entry) => ({
-      id: entry.id,
-      slug: entry.slug,
-      name: entry.name
-    }))
+    moves
   };
 }

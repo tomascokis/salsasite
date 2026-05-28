@@ -7,7 +7,7 @@ import type {
   SearchIndexEntry,
   SiteManifest
 } from '$lib/types';
-import { buildResolvedMoveVideoIndex } from './video-library';
+import { buildResolvedMoveVideoMetadataIndex } from './video-library';
 import { resolveDataDir, resolveMediaRoot, resolvePosterRoot, resolveSourceRoot } from './paths';
 import { applyMoveEditStore } from './move-editor';
 
@@ -45,15 +45,17 @@ export async function getManifest() {
 export async function getMoves() {
   cache.moves ??= await readJsonFile<MoveRecord[]>('moves.json');
   const editedMoves = await applyMoveEditStore(cache.moves);
-  const resolvedVideoIndex = await buildResolvedMoveVideoIndex(editedMoves);
+  const resolvedVideoIndex = await buildResolvedMoveVideoMetadataIndex(editedMoves);
 
   return editedMoves.map((move) => {
-    const localVideoFiles = resolvedVideoIndex.get(move.id.toUpperCase()) ?? [];
+    const videoMetadata = resolvedVideoIndex.get(move.id.toUpperCase());
+    const localVideoFiles = videoMetadata?.files ?? [];
 
     return {
       ...move,
       hasLocalVideo: localVideoFiles.length > 0,
-      videoFiles: localVideoFiles
+      videoFiles: localVideoFiles,
+      previewVideoFile: videoMetadata?.previewFile ?? null
     };
   });
 }

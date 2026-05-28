@@ -1,19 +1,15 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import MovePicker from '$lib/components/MovePicker.svelte';
+  import AutoResizeTextarea from '$lib/components/AutoResizeTextarea.svelte';
+  import MoveConnectionDiagramEditor from '$lib/components/MoveConnectionDiagramEditor.svelte';
+  import MoveTypeControl from '$lib/components/MoveTypeControl.svelte';
   import SearchablePicker from '$lib/components/SearchablePicker.svelte';
   import type { MetadataEntry, MoveRecord, SiteMetadata } from '$lib/types';
-
-  type MoveOption = {
-    id: string;
-    slug: string;
-    name: string | null;
-  };
 
   export let data: {
     move: MoveRecord;
     metadata: SiteMetadata;
-    moves: MoveOption[];
+    moves: MoveRecord[];
   };
 
   let name = data.move.name ?? '';
@@ -31,22 +27,44 @@
   let parentIds = [...data.move.parentIds];
   let childIds = [...data.move.childIds];
   let relatedMoveIds = [...data.move.relatedMoveIds];
-  let parentDraft = '';
-  let childDraft = '';
-  let relatedDraft = '';
   let topicQuery = '';
   let familyQuery = '';
+  let positionsQuery = '';
+  let tagsQuery = '';
+  let sourceQuery = '';
   let status = '';
   let isSaving = false;
   let isReviewOpen = reviewFlag;
 
-  const options = data.moves.filter((move) => move.id !== data.move.id);
-  const typeOptions = ['Addition', 'Variation', ''];
   const levelOptions = ['', '1', '2', '3', '4', '5'];
   $: topicOptions = data.metadata.topics.map(metadataOption);
   $: familyOptions = data.metadata.families.map(metadataOption);
+  $: positionOptions = uniqueMoveTextOptions(data.moves.map((move) => move.positions));
+  $: sourceOptions = uniqueMoveTextOptions(data.moves.map((move) => move.source));
+  $: tagOptions = uniqueMoveTextOptions(data.moves.flatMap((move) => splitTagText(move.tags ?? '')));
   $: selectedTopicIds = topic ? matchingMetadataIds(data.metadata.topics, topic) : [];
   $: selectedFamilyIds = group ? matchingMetadataIds(data.metadata.families, group) : [];
+  $: selectedPositionIds = positions ? [positions] : [];
+  $: selectedSourceIds = source ? [source] : [];
+  $: selectedTagIds = splitTagText(tags);
+  $: connectionMove = {
+    ...data.move,
+    name,
+    topic,
+    level,
+    type,
+    group,
+    positions,
+    tags,
+    source,
+    description,
+    comments,
+    reviewFlag,
+    reviewNotes,
+    parentIds,
+    childIds,
+    relatedMoveIds
+  };
 
   function metadataOption(entry: MetadataEntry) {
     return {
@@ -61,28 +79,53 @@
     return entries.filter((entry) => entry.name.trim().toLocaleLowerCase() === normalized).map((entry) => entry.id);
   }
 
+  function uniqueMoveTextOptions(values: Array<string | null | undefined>) {
+    return Array.from(new Set(values.map((value) => String(value ?? '').trim()).filter(Boolean)))
+      .sort((left, right) => left.localeCompare(right))
+      .map((value) => ({ id: value, label: value }));
+  }
+
+  function splitTagText(value: string | null | undefined) {
+    return String(value ?? '')
+      .split(/[,;]+/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  function addTagValue(value: string) {
+    const next = value.trim();
+    if (!next) return;
+    const existing = splitTagText(tags);
+    if (!existing.some((entry) => entry.toLocaleLowerCase() === next.toLocaleLowerCase())) {
+      tags = [...existing, next].join(', ');
+    }
+    tagsQuery = '';
+  }
+
+  function removeTagValue(value: string) {
+    tags = splitTagText(tags)
+      .filter((entry) => entry !== value)
+      .join(', ');
+  }
+
   function normalizeMoveId(value: string) {
     return value.trim().toUpperCase();
   }
 
-  function addConnection(kind: 'parent' | 'child' | 'related', selectedMoveId?: string) {
-    const draft = selectedMoveId ?? (kind === 'parent' ? parentDraft : kind === 'child' ? childDraft : relatedDraft);
-    const moveId = normalizeMoveId(draft);
+  function addConnection(kind: 'parent' | 'child' | 'related', selectedMoveId: string) {
+    const moveId = normalizeMoveId(selectedMoveId);
     if (!moveId || moveId === data.move.id || !data.moves.some((move) => move.id === moveId)) {
       return;
     }
 
     if (kind === 'parent' && !parentIds.includes(moveId)) {
       parentIds = [...parentIds, moveId].sort();
-      parentDraft = '';
     }
     if (kind === 'child' && !childIds.includes(moveId)) {
       childIds = [...childIds, moveId].sort();
-      childDraft = '';
     }
     if (kind === 'related' && !relatedMoveIds.includes(moveId)) {
       relatedMoveIds = [...relatedMoveIds, moveId].sort();
-      relatedDraft = '';
     }
   }
 
@@ -92,10 +135,10 @@
     if (kind === 'related') relatedMoveIds = relatedMoveIds.filter((entry) => entry !== moveId);
   }
 
-  function updateConnectionQuery(kind: 'parent' | 'child' | 'related', query: string) {
-    if (kind === 'parent') parentDraft = query;
-    if (kind === 'child') childDraft = query;
-    if (kind === 'related') relatedDraft = query;
+  function removeConnectionByMoveId(moveId: string) {
+    parentIds = parentIds.filter((entry) => entry !== moveId);
+    childIds = childIds.filter((entry) => entry !== moveId);
+    relatedMoveIds = relatedMoveIds.filter((entry) => entry !== moveId);
   }
 
   async function saveMove() {
@@ -192,13 +235,7 @@
       </label>
       <label>
         <span>Type</span>
-        <span class="segmented-control move-segmented-control">
-          {#each typeOptions as option}
-            <button type="button" class:active={type === option} on:click={() => (type = option)}>
-              {option || 'Neither'}
-            </button>
-          {/each}
-        </span>
+        <MoveTypeControl bind:value={type} />
       </label>
       <label>
         <span>Family</span>
@@ -222,23 +259,81 @@
       </label>
       <label>
         <span>Positions</span>
-        <input bind:value={positions} />
+        <SearchablePicker
+          options={positionOptions}
+          selectedIds={selectedPositionIds}
+          query={positionsQuery}
+          placeholder=""
+          addPlaceholder=""
+          ariaLabel="Positions"
+          allowCreate={true}
+          createLabel="Use position"
+          on:query={(event) => (positionsQuery = event.detail.query)}
+          on:select={(event) => {
+            positions = event.detail.option.label;
+            positionsQuery = '';
+          }}
+          on:create={(event) => {
+            positions = event.detail.value;
+            positionsQuery = '';
+          }}
+          on:remove={() => {
+            positions = '';
+            positionsQuery = '';
+          }}
+        />
       </label>
       <label>
         <span>Tags</span>
-        <input bind:value={tags} />
+        <SearchablePicker
+          options={tagOptions}
+          selectedIds={selectedTagIds}
+          query={tagsQuery}
+          placeholder="Add tags"
+          addPlaceholder="Add tags"
+          ariaLabel="Tags"
+          selectedPlacement="inside"
+          allowCreate={true}
+          createLabel="Add tag"
+          on:query={(event) => (tagsQuery = event.detail.query)}
+          on:select={(event) => addTagValue(event.detail.option.label)}
+          on:create={(event) => addTagValue(event.detail.value)}
+          on:remove={(event) => removeTagValue(event.detail.id)}
+        />
       </label>
       <label>
-        <span>Source</span>
-        <input bind:value={source} />
+        <span>Authorship</span>
+        <SearchablePicker
+          options={sourceOptions}
+          selectedIds={selectedSourceIds}
+          query={sourceQuery}
+          placeholder=""
+          addPlaceholder=""
+          ariaLabel="Authorship"
+          allowCreate={true}
+          createLabel="Use authorship"
+          on:query={(event) => (sourceQuery = event.detail.query)}
+          on:select={(event) => {
+            source = event.detail.option.label;
+            sourceQuery = '';
+          }}
+          on:create={(event) => {
+            source = event.detail.value;
+            sourceQuery = '';
+          }}
+          on:remove={() => {
+            source = '';
+            sourceQuery = '';
+          }}
+        />
       </label>
       <label class="wide">
         <span>Description</span>
-        <textarea bind:value={description}></textarea>
+        <AutoResizeTextarea bind:value={description} />
       </label>
       <label class="wide">
         <span>Comments</span>
-        <textarea bind:value={comments}></textarea>
+        <AutoResizeTextarea bind:value={comments} />
       </label>
     </div>
   </section>
@@ -268,42 +363,14 @@
       <h3>Connections</h3>
     </div>
 
-    <div class="connection-editor-grid">
-      <div class="connection-editor">
-        <h4>Parents</h4>
-        <MovePicker
-          moves={options}
-          selectedIds={parentIds}
-          query={parentDraft}
-          on:query={(event) => updateConnectionQuery('parent', event.detail.query)}
-          on:select={(event) => addConnection('parent', event.detail.moveId)}
-          on:remove={(event) => removeConnection('parent', event.detail.moveId)}
-        />
-      </div>
-
-      <div class="connection-editor">
-        <h4>Children</h4>
-        <MovePicker
-          moves={options}
-          selectedIds={childIds}
-          query={childDraft}
-          on:query={(event) => updateConnectionQuery('child', event.detail.query)}
-          on:select={(event) => addConnection('child', event.detail.moveId)}
-          on:remove={(event) => removeConnection('child', event.detail.moveId)}
-        />
-      </div>
-
-      <div class="connection-editor">
-        <h4>Related moves</h4>
-        <MovePicker
-          moves={options}
-          selectedIds={relatedMoveIds}
-          query={relatedDraft}
-          on:query={(event) => updateConnectionQuery('related', event.detail.query)}
-          on:select={(event) => addConnection('related', event.detail.moveId)}
-          on:remove={(event) => removeConnection('related', event.detail.moveId)}
-        />
-      </div>
-    </div>
+    <MoveConnectionDiagramEditor
+      moves={data.moves}
+      currentMove={connectionMove}
+      {parentIds}
+      {childIds}
+      {relatedMoveIds}
+      on:add={(event) => addConnection(event.detail.kind, event.detail.moveId)}
+      on:remove={(event) => removeConnectionByMoveId(event.detail.moveId)}
+    />
   </section>
 </div>

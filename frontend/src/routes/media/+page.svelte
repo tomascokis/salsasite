@@ -34,6 +34,7 @@
     assets: MediaAsset[];
     total: number;
     nextCursor: string | null;
+    dancerOptions: string[];
     suggestions: {
       classWorkshops: string[];
       tags: string[];
@@ -53,10 +54,14 @@
   let environmentFilter: 'all' | VideoEnvironment = 'all';
   let selectedDancerIds: string[] = [];
   let dancerQuery = '';
+  let loadedFilterKey = 'all|all|';
+  let filterRequestId = 0;
 
-  $: dancerOptions = Array.from(new Set(assets.flatMap((asset) => asset.dancers)))
-    .sort((left, right) => left.localeCompare(right))
-    .map((dancer) => ({ id: dancer, label: dancer }));
+  $: dancerOptions = data.dancerOptions.map((dancer) => ({ id: dancer, label: dancer }));
+  $: desiredFilterKey = mediaFilterKey();
+  $: if (desiredFilterKey !== loadedFilterKey) {
+    void loadFilteredMedia(desiredFilterKey);
+  }
 
   $: filteredAssets = assets.filter((asset) => {
     if (!matchesPublicationFilter(asset)) return false;
@@ -151,6 +156,43 @@
     return assetPublicationStatus(asset) === publicationFilter;
   }
 
+  function mediaFilterKey() {
+    return [publicationFilter, environmentFilter, [...selectedDancerIds].sort().join(',')].join('|');
+  }
+
+  function mediaLibraryUrl(cursor: string | null = null) {
+    const params = new URLSearchParams();
+    params.set('limit', '50');
+    params.set('publication', publicationFilter);
+    params.set('environment', environmentFilter);
+    if (cursor) {
+      params.set('cursor', cursor);
+    }
+    selectedDancerIds.forEach((dancer) => params.append('dancer', dancer));
+    return `/api/media/library?${params.toString()}`;
+  }
+
+  async function loadFilteredMedia(filterKey: string) {
+    const requestId = ++filterRequestId;
+    isLoadingMore = true;
+    const response = await fetch(mediaLibraryUrl());
+
+    if (requestId !== filterRequestId) {
+      return;
+    }
+
+    if (response.ok) {
+      const payload = await response.json();
+      assets = payload.assets;
+      totalAssets = payload.total;
+      nextCursor = payload.nextCursor;
+      suggestions = payload.suggestions;
+      loadedFilterKey = filterKey;
+    }
+
+    isLoadingMore = false;
+  }
+
   function defaultDisplayNameFor(file: File) {
     return file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim() || file.name;
   }
@@ -206,7 +248,7 @@
     if (!nextCursor || isLoadingMore) return;
 
     isLoadingMore = true;
-    const response = await fetch(`/api/media/library?limit=50&cursor=${encodeURIComponent(nextCursor)}`);
+    const response = await fetch(mediaLibraryUrl(nextCursor));
 
     if (response.ok) {
       const payload = await response.json();
@@ -284,7 +326,7 @@
       <span class="muted media-filter-count">{filteredAssets.length} / {totalAssets}</span>
     </section>
 
-    <div class="media-card-grid media-upload-grid">
+    <div class="media-card-grid media-source-grid media-upload-grid">
       <section
         class={`media-upload-tile compact ${isDragging ? 'drag-over' : ''}`}
         on:dragover={(event) => {
@@ -314,7 +356,7 @@
     {#each mediaGroups as group}
       <section class="media-month-section">
         <h3>{group.month}</h3>
-        <div class="media-card-grid">
+        <div class="media-card-grid media-source-grid">
           {#each group.assets as asset}
             <a class="media-gallery-card" href={editUrl(asset)}>
               <span class="media-gallery-poster">

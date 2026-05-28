@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { draftMoveIdFromName } from '$lib/move-id-utils.js';
 import { getMoves } from '$lib/server/data';
-import { listMoveDrafts, publishMoveDraft, saveMoveDraft } from '$lib/server/move-editor';
+import { deleteMoveDraft, listMoveDrafts, publishMoveDraft, saveMoveDraft } from '$lib/server/move-editor';
 
 export async function POST({ request }) {
   const body = await request.json();
@@ -12,6 +12,11 @@ export async function POST({ request }) {
       const moves = await getMoves();
       const move = await publishMoveDraft(moves, String(body.draftId ?? ''), body.move);
       return json({ ok: true, move });
+    }
+
+    if (action === 'deleteDraft') {
+      const draft = await deleteMoveDraft(String(body.draftId ?? ''));
+      return json({ ok: true, draftId: draft.draftId });
     }
 
     if (action === 'createDraftFromName') {
