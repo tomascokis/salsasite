@@ -225,6 +225,7 @@
                 placeholder="Choose or type region"
                 addPlaceholder="Change region"
                 ariaLabel="Region"
+                selectedPlacement="inside"
                 allowCreate={true}
                 createLabel="Use region"
                 on:query={(event) => (regionQuery = event.detail.query)}
