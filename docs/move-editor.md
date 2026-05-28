@@ -90,6 +90,7 @@ The move editor saves clip definitions before rendering.
 - Saved clips must remain visible in the timeline after they are created, in the same lower timeline lane where move ranges appear during editing.
 - Outside active move editing, saved clips must be positioned against the full source-video timeline, not a stale edit zoom or clip viewport.
 - While the move editor is open, previously saved clips must also appear as compact rows in the editor form so they can be selected for editing from the same surface as new draft rows.
+- Saved clip rows and the active clip toolbar must provide a star toggle for marking that clip as a key video for its move page.
 - Creating or editing a clip must not turn existing clips into a large alternate representation; new or edited clips should receive only a small unsaved marker until the user saves the clip changes.
 - When editing an existing saved clip, its old saved timeline range must be hidden; the active draft range is the clip's temporary timeline representation until saved.
 - The editor must not show a separate `Move clips` card/list for saved clips; the timeline is the clip list.

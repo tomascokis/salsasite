@@ -303,6 +303,7 @@
         [
           clip.id,
           clip.moveId,
+          clip.isKeyVideo ? 'key' : 'normal',
           clip.label ?? '',
           clip.startMs,
           clip.endMs,
@@ -565,6 +566,7 @@
   function clipSaveSignature(clip: DerivedClip) {
     return JSON.stringify([
       clip.moveId,
+      clip.isKeyVideo ? 'key' : 'normal',
       clip.label ?? '',
       clip.manuallyNamed ? 'manual' : 'generated',
       clip.startMs,
@@ -600,6 +602,12 @@
   function updateClipLabel(clipId: string, value: string) {
     clipRows = clipRows.map((clip) =>
       clip.id === clipId ? { ...clip, label: value, manuallyNamed: true, updatedAt: new Date().toISOString() } : clip
+    );
+  }
+
+  function toggleClipKeyVideo(clipId: string) {
+    clipRows = clipRows.map((clip) =>
+      clip.id === clipId ? { ...clip, isKeyVideo: !clip.isKeyVideo, updatedAt: new Date().toISOString() } : clip
     );
   }
 
@@ -1794,6 +1802,7 @@
           id: reusableClip?.id ?? createDraftClipId(),
           sourceAssetId: selectedAsset.id,
           moveId,
+          isKeyVideo: reusableClip?.isKeyVideo ?? false,
           label: reusableClip?.label ?? null,
           manuallyNamed: reusableClip?.manuallyNamed ?? false,
           startMs: clipStartMs,
@@ -1845,6 +1854,7 @@
         clips: nextClipRows.map((clip) => ({
           id: clip.id,
           moveId: clip.moveId,
+          isKeyVideo: clip.isKeyVideo,
           label: clip.label,
           manuallyNamed: clip.manuallyNamed,
           startMs: clip.startMs,
@@ -1929,6 +1939,7 @@
         clips: clipRows.map((clip) => ({
           id: clip.id,
           moveId: clip.moveId,
+          isKeyVideo: clip.isKeyVideo,
           label: clip.label,
           manuallyNamed: clip.manuallyNamed,
           startMs: clip.startMs,
@@ -2464,6 +2475,17 @@
                   {:else}
                     <button class="timeline-move-action" type="button" on:click={addMoreMoves}>Edit moves</button>
                   {/if}
+                  {#if activeSavedClip}
+                    <button
+                      class="timeline-move-action key-video-star"
+                      type="button"
+                      aria-pressed={activeSavedClip.isKeyVideo}
+                      title={activeSavedClip.isKeyVideo ? 'Remove key video' : 'Make key video'}
+                      on:click={() => toggleClipKeyVideo(activeSavedClip.id)}
+                    >
+                      {activeSavedClip.isKeyVideo ? '★' : '☆'}
+                    </button>
+                  {/if}
                   {#if hasUnsavedClipRowChanges}
                     <button class="timeline-move-action primary" type="button" on:click={() => void saveClipLabelChanges()}>
                       Save clip changes
@@ -2523,6 +2545,15 @@
                             {clip.moveId} · {moveNameById.get(clip.moveId) ?? clip.moveId}
                           </span>
                           <span class="saved-editor-placeholder">Add another move</span>
+                        </button>
+                        <button
+                          class="draft-edit-button key-video-star"
+                          type="button"
+                          aria-pressed={clip.isKeyVideo}
+                          title={clip.isKeyVideo ? 'Remove key video' : 'Make key video'}
+                          on:click={() => toggleClipKeyVideo(clip.id)}
+                        >
+                          {clip.isKeyVideo ? '★' : '☆'}
                         </button>
                         <button class="draft-edit-button" type="button" on:click={() => openSavedClipEditor(clip)}>
                           Edit

@@ -293,6 +293,7 @@ function normalizeDerivedClip(raw: Partial<DerivedClip>, library: { moveVideoLin
     id: String(raw.id),
     sourceAssetId: String(raw.sourceAssetId),
     moveId: String(raw.moveId).trim().toUpperCase(),
+    isKeyVideo: Boolean(raw.isKeyVideo),
     label: raw.label ? String(raw.label) : null,
     manuallyNamed: Boolean(raw.manuallyNamed),
     startMs: Math.max(0, Math.floor(Number(raw.startMs ?? 0))),
@@ -620,6 +621,7 @@ export async function getResolvedMoveVideos(moveId: string, moves: MoveRecord[])
       clipId: clip?.id ?? null,
       clipStartMs: clip?.publishedAssetId === asset.id ? clip.startMs : null,
       clipActionStartMs: clip?.publishedAssetId === asset.id ? clip.actionStartMs : null,
+      isKeyVideo: clip?.isKeyVideo ?? false,
       countMarkers: clip?.publishedAssetId === asset.id ? clip.countMarkers : [],
       countOverlayPlacement: clip?.countOverlayPlacement ?? 'top-left',
       moveId
@@ -970,6 +972,7 @@ export async function saveSourceClips(input: {
   clips: Array<{
     id?: string;
     moveId: string;
+    isKeyVideo?: boolean;
     label?: string | null;
     manuallyNamed?: boolean;
     startMs: number;
@@ -996,6 +999,7 @@ export async function saveSourceClips(input: {
       const existing = clipInput.id ? existingById.get(clipInput.id) ?? null : null;
       const moveId = clipInput.moveId.trim().toUpperCase();
       const manuallyNamed = Boolean(clipInput.manuallyNamed || (existing?.manuallyNamed && clipInput.label?.trim()));
+      const isKeyVideo = clipInput.isKeyVideo === undefined ? existing?.isKeyVideo ?? false : Boolean(clipInput.isKeyVideo);
       const label = manuallyNamed ? clipInput.label?.trim() || existing?.label || null : generatedClipLabel(sourceAsset, moveId, index);
       const startMs = Math.max(0, Math.floor(clipInput.startMs));
       const endMs = Math.max(0, Math.floor(clipInput.endMs));
@@ -1025,6 +1029,7 @@ export async function saveSourceClips(input: {
         !cropRectsEqual(existing.cropRect, cropRect);
       const metadataChanged =
         !existing ||
+        existing.isKeyVideo !== isKeyVideo ||
         !countMarkersEqual(existing.countMarkers, countMarkers) ||
         existing.countOverlayPlacement !== countOverlayPlacement ||
         existing.countTimingPreset !== countTimingPreset;
@@ -1035,6 +1040,7 @@ export async function saveSourceClips(input: {
         id: existing?.id ?? randomUUID(),
         sourceAssetId: input.sourceAssetId,
         moveId,
+        isKeyVideo,
         label,
         manuallyNamed,
         startMs,
@@ -1091,6 +1097,20 @@ export async function saveSourceClips(input: {
       ...removedFilePaths.map((filePath) => deleteManagedVideoFiles(filePath))
     ]);
     return nextClips;
+  });
+}
+
+export async function setClipKeyVideo(input: { clipId: string; isKeyVideo: boolean }) {
+  return mutateLibrary(async (library) => {
+    const clip = library.derivedClips.find((entry) => entry.id === input.clipId);
+    if (!clip) {
+      throw new Error('Clip not found');
+    }
+
+    clip.isKeyVideo = Boolean(input.isKeyVideo);
+    clip.updatedAt = nowIso();
+    sortLibrary(library);
+    return { ...clip };
   });
 }
 

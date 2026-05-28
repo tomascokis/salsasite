@@ -1935,6 +1935,35 @@ select {
   margin-top: 0.45rem;
 }
 
+.video-overflow-picker {
+  margin: 0.55rem 0 0.2rem;
+}
+
+.video-overflow-picker label {
+  display: grid;
+  gap: 0.28rem;
+  max-width: 18rem;
+  color: #566476;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.video-overflow-picker select {
+  min-height: 2.2rem;
+}
+
+.key-video-toggle,
+.key-video-star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.2rem;
+  padding-left: 0.55rem;
+  padding-right: 0.55rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .media-empty {
   display: grid;
   gap: 0.6rem;
@@ -3643,6 +3672,7 @@ select {
 }
 
 .draft-move-row.saved-editor-row {
+  grid-template-columns: 54px minmax(220px, 1fr) 42px 62px;
   align-items: stretch;
 }
 
@@ -4076,6 +4106,20 @@ select {
   background: rgba(255, 209, 102, 0.16);
   color: #ffe2a4;
   cursor: default;
+}
+
+.draft-edit-button.key-video-star:not(:disabled),
+.timeline-move-action.key-video-star,
+.key-video-toggle {
+  border-color: rgba(255, 215, 102, 0.42);
+  color: #ffe2a4;
+}
+
+.draft-edit-button.key-video-star[aria-pressed='true'],
+.timeline-move-action.key-video-star[aria-pressed='true'],
+.key-video-toggle[aria-pressed='true'] {
+  background: rgba(255, 209, 102, 0.18);
+  color: #ffd24d;
 }
 
 .draft-add-move-button {
@@ -5632,6 +5676,10 @@ select {
   .draft-move-row {
     grid-template-columns: 44px minmax(0, 1fr) 58px;
     gap: 0.35rem;
+  }
+
+  .draft-move-row.saved-editor-row {
+    grid-template-columns: 44px minmax(0, 1fr) 40px 58px;
   }
 
   .move-picker-input-inline input {

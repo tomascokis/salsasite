@@ -141,6 +141,7 @@ export interface DerivedClip {
   id: string;
   sourceAssetId: string;
   moveId: string;
+  isKeyVideo: boolean;
   label: string | null;
   manuallyNamed: boolean;
   startMs: number;
@@ -201,6 +202,7 @@ export interface MoveVideoEntry {
   clipId: string | null;
   clipStartMs: number | null;
   clipActionStartMs: number | null;
+  isKeyVideo: boolean;
   countMarkers: ClipCountMarker[];
   countOverlayPlacement: CountOverlayPlacement;
   moveId: string;

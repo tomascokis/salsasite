@@ -63,6 +63,7 @@
   let sourceQuery = '';
   let detailEditorStatus = '';
   let isSavingMoveDetails = false;
+  let isSavingKeyVideo = false;
   const unavailablePosterVideos = new Set<string>();
   const levelOptions = ['', '1', '2', '3', '4', '5'];
   $: family = move.group?.trim() || data.rawReference?.family?.trim() || null;
@@ -111,6 +112,7 @@
 
   const relationshipCard = data.relationshipDiagram.meta.hasDiagram;
   const relationshipWide = data.relationshipDiagram.meta.isLarge;
+  const MAX_MAIN_MOVE_VIDEOS = 4;
   $: topicOptions = data.metadata.topics.map(metadataOption);
   $: familyOptions = data.metadata.families.map(metadataOption);
   $: positionOptions = uniqueMoveTextOptions(data.moves.map((entry) => entry.positions));
@@ -242,6 +244,36 @@
     return `/media/${encodeURIComponent(file)}`;
   }
 
+  function visibleVideoLayout(entries: MoveVideoEntry[]) {
+    if (entries.length <= MAX_MAIN_MOVE_VIDEOS) {
+      return {
+        main: entries.map((entry, index) => ({ entry, index })),
+        overflow: [] as Array<{ entry: MoveVideoEntry; index: number }>
+      };
+    }
+
+    const mainIndexes: number[] = [];
+    entries.forEach((entry, index) => {
+      if (entry.isKeyVideo && mainIndexes.length < MAX_MAIN_MOVE_VIDEOS) {
+        mainIndexes.push(index);
+      }
+    });
+
+    entries.forEach((_, index) => {
+      if (mainIndexes.length >= MAX_MAIN_MOVE_VIDEOS || mainIndexes.includes(index)) {
+        return;
+      }
+      mainIndexes.push(index);
+    });
+
+    return {
+      main: mainIndexes.map((index) => ({ entry: entries[index], index })),
+      overflow: entries
+        .map((entry, index) => ({ entry, index }))
+        .filter(({ index }) => !mainIndexes.includes(index))
+    };
+  }
+
   function clipEditUrl(entry: MoveVideoEntry) {
     if (!entry.sourceAssetId || !entry.clipId) {
       return null;
@@ -328,6 +360,36 @@
 
   function currentVideoFile() {
     return selectedVideoFile(videos[selectedVideo] ?? null);
+  }
+
+  function isOverflowVideoSelected() {
+    return overflowVideos.some(({ index }) => index === selectedVideo);
+  }
+
+  async function toggleSelectedVideoKeyState() {
+    if (!selectedVideoEntry?.clipId) {
+      return;
+    }
+
+    isSavingKeyVideo = true;
+    detailEditorStatus = 'Saving...';
+    const response = await fetch(`/api/clips/${encodeURIComponent(selectedVideoEntry.clipId)}/key`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ isKeyVideo: !selectedVideoEntry.isKeyVideo })
+    });
+    const payload = await response.json();
+    isSavingKeyVideo = false;
+
+    if (!response.ok) {
+      detailEditorStatus = payload.error ?? 'Could not update key video.';
+      return;
+    }
+
+    videos = videos.map((video) =>
+      video.clipId === selectedVideoEntry.clipId ? { ...video, isKeyVideo: payload.clip.isKeyVideo } : video
+    );
+    detailEditorStatus = payload.clip.isKeyVideo ? 'Key video saved.' : 'Key video removed.';
   }
 
   function normalizeVolume(value: number) {
@@ -494,6 +556,9 @@
   }
 
   $: selectedVideoEntry = videos[selectedVideo] ?? null;
+  $: videoLayout = visibleVideoLayout(videos);
+  $: mainTabVideos = videoLayout.main;
+  $: overflowVideos = videoLayout.overflow;
   $: selectedVideoVariants = videoVariantOptions(selectedVideoEntry);
   $: if (selectedVideoEntry && !selectedVideoVariants.some((option) => option.id === selectedVideoVariant)) {
     selectedVideoVariant = 'full';
@@ -528,7 +593,7 @@
       <div class="media-stage">
         {#if videos.length}
           <div class="tab-list video-tab-list">
-            {#each videos as video, index}
+            {#each mainTabVideos as { entry: video, index }}
               <button
                 type="button"
                 class:active={selectedVideo === index}
@@ -563,6 +628,34 @@
               </button>
             {/each}
           </div>
+          {#if overflowVideos.length}
+            <div class="video-overflow-picker">
+              <label>
+                <span>More videos</span>
+                <select
+                  value={isOverflowVideoSelected() ? String(selectedVideo) : ''}
+                  on:change={(event) => {
+                    const rawValue = (event.currentTarget as HTMLSelectElement).value;
+                    if (rawValue === '') {
+                      return;
+                    }
+                    const nextIndex = Number(rawValue);
+                    if (Number.isFinite(nextIndex)) {
+                      selectedVideo = nextIndex;
+                      selectedVideoVariant = 'full';
+                      showCountOverlay = false;
+                      currentVideoMs = 0;
+                    }
+                  }}
+                >
+                  <option value="">Choose hidden video</option>
+                  {#each overflowVideos as { entry: video, index }}
+                    <option value={index}>{videoTabLabel(video)}</option>
+                  {/each}
+                </select>
+              </label>
+            </div>
+          {/if}
           {#key `${currentVideoFile() ?? ''}::${currentPosterUrl() ?? ''}`}
             <div class="video-frame">
               <video
@@ -618,6 +711,18 @@
               {/if}
               {#if selectedClipEditUrl}
                 <a class="pill video-clip-edit-link" href={selectedClipEditUrl}>Go to clip</a>
+              {/if}
+              {#if isEditingMoveDetails && selectedVideoEntry?.clipId}
+                <button
+                  type="button"
+                  class="key-video-toggle"
+                  aria-pressed={selectedVideoEntry.isKeyVideo}
+                  title={selectedVideoEntry.isKeyVideo ? 'Remove key video' : 'Make key video'}
+                  disabled={isSavingKeyVideo}
+                  on:click={toggleSelectedVideoKeyState}
+                >
+                  {selectedVideoEntry.isKeyVideo ? '★' : '☆'}
+                </button>
               {/if}
             </div>
           {/if}

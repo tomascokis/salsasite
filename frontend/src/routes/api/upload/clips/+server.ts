@@ -70,6 +70,7 @@ export async function POST({ request }) {
   const clips: Array<{
     id?: string;
     moveId: string;
+    isKeyVideo: boolean;
     label: string | null;
     manuallyNamed: boolean;
     startMs: number;
@@ -84,6 +85,7 @@ export async function POST({ request }) {
     .map((clip: Record<string, unknown>) => ({
       id: clip.id ? String(clip.id) : undefined,
       moveId: String(clip.moveId ?? '').trim().toUpperCase(),
+      isKeyVideo: Boolean(clip.isKeyVideo),
       label: String(clip.label ?? '').trim() || null,
       manuallyNamed: Boolean(clip.manuallyNamed),
       startMs: Number(clip.startMs ?? 0),
