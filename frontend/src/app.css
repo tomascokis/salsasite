@@ -3972,18 +3972,20 @@ select {
 }
 
 .searchable-picker-input-inline input {
+  all: unset;
+  display: block;
   min-width: 7rem;
   min-height: 1.7rem;
   width: auto;
   flex: 1 0 7rem;
-  border: 0;
-  border-radius: 0;
   background: transparent;
   box-shadow: none;
   padding: 0.14rem 0.2rem;
   outline: none;
-  appearance: none;
-  -webkit-appearance: none;
+  color: inherit;
+  font: inherit;
+  line-height: 1.2;
+  caret-color: currentColor;
 }
 
 .searchable-picker-inline-chip {
