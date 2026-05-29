@@ -1,14 +1,22 @@
 import { json } from '@sveltejs/kit';
+import { moveDisplayId, normalizeMoveDisplayId } from '$lib/move-id';
 import { getMoves } from '$lib/server/data';
 import { savePublishedMove } from '$lib/server/move-editor';
+import { syncDerivedClipDisplayIdForMove } from '$lib/server/video-library';
 
 export async function POST({ params, request }) {
   const id = String(params.id ?? '').trim().toUpperCase();
   const body = await request.json();
   const moves = await getMoves();
+  const existing = moves.find((move) => move.id === id) ?? null;
 
   try {
     const move = await savePublishedMove(moves, id, body);
+    const previousDisplayId = existing ? moveDisplayId(existing) : id;
+    const nextDisplayId = normalizeMoveDisplayId(body.displayId) ?? moveDisplayId(move);
+    if (nextDisplayId !== previousDisplayId) {
+      await syncDerivedClipDisplayIdForMove(id, nextDisplayId);
+    }
     return json({ ok: true, move });
   } catch (error) {
     return json(

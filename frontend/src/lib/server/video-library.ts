@@ -293,6 +293,7 @@ function normalizeDerivedClip(raw: Partial<DerivedClip>, library: { moveVideoLin
     id: String(raw.id),
     sourceAssetId: String(raw.sourceAssetId),
     moveId: String(raw.moveId).trim().toUpperCase(),
+    moveDisplayId: raw.moveDisplayId ? String(raw.moveDisplayId).trim().toUpperCase() : null,
     isKeyVideo: Boolean(raw.isKeyVideo),
     label: raw.label ? String(raw.label) : null,
     manuallyNamed: Boolean(raw.manuallyNamed),
@@ -624,7 +625,8 @@ export async function getResolvedMoveVideos(moveId: string, moves: MoveRecord[])
       isKeyVideo: clip?.isKeyVideo ?? false,
       countMarkers: clip?.publishedAssetId === asset.id ? clip.countMarkers : [],
       countOverlayPlacement: clip?.countOverlayPlacement ?? 'top-left',
-      moveId
+      moveId,
+      moveDisplayId: clip?.moveDisplayId ?? moveId
     });
   }
 
@@ -697,6 +699,38 @@ async function unlinkIfExists(filePath: string) {
   }
 }
 
+async function renameIfExists(fromPath: string, toPath: string) {
+  if (fromPath === toPath) {
+    return;
+  }
+
+  try {
+    await fs.mkdir(path.dirname(toPath), { recursive: true });
+    await fs.rename(fromPath, toPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+  }
+}
+
+async function renameManagedVideoFile(oldPath: string, newPath: string) {
+  if (!oldPath || !newPath || oldPath === newPath) {
+    return;
+  }
+
+  await renameIfExists(resolveManagedVideoAbsolutePath(oldPath), resolveManagedVideoAbsolutePath(newPath));
+
+  await Promise.all(
+    POSTER_EXTENSIONS.map((extension) =>
+      renameIfExists(
+        resolvePathInsideRoot(resolvePosterRoot(), managedPosterPathForVideo(oldPath, extension)),
+        resolvePathInsideRoot(resolvePosterRoot(), managedPosterPathForVideo(newPath, extension))
+      )
+    )
+  );
+}
+
 async function deleteManagedVideoFiles(filePath: string) {
   await unlinkIfExists(resolveManagedVideoAbsolutePath(filePath));
 
@@ -705,6 +739,109 @@ async function deleteManagedVideoFiles(filePath: string) {
       unlinkIfExists(resolvePathInsideRoot(resolvePosterRoot(), managedPosterPathForVideo(filePath, extension)))
     )
   );
+}
+
+function clipSuffixFromPath(filePath: string | null, clipId: string) {
+  if (!filePath) {
+    return '';
+  }
+
+  const parsed = path.parse(filePath);
+  const clipPrefix = clipId.slice(0, 8);
+  const marker = ` ${clipPrefix}`;
+  const markerIndex = parsed.name.lastIndexOf(marker);
+  if (markerIndex < 0) {
+    return '';
+  }
+
+  const suffix = parsed.name.slice(markerIndex + marker.length).trim();
+  return suffix;
+}
+
+export async function syncDerivedClipDisplayIdForMove(moveId: string, moveDisplayId: string) {
+  const normalizedMoveId = moveId.trim().toUpperCase();
+  const normalizedDisplayId = moveDisplayId.trim().toUpperCase();
+  if (!normalizedMoveId || !normalizedDisplayId) {
+    return;
+  }
+
+  await mutateLibrary(async (library) => {
+    const pendingRenames = new Map<string, string>();
+
+    for (const clip of library.derivedClips.filter((entry) => entry.moveId === normalizedMoveId)) {
+      const sourceAsset = library.videoAssets.find((asset) => asset.id === clip.sourceAssetId && asset.kind === 'source');
+      if (!sourceAsset) {
+        clip.moveDisplayId = normalizedDisplayId;
+        continue;
+      }
+
+      const outputPath = clip.outputAssetId
+        ? path.posix.join(
+            MOVE_VIDEO_PREFIX,
+            clipOutputRelativePath(
+              normalizedDisplayId,
+              sourceAsset.displayName,
+              clip.id,
+              clipSuffixFromPath(clip.outputAssetId ? library.videoAssets.find((asset) => asset.id === clip.outputAssetId)?.filePath ?? null : null, clip.id)
+            )
+          )
+        : null;
+      const lowResPath = clip.lowResOutputFilePath
+        ? path.posix.join(
+            MOVE_VIDEO_PREFIX,
+            clipOutputRelativePath(normalizedDisplayId, sourceAsset.displayName, clip.id, clipSuffixFromPath(clip.lowResOutputFilePath, clip.id))
+          )
+        : null;
+      const lowResPaddedPath = clip.lowResPaddedOutputFilePath
+        ? path.posix.join(
+            MOVE_VIDEO_PREFIX,
+            clipOutputRelativePath(
+              normalizedDisplayId,
+              sourceAsset.displayName,
+              clip.id,
+              clipSuffixFromPath(clip.lowResPaddedOutputFilePath, clip.id)
+            )
+          )
+        : null;
+
+      const queueRename = (fromPath: string | null, toPath: string | null) => {
+        if (!fromPath || !toPath || fromPath === toPath) return;
+        pendingRenames.set(fromPath, toPath);
+      };
+
+      const outputAsset = clip.outputAssetId ? library.videoAssets.find((asset) => asset.id === clip.outputAssetId) ?? null : null;
+      const publishedAsset = clip.publishedAssetId ? library.videoAssets.find((asset) => asset.id === clip.publishedAssetId) ?? null : null;
+
+      queueRename(outputAsset?.filePath ?? null, outputPath);
+      queueRename(publishedAsset?.filePath ?? null, outputPath);
+      queueRename(clip.lowResOutputFilePath, lowResPath);
+      queueRename(clip.lowResPaddedOutputFilePath, lowResPaddedPath);
+      queueRename(clip.publishedLowResFilePath, lowResPath);
+      queueRename(clip.publishedLowResPaddedFilePath, lowResPaddedPath);
+
+      if (outputAsset && outputPath) {
+        outputAsset.filePath = outputPath;
+        outputAsset.originalFilename = path.basename(outputPath);
+      }
+      if (publishedAsset && outputPath) {
+        publishedAsset.filePath = outputPath;
+        publishedAsset.originalFilename = path.basename(outputPath);
+      }
+
+      clip.moveDisplayId = normalizedDisplayId;
+      if (lowResPath) {
+        clip.lowResOutputFilePath = lowResPath;
+        clip.publishedLowResFilePath = lowResPath;
+      }
+      if (lowResPaddedPath) {
+        clip.lowResPaddedOutputFilePath = lowResPaddedPath;
+        clip.publishedLowResPaddedFilePath = lowResPaddedPath;
+      }
+    }
+
+    await Promise.all([...pendingRenames.entries()].map(([fromPath, toPath]) => renameManagedVideoFile(fromPath, toPath)));
+    sortLibrary(library);
+  });
 }
 
 function sortLibrary(library: VideoLibrary) {
@@ -830,7 +967,7 @@ export async function updateSourceAsset(input: {
     const sourceClips = library.derivedClips.filter((clip) => clip.sourceAssetId === asset.id);
     sourceClips.forEach((clip, index) => {
       if (!clip.manuallyNamed) {
-        clip.label = generatedClipLabel(asset, clip.moveId, index);
+        clip.label = generatedClipLabel(asset, clip.moveDisplayId?.trim() || clip.moveId, index);
       }
       clip.updatedAt = nowIso();
     });
@@ -972,6 +1109,7 @@ export async function saveSourceClips(input: {
   clips: Array<{
     id?: string;
     moveId: string;
+    moveDisplayId?: string | null;
     isKeyVideo?: boolean;
     label?: string | null;
     manuallyNamed?: boolean;
@@ -998,9 +1136,10 @@ export async function saveSourceClips(input: {
     const nextClips: DerivedClip[] = input.clips.map((clipInput, index) => {
       const existing = clipInput.id ? existingById.get(clipInput.id) ?? null : null;
       const moveId = clipInput.moveId.trim().toUpperCase();
+      const moveDisplayId = String(clipInput.moveDisplayId ?? existing?.moveDisplayId ?? moveId).trim().toUpperCase() || moveId;
       const manuallyNamed = Boolean(clipInput.manuallyNamed || (existing?.manuallyNamed && clipInput.label?.trim()));
       const isKeyVideo = clipInput.isKeyVideo === undefined ? existing?.isKeyVideo ?? false : Boolean(clipInput.isKeyVideo);
-      const label = manuallyNamed ? clipInput.label?.trim() || existing?.label || null : generatedClipLabel(sourceAsset, moveId, index);
+      const label = manuallyNamed ? clipInput.label?.trim() || existing?.label || null : generatedClipLabel(sourceAsset, moveDisplayId, index);
       const startMs = Math.max(0, Math.floor(clipInput.startMs));
       const endMs = Math.max(0, Math.floor(clipInput.endMs));
       const actionStartMs =
@@ -1040,6 +1179,7 @@ export async function saveSourceClips(input: {
         id: existing?.id ?? randomUUID(),
         sourceAssetId: input.sourceAssetId,
         moveId,
+        moveDisplayId,
         isKeyVideo,
         label,
         manuallyNamed,
@@ -1208,8 +1348,9 @@ async function renderClip(clipId: string) {
   const actionEndMs = clip.actionEndMs ?? clip.endMs;
   const actionDurationMs = Math.max(1, actionEndMs - actionStartMs);
   const needsDraftAsset = Boolean(clip.publishedAssetId && clip.outputAssetId === clip.publishedAssetId);
+  const clipDisplayId = clip.moveDisplayId?.trim() || clip.moveId;
   const outputFilename = clipOutputRelativePath(
-    clip.moveId,
+    clipDisplayId,
     sourceAsset.displayName,
     clip.id,
     needsDraftAsset ? `draft ${Date.now().toString(36)}` : ''
@@ -1217,12 +1358,12 @@ async function renderClip(clipId: string) {
   const outputRelativePath = path.posix.join(MOVE_VIDEO_PREFIX, outputFilename);
   const lowResOutputRelativePath = path.posix.join(
     MOVE_VIDEO_PREFIX,
-    clipOutputRelativePath(clip.moveId, sourceAsset.displayName, clip.id, `${needsDraftAsset ? `draft ${Date.now().toString(36)} ` : ''}low`)
+    clipOutputRelativePath(clipDisplayId, sourceAsset.displayName, clip.id, `${needsDraftAsset ? `draft ${Date.now().toString(36)} ` : ''}low`)
   );
   const lowResPaddedOutputRelativePath = path.posix.join(
     MOVE_VIDEO_PREFIX,
     clipOutputRelativePath(
-      clip.moveId,
+      clipDisplayId,
       sourceAsset.displayName,
       clip.id,
       `${needsDraftAsset ? `draft ${Date.now().toString(36)} ` : ''}padded low`

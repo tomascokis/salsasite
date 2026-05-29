@@ -107,11 +107,13 @@ export function moveSuggestionSearch(moves, query, selectedMoveIds = [], limit =
 
 function scoreMoveSuggestion(move, normalizedQuery, queryTokens) {
   const name = normalizeSearchText(move.name);
+  const displayId = normalizeSearchText(move.displayId ?? move.id);
   const id = normalizeSearchText(move.id);
   const slug = normalizeSearchText(move.slug);
 
   return Math.max(
     scoreSearchField(name, normalizedQuery, queryTokens, 100),
+    scoreSearchField(displayId, normalizedQuery, queryTokens, 90),
     scoreSearchField(id, normalizedQuery, queryTokens, 70),
     scoreSearchField(slug, normalizedQuery, queryTokens, 60)
   );

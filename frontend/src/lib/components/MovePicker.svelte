@@ -4,6 +4,7 @@
 
   type MoveOption = {
     id: string;
+    displayId?: string | null;
     slug?: string | null;
     name?: string | null;
     posterFile?: string | null;
@@ -85,6 +86,10 @@
     return Boolean(move.isDraft);
   }
 
+  function publicId(move: MoveOption) {
+    return String(move.displayId ?? move.id).trim() || move.id;
+  }
+
   function setQuery(value: string) {
     query = value;
     dispatch('query', { query });
@@ -123,24 +128,24 @@
     if (isDraftMove(move)) {
       return showName && move.name ? `[Draft] ${move.name}` : '[Draft]';
     }
-    if (showId && showName && move.name) return `${move.id} ${move.name}`;
+    if (showId && showName && move.name) return `${publicId(move)} ${move.name}`;
     if (showName && move.name) return move.name;
-    if (showId) return move.id;
-    return move.name ?? move.id;
+    if (showId) return publicId(move);
+    return move.name ?? publicId(move);
   }
 
   function primaryLabel(move: MoveOption) {
     if (showName && move.name) return move.name;
-    if (showId) return move.id;
-    return move.name ?? move.id;
+    if (showId) return publicId(move);
+    return move.name ?? publicId(move);
   }
 
   function secondaryLabel(move: MoveOption) {
     const parts: string[] = [];
     if (isDraftMove(move)) {
       parts.push('[Draft]');
-    } else if (showId && primaryLabel(move) !== move.id) {
-      parts.push(move.id);
+    } else if (showId && primaryLabel(move) !== publicId(move)) {
+      parts.push(publicId(move));
     }
     if (showName && move.name && primaryLabel(move) !== move.name) {
       parts.push(move.name);

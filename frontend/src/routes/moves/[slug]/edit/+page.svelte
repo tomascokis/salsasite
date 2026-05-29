@@ -2,6 +2,7 @@
   import { goto, invalidateAll } from '$app/navigation';
   import AutoResizeTextarea from '$lib/components/AutoResizeTextarea.svelte';
   import MoveConnectionDiagramEditor from '$lib/components/MoveConnectionDiagramEditor.svelte';
+  import { moveDisplayId } from '$lib/move-id';
   import MoveTypeControl from '$lib/components/MoveTypeControl.svelte';
   import SearchablePicker from '$lib/components/SearchablePicker.svelte';
   import type { MetadataEntry, MoveRecord, SiteMetadata } from '$lib/types';
@@ -224,7 +225,7 @@
 </script>
 
 <svelte:head>
-  <title>Edit {data.move.name ?? data.move.id} | Salsa Encyclopedia</title>
+  <title>Edit {data.move.name ?? moveDisplayId(data.move)} | Salsa Encyclopedia</title>
 </svelte:head>
 
 <div class="move-editor-page">
@@ -240,7 +241,7 @@
     <div class="panel-header">
       <div class="media-properties-title">
         <h3>Edit move</h3>
-        <span>{data.move.id}</span>
+        <span>{moveDisplayId(data.move)}</span>
       </div>
     </div>
 

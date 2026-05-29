@@ -8,6 +8,7 @@
   import MovePicker from '$lib/components/MovePicker.svelte';
   import MoveTypeControl from '$lib/components/MoveTypeControl.svelte';
   import SearchablePicker from '$lib/components/SearchablePicker.svelte';
+  import { moveDisplayId, normalizeMoveDisplayId } from '$lib/move-id';
   import { draftMoveIdFromName } from '$lib/move-id-utils.js';
   import type { MetadataEntry, MoveRecord, SiteMetadata } from '$lib/types';
 
@@ -97,11 +98,13 @@
   $: selectedPositionIds = positions ? [positions] : [];
   $: selectedSourceIds = source ? [source] : [];
   $: selectedTagIds = splitTagText(tags);
-  $: currentMoveId = normalizeMoveId(id);
+  $: currentDisplayId = normalizeMoveDisplayId(id) ?? '';
+  $: currentMoveId = selectedEditor?.kind === 'published' ? selectedEditor.id : normalizeMoveId(id);
   $: connectionMove = {
     id: currentMoveId || '__DRAFT_MOVE__',
     slug: currentMoveId || 'draft-move',
-    name: name || currentMoveId || 'Draft move',
+    displayId: currentDisplayId || currentMoveId || null,
+    name: name || currentDisplayId || currentMoveId || 'Draft move',
     topic,
     level,
     type,
@@ -131,15 +134,25 @@
     videoLinks: []
   };
   $: idCollisionMove = currentMoveId
-    ? data.moves.find((move) => move.id === currentMoveId && selectedEditor?.id !== currentMoveId)
+    ? (
+      selectedEditor?.kind === 'published'
+        ? data.moves.find((move) => moveDisplayId(move) === currentDisplayId && move.id !== currentMoveId)
+        : data.moves.find((move) => move.id === currentMoveId && selectedEditor?.id !== currentMoveId)
+    )
     : null;
-  $: idCollisionDraft = currentMoveId
-    ? drafts.find((draft) => draft.move.id === currentMoveId && selectedEditor?.id !== draft.draftId)
+  $: idCollisionDraft = (selectedEditor?.kind === 'published' ? currentDisplayId : currentMoveId)
+    ? (
+      selectedEditor?.kind === 'published'
+        ? drafts.find((draft) => moveDisplayId(draft.move) === currentDisplayId)
+        : drafts.find((draft) => draft.move.id === currentMoveId && selectedEditor?.id !== draft.draftId)
+    )
     : null;
-  $: idCollisionWarning = currentMoveId && (idCollisionMove || idCollisionDraft)
-    ? `ID ${currentMoveId} is already used by ${idCollisionMove?.name ?? idCollisionDraft?.move.name ?? 'another move'}.`
+  $: idCollisionWarning = (selectedEditor?.kind === 'published' ? currentDisplayId : currentMoveId) && (idCollisionMove || idCollisionDraft)
+    ? `ID ${selectedEditor?.kind === 'published' ? currentDisplayId : currentMoveId} is already used by ${idCollisionMove?.name ?? idCollisionDraft?.move.name ?? 'another move'}.`
     : '';
-  $: publishDisabledReason = !name.trim()
+  $: publishDisabledReason = selectedEditor?.kind === 'published'
+    ? ''
+    : !name.trim()
     ? 'Add a move name before publishing.'
     : !currentMoveId
       ? 'Add a move ID before publishing.'
@@ -251,6 +264,7 @@
   }
 
   function ensureDraftAutosaveId() {
+    if (selectedEditor?.kind === 'published') return true;
     if (currentMoveId) return true;
     const generatedId = draftMoveIdFromName(name, existingMoveIdsForDraftId());
     if (!name.trim() || !generatedId) return false;
@@ -350,6 +364,7 @@
     const query = pinSearch.trim().toLocaleLowerCase();
     if (!query) return false;
     return (
+      moveDisplayId(move).toLocaleLowerCase().includes(query) ||
       move.id.toLocaleLowerCase().includes(query) ||
       move.slug.toLocaleLowerCase().includes(query) ||
       String(move.name ?? '').toLocaleLowerCase().includes(query)
@@ -370,7 +385,7 @@
   }
 
   function loadMoveValues(move: MoveRecord) {
-    id = move.id;
+    id = moveDisplayId(move);
     name = move.name ?? '';
     topic = move.topic ?? '';
     level = move.level ?? '';
@@ -397,7 +412,8 @@
 
   function currentMovePayload() {
     return {
-      id,
+      id: selectedEditor?.kind === 'published' ? undefined : normalizeMoveId(id),
+      displayId: normalizeMoveDisplayId(id),
       name,
       topic,
       level,
@@ -669,7 +685,7 @@
               </span>
               <span class="media-gallery-card-body">
                 <strong>{draft.move.name ?? draft.move.id}</strong>
-                <span>{draft.move.id}</span>
+                <span>{moveDisplayId(draft.move)}</span>
                 <span>{draft.move.parentIds.length} parents · {draft.move.childIds.length} children</span>
               </span>
             </button>
@@ -701,8 +717,8 @@
                 on:click={() => loadReviewMove(entry)}
               >
                 <span class="media-gallery-card-body">
-                  <strong>{entry.move.name ?? entry.move.id}</strong>
-                  <span>{entry.kind === 'draft' ? 'Draft' : entry.move.id}</span>
+                  <strong>{entry.move.name ?? moveDisplayId(entry.move)}</strong>
+                  <span>{entry.kind === 'draft' ? 'Draft' : moveDisplayId(entry.move)}</span>
                   {#if entry.move.reviewNotes}
                     <span>{entry.move.reviewNotes}</span>
                   {/if}
@@ -760,8 +776,8 @@
                     {/if}
                   </span>
                   <span class="media-gallery-card-body">
-                    <strong>{move.name ?? move.id}</strong>
-                    <span>{move.id}</span>
+                    <strong>{move.name ?? moveDisplayId(move)}</strong>
+                    <span>{moveDisplayId(move)}</span>
                     <span>{move.videoFiles.length} videos · {move.childIds.length} children</span>
                   </span>
                 </button>
@@ -799,7 +815,7 @@
             </label>
             <label class="move-form-field move-form-id">
               <span>ID</span>
-              <input bind:value={id} autocapitalize="characters" disabled={selectedEditor.kind === 'published'} placeholder="MOVE0001" />
+              <input bind:value={id} autocapitalize="characters" placeholder="MOVE0001" />
               {#if idCollisionWarning}
                 <span class="field-warning">{idCollisionWarning}</span>
               {/if}

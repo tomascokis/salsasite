@@ -21,6 +21,10 @@ Shared controls on move pages and move editing surfaces must follow `docs/shared
 ## Move Creation And Editing
 
 - New move IDs must warn about collisions while the user is typing.
+- The `ID` field shown in move creation/editing is the user-facing move ID, not the stable backend key for an already-published move.
+- Published move edits must keep a stable backend key even when the user-facing move ID changes.
+- Changing a published move's user-facing `ID` must not break backend move-to-video links or relationship references that use the stable backend key.
+- Changing a published move's user-facing `ID` must rename existing rendered partnerwork clip filenames and poster sidecars to match the new visible ID.
 - ID collision warning must happen before save or publish, not only as a failed submit.
 - Topic selection must use searchable picking.
 - Family selection must use searchable picking.
@@ -52,6 +56,7 @@ Shared controls on move pages and move editing surfaces must follow `docs/shared
 - Draft and new move edits must autosave after changes instead of exposing a `Save draft` or `Save draft changes` button.
 - Saving move drafts and published move edits must persist to the move edit store even if the existing store file is read-only but the data directory is writable.
 - Saved drafts in the move creation workspace must expose a delete draft action.
+- Published moves must allow editing the user-facing `ID` field from the move creation/editing workspace.
 - The move level control must be a compact-width dropdown tucked into the same row as the move name, and only the level control should be height-adjusted to match neighboring identity fields.
 - In the regular move identity row, ID must appear before Level.
 - Compact Level and Type controls should feel visually related while preserving their positions in the form.

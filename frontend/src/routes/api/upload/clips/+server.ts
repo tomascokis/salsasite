@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { moveDisplayId } from '$lib/move-id';
 import { getMoves } from '$lib/server/data';
 import { listMoveDrafts } from '$lib/server/move-editor';
 import { saveSourceClips } from '$lib/server/video-library';
@@ -62,6 +63,10 @@ export async function POST({ request }) {
   }
 
   const [moves, moveDrafts] = await Promise.all([getMoves(), listMoveDrafts()]);
+  const moveDisplayIdById = new Map([
+    ...moves.map((move) => [move.id.toUpperCase(), moveDisplayId(move)]),
+    ...moveDrafts.map((draft) => [draft.move.id.toUpperCase(), moveDisplayId(draft.move)])
+  ]);
   const knownMoveIds = new Set([
     ...moves.map((move) => move.id.toUpperCase()),
     ...moveDrafts.map((draft) => draft.move.id.toUpperCase())
@@ -70,6 +75,7 @@ export async function POST({ request }) {
   const clips: Array<{
     id?: string;
     moveId: string;
+    moveDisplayId: string | null;
     isKeyVideo: boolean;
     label: string | null;
     manuallyNamed: boolean;
@@ -85,6 +91,10 @@ export async function POST({ request }) {
     .map((clip: Record<string, unknown>) => ({
       id: clip.id ? String(clip.id) : undefined,
       moveId: String(clip.moveId ?? '').trim().toUpperCase(),
+      moveDisplayId:
+        String(clip.moveDisplayId ?? '').trim().toUpperCase() ||
+        moveDisplayIdById.get(String(clip.moveId ?? '').trim().toUpperCase()) ||
+        null,
       isKeyVideo: Boolean(clip.isKeyVideo),
       label: String(clip.label ?? '').trim() || null,
       manuallyNamed: Boolean(clip.manuallyNamed),

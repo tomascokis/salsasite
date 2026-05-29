@@ -1,5 +1,6 @@
 export interface MoveRecord {
   id: string;
+  displayId?: string | null;
   slug: string;
   name: string | null;
   topic: string | null;
@@ -141,6 +142,7 @@ export interface DerivedClip {
   id: string;
   sourceAssetId: string;
   moveId: string;
+  moveDisplayId?: string | null;
   isKeyVideo: boolean;
   label: string | null;
   manuallyNamed: boolean;
@@ -206,6 +208,7 @@ export interface MoveVideoEntry {
   countMarkers: ClipCountMarker[];
   countOverlayPlacement: CountOverlayPlacement;
   moveId: string;
+  moveDisplayId?: string | null;
 }
 
 export interface RelationshipDiagramNode {

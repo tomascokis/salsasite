@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { MoveRecord } from '$lib/types';
+import { moveDisplayId, normalizeMoveDisplayId } from '$lib/move-id';
 import { resolveDataDir } from './paths';
 
 export type MoveRelationshipInput = {
@@ -11,6 +12,7 @@ export type MoveRelationshipInput = {
 
 export type EditableMoveInput = MoveRelationshipInput & {
   id?: string;
+  displayId?: string | null;
   slug?: string;
   name?: string | null;
   topic?: string | null;
@@ -127,6 +129,7 @@ async function writeStore(store: MoveEditStore) {
 function movePatchFromInput(input: EditableMoveInput): MovePatch {
   return {
     slug: input.slug ? slugFromId(String(input.slug)) : undefined,
+    displayId: normalizeOptionalText(input.displayId),
     name: normalizeOptionalText(input.name),
     topic: normalizeOptionalText(input.topic),
     level: normalizeOptionalText(input.level),
@@ -175,6 +178,7 @@ function emptyMove(id: string, input: EditableMoveInput = {}): MoveRecord {
 
   return {
     id: normalizedId,
+    displayId: normalizeOptionalText(input.displayId) ?? normalizedId,
     slug: input.slug ? slugFromId(String(input.slug)) : slugFromId(normalizedId),
     name: normalizeOptionalText(input.name) ?? normalizedId,
     topic: normalizeOptionalText(input.topic),
@@ -330,6 +334,12 @@ export async function savePublishedMove(allMoves: MoveRecord[], moveId: string, 
   const existing = allMoves.find((move) => move.id === normalizedId);
   if (!existing) {
     throw new Error('Move not found.');
+  }
+
+  const nextDisplayId = normalizeMoveDisplayId(input.displayId) ?? moveDisplayId(existing);
+  const duplicateDisplayId = allMoves.find((move) => move.id !== normalizedId && moveDisplayId(move) === nextDisplayId);
+  if (duplicateDisplayId) {
+    throw new Error(`ID ${nextDisplayId} is already used by ${duplicateDisplayId.name ?? duplicateDisplayId.id}.`);
   }
 
   const patch = movePatchFromInput(input);

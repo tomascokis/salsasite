@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { invalidateAll } from '$app/navigation';
+  import { moveDisplayId } from '$lib/move-id';
   import { onDestroy } from 'svelte';
   import AutoResizeTextarea from '$lib/components/AutoResizeTextarea.svelte';
   import ContentBadge from '$lib/components/ContentBadge.svelte';
@@ -94,7 +95,7 @@
   $: subtitle = subtitleParts.join(' • ');
 
   $: visibleMeta = [
-    ['ID', move.id],
+    ['ID', moveDisplayId(move)],
     ['Level', move.level],
     ['Type', move.type],
     ['Group', move.group],
@@ -619,7 +620,7 @@
 </script>
 
 <svelte:head>
-  <title>{move.name ?? move.id} | Salsa Encyclopedia</title>
+  <title>{move.name ?? moveDisplayId(move)} | Salsa Encyclopedia</title>
 </svelte:head>
 
 <div class="move-layout">
@@ -629,7 +630,7 @@
     <div class="panel video-panel">
       <div class="panel-header move-titleblock">
         <div>
-          <h2>{move.name ?? move.id}</h2>
+          <h2>{move.name ?? moveDisplayId(move)}</h2>
           {#if subtitle}
             <p class="muted move-subtitle">{subtitle}</p>
           {/if}
