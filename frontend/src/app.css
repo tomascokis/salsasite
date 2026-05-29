@@ -4103,6 +4103,75 @@ select {
   font-style: italic;
 }
 
+.entity-picker-field {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.entity-picker-field-header {
+  display: grid;
+  gap: 0.24rem;
+}
+
+.entity-picker-field-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.entity-picker-field-header p {
+  margin: 0;
+  color: #5f6e7d;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.picker-lab-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.picker-lab-hero p {
+  margin: 0;
+  color: #4e5b68;
+  line-height: 1.55;
+}
+
+.picker-lab-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+}
+
+.picker-lab-card {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.picker-lab-state {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.1rem;
+  border-top: 1px solid #e3ebf3;
+}
+
+.picker-lab-state-label {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: #738191;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.picker-lab-state p {
+  margin: 0;
+  color: #30404f;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .move-link-field {
   grid-column: auto;
 }

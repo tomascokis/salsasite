@@ -21,6 +21,7 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - Shared content status model for legacy, modern draft, modern published, processed, unprocessed, changed unpublished, and never published states.
 - Generic badge component that can render media metadata and publication/status labels consistently.
 - Generic searchable picker that can support topics, families, dancers, regions, and other small reference sets.
+- Shared entity picker module that presents the same wrapper surface for family, dancer, and move fields while delegating to the appropriate search engine underneath.
 - Reusable editable list/grid shell for view-by-default metadata management.
 - Shared context menu interaction with right-click and long-press support.
 - Shared overview filter adapter for topic/family filtered overview pages.
@@ -31,6 +32,7 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - Timing, type, and environment should be displayed as badges wherever those concepts are shown on move or media surfaces.
 - Publication state, processing state, and legacy/modern markers should use the same badge/status language across move pages, media browsing, and clip editing.
 - Searchable pickers must be the shared pattern for topics, families, dancers, regions, and move selection.
+- Family, dancer, and move add/search fields should be exercised first through the picker lab test page and then adopted from the shared entity picker module rather than reimplemented locally.
 - Move picker `No preview` poster placeholders must center the text within the thumbnail area.
 - Editable list/grid UI should be a shared pattern for metadata and dancer management surfaces that are viewable by default with small edit affordances.
 - Context menu interactions used for relationship editing must support right-click and long-press.

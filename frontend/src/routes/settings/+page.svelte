@@ -51,6 +51,14 @@
 <div class="settings-page">
   <section class="settings-panel">
     <div class="settings-header">
+      <h2>Labs</h2>
+      <a class="header-button" href="/settings/pickers">Open picker lab</a>
+    </div>
+    <p class="muted settings-status">Shared family, dancer, and move picker test page.</p>
+  </section>
+
+  <section class="settings-panel">
+    <div class="settings-header">
       <h2>Display</h2>
       <button type="button" on:click={resetColors}>Reset</button>
     </div>
