@@ -609,6 +609,7 @@ select {
   font-size: 0.74rem;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .shared-chip:hover,
@@ -3983,6 +3984,11 @@ select {
   outline: none;
   appearance: none;
   -webkit-appearance: none;
+}
+
+.searchable-picker-inline-chip {
+  max-width: none;
+  flex: 0 0 auto;
 }
 
 .searchable-picker-input-inline:focus-within {
