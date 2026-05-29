@@ -811,12 +811,18 @@
                   addPlaceholder="Search topics"
                   ariaLabel="Search topics"
                   showSelected={false}
+                  allowCreate={true}
+                  createLabel="Use topic"
                   on:query={(event) => {
                     topicQuery = event.detail.query;
                     topic = event.detail.query;
                   }}
                   on:select={(event) => {
                     topic = event.detail.option.label;
+                    topicQuery = '';
+                  }}
+                  on:create={(event) => {
+                    topic = event.detail.value;
                     topicQuery = '';
                   }}
                 />
@@ -835,12 +841,18 @@
                   addPlaceholder="Search families"
                   ariaLabel="Search families"
                   showSelected={false}
+                  allowCreate={true}
+                  createLabel="Use family"
                   on:query={(event) => {
                     familyQuery = event.detail.query;
                     group = event.detail.query;
                   }}
                   on:select={(event) => {
                     group = event.detail.option.label;
+                    familyQuery = '';
+                  }}
+                  on:create={(event) => {
+                    group = event.detail.value;
                     familyQuery = '';
                   }}
                 />

@@ -25,6 +25,7 @@ Shared controls on move pages and move editing surfaces must follow `docs/shared
 - Topic selection must use searchable picking.
 - Family selection must use searchable picking.
 - Topic and family pickers must use the shared searchable picker behavior.
+- Topic and family pickers must let the user commit a typed value when no existing option matches, so draft and published move edits can add new topics and families without leaving the editor.
 - The move creation/editing workspace must use one visible title: `Draft move` for new or draft moves and `Edit move` for published moves.
 - The move creation/editing workspace should avoid redundant `Details` and `Notes` section headings; field labels should carry those groups.
 - The move creation/editing workspace should keep vertical spacing compact enough that Details, Notes, and Connections are visible without excessive scrolling.
