@@ -861,7 +861,6 @@
                   createLabel="Use topic"
                   on:query={(event) => {
                     topicQuery = event.detail.query;
-                    topic = event.detail.query;
                   }}
                   on:select={(event) => {
                     topic = event.detail.option.label;
@@ -897,7 +896,6 @@
                   createLabel="Use family"
                   on:query={(event) => {
                     familyQuery = event.detail.query;
-                    group = event.detail.query;
                   }}
                   on:select={(event) => {
                     group = event.detail.option.label;
