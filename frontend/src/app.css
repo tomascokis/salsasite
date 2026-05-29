@@ -1143,6 +1143,13 @@ select {
   outline: none;
 }
 
+.move-editor-workspace .searchable-picker-input-inline input {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .move-form-level select {
   height: 2.15rem;
   border-color: var(--editor-border, #c8d2dc);
