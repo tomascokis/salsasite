@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
   import AutoResizeTextarea from '$lib/components/AutoResizeTextarea.svelte';
   import MoveConnectionDiagramEditor from '$lib/components/MoveConnectionDiagramEditor.svelte';
   import MoveTypeControl from '$lib/components/MoveTypeControl.svelte';
@@ -37,13 +37,13 @@
   let isReviewOpen = reviewFlag;
 
   const levelOptions = ['', '1', '2', '3', '4', '5'];
-  $: topicOptions = data.metadata.topics.map(metadataOption);
-  $: familyOptions = data.metadata.families.map(metadataOption);
+  $: topicOptions = metadataPickerOptions(data.metadata.topics, topic, 'topic');
+  $: familyOptions = metadataPickerOptions(data.metadata.families, group, 'family');
   $: positionOptions = uniqueMoveTextOptions(data.moves.map((move) => move.positions));
   $: sourceOptions = uniqueMoveTextOptions(data.moves.map((move) => move.source));
   $: tagOptions = uniqueMoveTextOptions(data.moves.flatMap((move) => splitTagText(move.tags ?? '')));
-  $: selectedTopicIds = topic ? matchingMetadataIds(data.metadata.topics, topic) : [];
-  $: selectedFamilyIds = group ? matchingMetadataIds(data.metadata.families, group) : [];
+  $: selectedTopicIds = metadataSelectionIds(data.metadata.topics, topic, 'topic');
+  $: selectedFamilyIds = metadataSelectionIds(data.metadata.families, group, 'family');
   $: selectedPositionIds = positions ? [positions] : [];
   $: selectedSourceIds = source ? [source] : [];
   $: selectedTagIds = splitTagText(tags);
@@ -74,9 +74,36 @@
     };
   }
 
+  function metadataCustomId(kind: 'topic' | 'family', value: string) {
+    return `custom-${kind}:${value.trim().toLocaleLowerCase()}`;
+  }
+
+  function metadataSelectionIds(entries: MetadataEntry[], value: string, kind: 'topic' | 'family') {
+    const normalized = value.trim().toLocaleLowerCase();
+    if (!normalized) return [];
+    const existing = entries.find((entry) => entry.name.trim().toLocaleLowerCase() === normalized);
+    return [existing?.id ?? metadataCustomId(kind, value)];
+  }
+
   function matchingMetadataIds(entries: MetadataEntry[], value: string) {
     const normalized = value.trim().toLocaleLowerCase();
     return entries.filter((entry) => entry.name.trim().toLocaleLowerCase() === normalized).map((entry) => entry.id);
+  }
+
+  function metadataPickerOptions(entries: MetadataEntry[], value: string, kind: 'topic' | 'family') {
+    const options = entries.map(metadataOption);
+    const customValue = value.trim();
+    if (!customValue || matchingMetadataIds(entries, customValue).length) {
+      return options;
+    }
+    return [
+      {
+        id: metadataCustomId(kind, customValue),
+        label: customValue,
+        secondary: 'New'
+      },
+      ...options
+    ];
   }
 
   function uniqueMoveTextOptions(values: Array<string | null | undefined>) {
@@ -106,6 +133,23 @@
     tags = splitTagText(tags)
       .filter((entry) => entry !== value)
       .join(', ');
+  }
+
+  async function persistMetadata(kind: 'topic' | 'family', value: string) {
+    const name = value.trim();
+    if (!name) return false;
+    const response = await fetch('/api/metadata', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ kind, name })
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      status = payload.error ?? `Could not save ${kind}.`;
+      return false;
+    }
+    await invalidateAll();
+    return true;
   }
 
   function normalizeMoveId(value: string) {
@@ -220,9 +264,10 @@
           selectedIds={selectedTopicIds}
           query={topicQuery}
           placeholder="Search topics"
-          addPlaceholder="Search topics"
+          addPlaceholder="Change topic"
           ariaLabel="Search topics"
-          showSelected={false}
+          showSelected={true}
+          selectedPlacement="inside"
           allowCreate={true}
           createLabel="Use topic"
           on:query={(event) => {
@@ -235,6 +280,11 @@
           }}
           on:create={(event) => {
             topic = event.detail.value;
+            topicQuery = '';
+            void persistMetadata('topic', event.detail.value);
+          }}
+          on:remove={() => {
+            topic = '';
             topicQuery = '';
           }}
         />
@@ -250,9 +300,10 @@
           selectedIds={selectedFamilyIds}
           query={familyQuery}
           placeholder="Search families"
-          addPlaceholder="Search families"
+          addPlaceholder="Change family"
           ariaLabel="Search families"
-          showSelected={false}
+          showSelected={true}
+          selectedPlacement="inside"
           allowCreate={true}
           createLabel="Use family"
           on:query={(event) => {
@@ -265,6 +316,11 @@
           }}
           on:create={(event) => {
             group = event.detail.value;
+            familyQuery = '';
+            void persistMetadata('family', event.detail.value);
+          }}
+          on:remove={() => {
+            group = '';
             familyQuery = '';
           }}
         />
