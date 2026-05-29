@@ -105,6 +105,64 @@ export function moveSuggestionSearch(moves, query, selectedMoveIds = [], limit =
   };
 }
 
+export function rekeyClipMoveAssociations(librarySlice, previousMoveId, nextMoveId, nextMoveDisplayId = null) {
+  const normalizedPreviousMoveId = String(previousMoveId ?? '').trim().toUpperCase();
+  const normalizedNextMoveId = String(nextMoveId ?? '').trim().toUpperCase();
+  const normalizedNextMoveDisplayId =
+    String(nextMoveDisplayId ?? normalizedNextMoveId)
+      .trim()
+      .toUpperCase() || normalizedNextMoveId;
+
+  if (!normalizedPreviousMoveId || !normalizedNextMoveId) {
+    return {
+      derivedClips: [...(librarySlice?.derivedClips ?? [])],
+      moveVideoLinks: [...(librarySlice?.moveVideoLinks ?? [])],
+      changed: false
+    };
+  }
+
+  let changed = false;
+  const derivedClips = (librarySlice?.derivedClips ?? []).map((clip) => {
+    if (String(clip?.moveId ?? '').trim().toUpperCase() !== normalizedPreviousMoveId) {
+      return clip;
+    }
+
+    changed = true;
+    return {
+      ...clip,
+      moveId: normalizedNextMoveId,
+      moveDisplayId: normalizedNextMoveDisplayId
+    };
+  });
+
+  const seenLinks = new Set();
+  const moveVideoLinks = [];
+  for (const link of librarySlice?.moveVideoLinks ?? []) {
+    const nextLink =
+      String(link?.moveId ?? '').trim().toUpperCase() === normalizedPreviousMoveId
+        ? {
+            ...link,
+            moveId: normalizedNextMoveId
+          }
+        : link;
+
+    const dedupeKey = `${String(nextLink?.moveId ?? '').trim().toUpperCase()}::${String(nextLink?.assetId ?? '')}`;
+    if (seenLinks.has(dedupeKey)) {
+      changed = true;
+      continue;
+    }
+
+    seenLinks.add(dedupeKey);
+    moveVideoLinks.push(nextLink);
+  }
+
+  return {
+    derivedClips,
+    moveVideoLinks,
+    changed
+  };
+}
+
 function scoreMoveSuggestion(move, normalizedQuery, queryTokens) {
   const name = normalizeSearchText(move.name);
   const displayId = normalizeSearchText(move.displayId ?? move.id);

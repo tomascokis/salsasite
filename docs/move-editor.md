@@ -33,6 +33,8 @@ Creating a move from the move-search dropdown must keep the user in the media ed
 - Draft moves must be accepted by the move editor wherever published moves are accepted for clip definitions.
 - Existing draft moves should be loaded into the media editor as valid searchable move options.
 - Draft moves remain editable later on the Create move page.
+- When a draft move that is already attached to saved media clips is published, those clips must be relinked to the published move ID and display ID automatically.
+- After that publish, the media editor must continue to show the clip's move ID and move name without requiring the user to recreate or reattach the clip.
 
 ## Editing Layout
 

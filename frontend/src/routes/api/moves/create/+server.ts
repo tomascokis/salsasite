@@ -1,7 +1,9 @@
 import { json } from '@sveltejs/kit';
+import { moveDisplayId } from '$lib/move-id';
 import { draftMoveIdFromName } from '$lib/move-id-utils.js';
 import { getMoves } from '$lib/server/data';
 import { deleteMoveDraft, listMoveDrafts, publishMoveDraft, saveMoveDraft } from '$lib/server/move-editor';
+import { relinkDerivedClipsForPublishedMove } from '$lib/server/video-library';
 
 export async function POST({ request }) {
   const body = await request.json();
@@ -10,7 +12,18 @@ export async function POST({ request }) {
   try {
     if (action === 'publishDraft') {
       const moves = await getMoves();
-      const move = await publishMoveDraft(moves, String(body.draftId ?? ''), body.move);
+      const draftId = String(body.draftId ?? '');
+      const drafts = await listMoveDrafts();
+      const draft = drafts.find((entry) => entry.draftId === draftId) ?? null;
+      const move = await publishMoveDraft(moves, draftId, body.move);
+      const previousMoveId = draft?.move.id ?? move.id;
+      const previousDisplayId = draft ? moveDisplayId(draft.move) : previousMoveId;
+      const nextDisplayId = moveDisplayId(move);
+
+      if (previousMoveId !== move.id || previousDisplayId !== nextDisplayId) {
+        await relinkDerivedClipsForPublishedMove(previousMoveId, move.id, nextDisplayId);
+      }
+
       return json({ ok: true, move });
     }
 

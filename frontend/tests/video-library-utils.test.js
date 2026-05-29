@@ -7,6 +7,7 @@ import {
   moveSuggestions,
   normalizeOptionalText,
   normalizeTags,
+  rekeyClipMoveAssociations,
   sourceSuggestions,
   uploadMonthKey
 } from '../src/lib/video-library-utils.js';
@@ -135,6 +136,51 @@ test('draft move ids are generated from typed move names', () => {
   assert.equal(generatedMoveIdStem('Inline turn'), 'INLINETURN');
   assert.equal(generatedMoveIdStem('  left-turn / copa  '), 'LEFTTURNCOPA');
   assert.equal(draftMoveIdFromName('Inline turn', ['INLINETURN', 'INLINETURN2']), 'INLINETURN3');
+});
+
+test('publishing a draft move rekeys linked clips and deduplicates move video links', () => {
+  const result = rekeyClipMoveAssociations(
+    {
+      derivedClips: [
+        {
+          id: 'clip-1',
+          moveId: 'INLINETURN3',
+          moveDisplayId: 'INLINETURN3'
+        },
+        {
+          id: 'clip-2',
+          moveId: 'OUTSIDE112RIGHTNEU',
+          moveDisplayId: 'OUTSIDE112RIGHTNEU'
+        }
+      ],
+      moveVideoLinks: [
+        { id: 'link-1', moveId: 'INLINETURN3', assetId: 'asset-1' },
+        { id: 'link-2', moveId: 'ILT00001', assetId: 'asset-1' },
+        { id: 'link-3', moveId: 'INLINETURN3', assetId: 'asset-2' }
+      ]
+    },
+    'INLINETURN3',
+    'ILT00001',
+    'ILT00001'
+  );
+
+  assert.equal(result.changed, true);
+  assert.deepEqual(result.derivedClips, [
+    {
+      id: 'clip-1',
+      moveId: 'ILT00001',
+      moveDisplayId: 'ILT00001'
+    },
+    {
+      id: 'clip-2',
+      moveId: 'OUTSIDE112RIGHTNEU',
+      moveDisplayId: 'OUTSIDE112RIGHTNEU'
+    }
+  ]);
+  assert.deepEqual(result.moveVideoLinks, [
+    { id: 'link-1', moveId: 'ILT00001', assetId: 'asset-1' },
+    { id: 'link-3', moveId: 'ILT00001', assetId: 'asset-2' }
+  ]);
 });
 
 test('upload month grouping uses stable UTC month labels', () => {
