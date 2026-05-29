@@ -1,7 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { onMount, tick } from 'svelte';
-  import type { LayoutColumn, SearchIndexEntry, SiteManifest } from '$lib/types';
+  import type { LayoutColumn, LayoutEntry, SearchIndexEntry, SiteManifest } from '$lib/types';
 
   export let data: {
     manifest: SiteManifest;
@@ -22,18 +22,30 @@
       entries: [...column.entries].sort((a, b) => (a.layoutOrder ?? 0) - (b.layoutOrder ?? 0))
     }))
     .sort((a, b) => a.column - b.column);
+  $: normalizedQuery = normalizeComparable(query);
+  $: matchingMoveIds = normalizedQuery
+    ? new Set(
+        data.searchIndex
+          .filter((entry) =>
+            normalizeComparable(`${entry.title ?? ''} ${entry.topic ?? ''} ${entry.text}`).includes(normalizedQuery)
+          )
+          .map((entry) => normalizeComparable(entry.id))
+      )
+    : null;
   $: visibleLayout = orderedLayout
     .map((column) => ({
       ...column,
-      entries: column.entries.filter((entry) => {
-        if (entry.entryType !== 'Data') return true;
-        if (entry.type === 'Variation' && !showVariations) return false;
-        if (entry.type === 'Addition' && !showAdditions) return false;
-        return true;
-      })
+      entries: preserveRelevantTitles(
+        column.entries.filter((entry) => {
+          if (entry.entryType !== 'Data') return true;
+          if (entry.type === 'Variation' && !showVariations) return false;
+          if (entry.type === 'Addition' && !showAdditions) return false;
+          if (matchingMoveIds && !matchingMoveIds.has(normalizeComparable(entry.id))) return false;
+          return true;
+        })
+      )
     }))
-    .filter((column) => column.entries.length > 0);
-  
+    .filter((column) => column.entries.some((entry) => entry.entryType === 'Data'));
   $: visibleLayoutWithOverflow = visibleLayout.flatMap((column) => {
     const result: any[] = [column];
     if (expandedColumns[column.column] && columnMetrics[column.column]?.cutoffIndex !== undefined) {
@@ -48,12 +60,6 @@
     }
     return result;
   });
-  $: normalizedQuery = query.trim().toLowerCase();
-  $: searchResults = normalizedQuery
-    ? data.searchIndex
-        .filter((entry) => `${entry.title ?? ''} ${entry.topic ?? ''} ${entry.text}`.toLowerCase().includes(normalizedQuery))
-        .slice(0, 40)
-    : [];
 
   function isEmphasis(type: string | null) {
     return type === 'Addition' || type === 'Variation';
@@ -145,6 +151,30 @@
     normalizedQuery;
     scheduleColumnMeasurement();
   }
+
+  function preserveRelevantTitles(entries: LayoutEntry[]) {
+    const result: LayoutEntry[] = [];
+    let pendingTitles: LayoutEntry[] = [];
+
+    for (const entry of entries) {
+      if (entry.entryType !== 'Data') {
+        pendingTitles = [...pendingTitles, entry];
+        continue;
+      }
+
+      result.push(...pendingTitles, entry);
+      pendingTitles = [];
+    }
+
+    return result;
+  }
+
+  function normalizeComparable(value: string | null | undefined) {
+    return String(value ?? '')
+      .toLocaleLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
 </script>
 
 <div class="stack">
@@ -177,60 +207,49 @@
       </div>
     </div>
 
-    {#if normalizedQuery}
-      <div class="search-results">
-        {#if searchResults.length}
-          {#each searchResults as result}
-            <a class="search-card" href={`/moves/${result.slug}`}>
-              <strong>{result.title}</strong>
-              <span>{result.topic ?? 'Uncategorised'}</span>
-            </a>
-          {/each}
-        {:else}
-          <p class="muted">No results matched.</p>
-        {/if}
-      </div>
-    {/if}
-
-    <div class="dashboard-columns">
-      {#each visibleLayoutWithOverflow as column, idx (column.isOverflowColumn ? `overflow-${column.column}-${idx}` : column.column)}
-        <div class="dashboard-column" class:overflow-column={column.isOverflowColumn}>
-          <div
-            class="dashboard-column-content"
-            class:collapsed={columnMetrics[column.column]?.overflowing && !expandedColumns[column.column] && !column.isOverflowColumn}
-            data-column={column.column}
-            style={columnMetrics[column.column]?.overflowing && !column.isOverflowColumn ? `--dashboard-column-max-height: ${columnMetrics[column.column]?.maxHeight}px` : undefined}
-          >
-            {#each column.entries as entry, entryIdx (entry.layoutOrder ?? entry.id ?? entry.name)}
-              {#if !column.isOverflowColumn && columnMetrics[column.column]?.overflowing && entryIdx >= (columnMetrics[column.column]?.cutoffIndex ?? column.entries.length)}
-                <!-- Skip entries beyond cutoff in overflowing non-overflow columns -->
-              {:else if entry.entryType === 'Title'}
-                <div class="dashboard-row title-row">
-                  <div class="title-cell">{entry.name}</div>
-                </div>
-              {:else}
-                <a
-                  class={`dashboard-row data-row ${typeClass(entry.type)}`}
-                  href={entry.slug ? `/moves/${entry.slug}` : '#'}
-                >
-                  <div class="level-cell">{entry.level ?? ''}</div>
-                  <div class={`name-cell ${isEmphasis(entry.type) ? 'emphasis' : ''}`}>{entry.name}</div>
-                </a>
-              {/if}
-            {/each}
+    {#if visibleLayoutWithOverflow.length}
+      <div class="dashboard-columns">
+        {#each visibleLayoutWithOverflow as column, idx (column.isOverflowColumn ? `overflow-${column.column}-${idx}` : column.column)}
+          <div class="dashboard-column" class:overflow-column={column.isOverflowColumn}>
+            <div
+              class="dashboard-column-content"
+              class:collapsed={columnMetrics[column.column]?.overflowing && !expandedColumns[column.column] && !column.isOverflowColumn}
+              data-column={column.column}
+              style={columnMetrics[column.column]?.overflowing && !column.isOverflowColumn ? `--dashboard-column-max-height: ${columnMetrics[column.column]?.maxHeight}px` : undefined}
+            >
+              {#each column.entries as entry, entryIdx (entry.layoutOrder ?? entry.id ?? entry.name)}
+                {#if !column.isOverflowColumn && columnMetrics[column.column]?.overflowing && entryIdx >= (columnMetrics[column.column]?.cutoffIndex ?? column.entries.length)}
+                  <!-- Skip entries beyond cutoff in overflowing non-overflow columns -->
+                {:else if entry.entryType === 'Title'}
+                  <div class="dashboard-row title-row">
+                    <div class="title-cell">{entry.name}</div>
+                  </div>
+                {:else}
+                  <a
+                    class={`dashboard-row data-row ${typeClass(entry.type)}`}
+                    href={entry.slug ? `/moves/${entry.slug}` : '#'}
+                  >
+                    <div class="level-cell">{entry.level ?? ''}</div>
+                    <div class={`name-cell ${isEmphasis(entry.type) ? 'emphasis' : ''}`}>{entry.name}</div>
+                  </a>
+                {/if}
+              {/each}
+            </div>
+            {#if columnMetrics[column.column]?.overflowing && !column.isOverflowColumn}
+              <button type="button" class="column-more" on:click={() => toggleColumn(column.column)}>
+                {expandedColumns[column.column] ? 'See less' : 'See more'}
+              </button>
+            {/if}
+            {#if column.isOverflowColumn}
+              <button type="button" class="column-more" on:click={() => toggleColumn(column.overflowSourceColumn)}>
+                See less
+              </button>
+            {/if}
           </div>
-          {#if columnMetrics[column.column]?.overflowing && !column.isOverflowColumn}
-            <button type="button" class="column-more" on:click={() => toggleColumn(column.column)}>
-              {expandedColumns[column.column] ? 'See less' : 'See more'}
-            </button>
-          {/if}
-          {#if column.isOverflowColumn}
-            <button type="button" class="column-more" on:click={() => toggleColumn(column.overflowSourceColumn)}>
-              See less
-            </button>
-          {/if}
-        </div>
-      {/each}
-    </div>
+        {/each}
+      </div>
+    {:else}
+      <p class="muted">No moves matched.</p>
+    {/if}
   </section>
 </div>

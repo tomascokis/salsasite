@@ -35,6 +35,7 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - Editable list/grid UI should be a shared pattern for metadata and dancer management surfaces that are viewable by default with small edit affordances.
 - Context menu interactions used for relationship editing must support right-click and long-press.
 - Topic and family splash pages must reuse the existing overview browsing model.
+- Overview-style move search must filter non-matching moves out of the rendered overview grid instead of showing separate search results while leaving the full grid visible.
 
 ## Cross-Page Contract
 
