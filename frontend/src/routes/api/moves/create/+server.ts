@@ -30,15 +30,16 @@ export async function POST({ request }) {
         ...moves.map((move) => move.id),
         ...drafts.map((draft) => draft.move.id)
       ]);
-      const draft = await saveMoveDraft({ id, name });
+      const draft = await saveMoveDraft(moves, { id, name });
       return json({ ok: true, draft });
     }
 
-    const draft = await saveMoveDraft({
+    const moves = await getMoves();
+    const savedDraft = await saveMoveDraft(moves, {
       ...(body.move ?? {}),
       draftId: body.draftId ? String(body.draftId) : undefined
     });
-    return json({ ok: true, draft });
+    return json({ ok: true, draft: savedDraft });
   } catch (error) {
     return json(
       { error: error instanceof Error ? error.message : 'Could not save move draft.' },

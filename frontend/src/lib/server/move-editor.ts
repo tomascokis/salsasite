@@ -126,6 +126,39 @@ async function writeStore(store: MoveEditStore) {
   await fs.rename(temporaryPath, targetPath);
 }
 
+function duplicateMoveIdError(id: string, label: string) {
+  return new Error(`ID ${id} is already used by ${label}.`);
+}
+
+function collisionLabel(move: Pick<MoveRecord, 'id' | 'name'> | MoveDraft['move']) {
+  return move.name ?? move.id;
+}
+
+function findDisplayIdCollision(
+  displayId: string,
+  allMoves: MoveRecord[],
+  drafts: MoveDraft[],
+  options: { excludeMoveId?: string | null; excludeDraftId?: string | null } = {}
+) {
+  const normalizedDisplayId = normalizeMoveDisplayId(displayId);
+  if (!normalizedDisplayId) {
+    return null;
+  }
+
+  const publishedMove = allMoves.find(
+    (move) => move.id !== options.excludeMoveId && moveDisplayId(move) === normalizedDisplayId
+  );
+  if (publishedMove) {
+    return publishedMove;
+  }
+
+  return (
+    drafts.find(
+      (draft) => draft.draftId !== options.excludeDraftId && moveDisplayId(draft.move) === normalizedDisplayId
+    ) ?? null
+  );
+}
+
 function movePatchFromInput(input: EditableMoveInput): MovePatch {
   return {
     slug: input.slug ? slugFromId(String(input.slug)) : undefined,
@@ -304,7 +337,7 @@ export async function deleteMoveDraft(draftId: string) {
   return existingDraft;
 }
 
-export async function saveMoveDraft(input: EditableMoveInput & { draftId?: string }) {
+export async function saveMoveDraft(allMoves: MoveRecord[], input: EditableMoveInput & { draftId?: string }) {
   const store = await readStore();
   const id = normalizeMoveId(input.id);
   if (!id) {
@@ -312,6 +345,24 @@ export async function saveMoveDraft(input: EditableMoveInput & { draftId?: strin
   }
 
   const existingDraft = input.draftId ? store.drafts.find((draft) => draft.draftId === input.draftId) ?? null : null;
+  const duplicateMove = allMoves.find((move) => move.id === id);
+  if (duplicateMove) {
+    throw duplicateMoveIdError(id, collisionLabel(duplicateMove));
+  }
+
+  const duplicateDraftId = store.drafts.find((draft) => draft.draftId !== existingDraft?.draftId && draft.move.id === id);
+  if (duplicateDraftId) {
+    throw duplicateMoveIdError(id, collisionLabel(duplicateDraftId.move));
+  }
+
+  const nextDisplayId = normalizeMoveDisplayId(input.displayId) ?? id;
+  const displayIdCollision = findDisplayIdCollision(nextDisplayId, allMoves, store.drafts, {
+    excludeDraftId: existingDraft?.draftId ?? null
+  });
+  if (displayIdCollision) {
+    throw duplicateMoveIdError(nextDisplayId, collisionLabel('move' in displayIdCollision ? displayIdCollision.move : displayIdCollision));
+  }
+
   const createdAt = existingDraft?.createdAt ?? nowIso();
   const move = emptyMove(id, input);
   const draft: MoveDraft = {
@@ -337,9 +388,11 @@ export async function savePublishedMove(allMoves: MoveRecord[], moveId: string, 
   }
 
   const nextDisplayId = normalizeMoveDisplayId(input.displayId) ?? moveDisplayId(existing);
-  const duplicateDisplayId = allMoves.find((move) => move.id !== normalizedId && moveDisplayId(move) === nextDisplayId);
-  if (duplicateDisplayId) {
-    throw new Error(`ID ${nextDisplayId} is already used by ${duplicateDisplayId.name ?? duplicateDisplayId.id}.`);
+  const displayIdCollision = findDisplayIdCollision(nextDisplayId, allMoves, store.drafts, {
+    excludeMoveId: normalizedId
+  });
+  if (displayIdCollision) {
+    throw duplicateMoveIdError(nextDisplayId, collisionLabel('move' in displayIdCollision ? displayIdCollision.move : displayIdCollision));
   }
 
   const patch = movePatchFromInput(input);
@@ -379,6 +432,13 @@ export async function publishMoveDraft(allMoves: MoveRecord[], draftId: string, 
   const move = input ? emptyMove(input.id ?? draft.move.id, input) : draft.move;
   if (allMoves.some((entry) => entry.id === move.id)) {
     throw new Error('A published move already uses this id.');
+  }
+
+  const displayIdCollision = findDisplayIdCollision(moveDisplayId(move), allMoves, store.drafts, {
+    excludeDraftId: draftId
+  });
+  if (displayIdCollision) {
+    throw duplicateMoveIdError(moveDisplayId(move), collisionLabel('move' in displayIdCollision ? displayIdCollision.move : displayIdCollision));
   }
 
   store.createdMoves = [move, ...store.createdMoves.filter((entry) => entry.id !== move.id)];
