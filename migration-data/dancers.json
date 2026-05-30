@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "dancers": [
+    {
+      "id": "dancer:alicia-velasco",
+      "slug": "alicia-velasco",
+      "fullName": "Alicia Velasco",
+      "displayName": "Alicia Velasco",
+      "instagramHandle": " aliciavelascocolmenero",
+      "role": "unknown",
+      "level": "unknown",
+      "region": "spain",
+      "source": "custom",
+      "createdAt": "2026-05-28T14:46:55.368Z",
+      "updatedAt": "2026-05-28T14:46:55.368Z"
+    },
+    {
+      "id": "dancer:artia-zandian",
+      "slug": "artia-zandian",
+      "fullName": "Artia Zandian",
+      "displayName": "Arti",
+      "instagramHandle": null,
+      "role": "lead",
+      "level": "world-class",
+      "region": "AU",
+      "source": "custom",
+      "createdAt": "2026-05-29T02:19:45.324Z",
+      "updatedAt": "2026-05-29T02:19:45.324Z"
+    }
+  ]
+}

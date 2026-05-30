@@ -1,7 +1,5020 @@
 {
   "version": 1,
-  "overrides": {},
-  "createdMoves": [],
+  "overrides": {
+    "BLD00002": {
+      "parentIds": [],
+      "childIds": [
+        "BLD00001",
+        "BLD00401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ECH20031": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BLK10001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RCB20010": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SPR00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ILB00003": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "AMN00010": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DRT10401": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CAR30301": {
+      "parentIds": [
+        "CAR00001",
+        "CTS00001",
+        "HLF00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CAR00001 + CTS00001 + HLF00001"
+    },
+    "XST00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ISR01001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "AM000001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "AMD00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "AMD00003": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "PAG00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SPR10001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "PAG00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "AMD00004": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "OT000001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CUT00401": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BKT00001": {
+      "parentIds": [],
+      "childIds": [
+        "BKT00202"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BKT00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BKT20020": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BKT00301": {
+      "parentIds": [],
+      "childIds": [
+        "BKS00203"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BKT00201": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BKT00202": {
+      "parentIds": [
+        "BKT00001",
+        "HLP/0001"
+      ],
+      "childIds": [
+        "BKT30221"
+      ],
+      "relatedMoveIds": [],
+      "components": "BKT00001 + HLP/0001"
+    },
+    "BKS00203": {
+      "parentIds": [
+        "BKT00301",
+        "HLP/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BKT00301 + HLP/0001"
+    },
+    "BKT30221": {
+      "parentIds": [
+        "BKT00202",
+        "HLF00001",
+        "SWP00002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BKT00202 + HLF00001 + SWP00002"
+    },
+    "SB000001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BB000001": {
+      "parentIds": [],
+      "childIds": [
+        "BB000002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BB000002": {
+      "parentIds": [
+        "BB000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BB000001"
+    },
+    "GP000001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CT000001": {
+      "parentIds": [],
+      "childIds": [
+        "CS000401",
+        "CT000601",
+        "CT000660",
+        "CT010601",
+        "CT020003",
+        "CT040200",
+        "CT100401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CT000002": {
+      "parentIds": [],
+      "childIds": [
+        "CT020002",
+        "CT030301"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CT030301": {
+      "parentIds": [
+        "CT000002"
+      ],
+      "childIds": [
+        "CT020001"
+      ],
+      "relatedMoveIds": [],
+      "components": "CT000002"
+    },
+    "CT020001": {
+      "parentIds": [
+        "CT030301",
+        "ECH00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CT030301 + ECH00001"
+    },
+    "CT020002": {
+      "parentIds": [
+        "CT000002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CT000002"
+    },
+    "CT000005": {
+      "parentIds": [],
+      "childIds": [
+        "CT000801"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CT000801": {
+      "parentIds": [
+        "CT000005",
+        "OLT00004"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CT000005 + OLT00004"
+    },
+    "CT020003": {
+      "parentIds": [
+        "CT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CT000001"
+    },
+    "SSL00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SSR00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SSN00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SSL00003": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CT000004": {
+      "parentIds": [],
+      "childIds": [
+        "25C00701",
+        "CG400601"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CG400601": {
+      "parentIds": [
+        "CT000004",
+        "NEU/0001"
+      ],
+      "childIds": [
+        "CT020004"
+      ],
+      "relatedMoveIds": [],
+      "components": "CT000004 + NEU/0001"
+    },
+    "CT020004": {
+      "parentIds": [
+        "CG400601"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CG400601"
+    },
+    "25C00701": {
+      "parentIds": [
+        "CT000004",
+        "DCK00201"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CT000004 + DCK00201"
+    },
+    "CS000401": {
+      "parentIds": [
+        "CT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CT000001"
+    },
+    "CT000660": {
+      "parentIds": [
+        "CT000001",
+        "DCK00201"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CT000001 + DCK00201"
+    },
+    "CT000602": {
+      "parentIds": [
+        "SOP00001"
+      ],
+      "childIds": [
+        "CT040001"
+      ],
+      "relatedMoveIds": [],
+      "components": "SOP00001"
+    },
+    "CT000601": {
+      "parentIds": [
+        "CT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CT000001"
+    },
+    "CT040001": {
+      "parentIds": [
+        "AVT/0002",
+        "CT000602"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "AVT/0002 + CT000602"
+    },
+    "CT040200": {
+      "parentIds": [
+        "CT000001",
+        "SNP/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CT000001 + SNP/0001"
+    },
+    "CT010601": {
+      "parentIds": [
+        "CT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CT000001"
+    },
+    "CT100401": {
+      "parentIds": [
+        "CT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CT000001"
+    },
+    "HCT00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RCT00001": {
+      "parentIds": [],
+      "childIds": [
+        "RCT30401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RCT30401": {
+      "parentIds": [
+        "NEU/0001",
+        "RCT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "NEU/0001 + RCT00001"
+    },
+    "CT010001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WRP20201": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SPN00001": {
+      "parentIds": [],
+      "childIds": [
+        "SPN30701"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SPN30701": {
+      "parentIds": [
+        "BAR/0001",
+        "SPN00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BAR/0001 + SPN00001"
+    },
+    "SWP00001": {
+      "parentIds": [],
+      "childIds": [
+        "ILB30003"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CUT00001": {
+      "parentIds": [],
+      "childIds": [
+        "ILT30002",
+        "LT030002",
+        "RT030002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SWP00002": {
+      "parentIds": [],
+      "childIds": [
+        "BKT30221"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CUT00301": {
+      "parentIds": [],
+      "childIds": [
+        "ECH00004"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "MTS00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "PCD00001": {
+      "parentIds": [],
+      "childIds": [
+        "PCD00021"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "PCD00021": {
+      "parentIds": [
+        "HCM/0001",
+        "PCD00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HCM/0001 + PCD00001"
+    },
+    "PCD30201": {
+      "parentIds": [],
+      "childIds": [
+        "PCD30202"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "PCD30202": {
+      "parentIds": [
+        "PCD30201"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "PCD30201"
+    },
+    "PHL00001": {
+      "parentIds": [],
+      "childIds": [
+        "ILT00801"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "FSW00001": {
+      "parentIds": [],
+      "childIds": [
+        "DST20002",
+        "FSW00003",
+        "FSW00004",
+        "WAT30001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CDL10001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CB000001": {
+      "parentIds": [],
+      "childIds": [
+        "36T00002",
+        "CB000002",
+        "CB000202",
+        "CB020001",
+        "CB020002",
+        "CB030001",
+        "CB030011",
+        "CB040001",
+        "CB040002",
+        "CB400004",
+        "ILT30606"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CB020001": {
+      "parentIds": [
+        "CB000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CB000001"
+    },
+    "CB020002": {
+      "parentIds": [
+        "CB000001"
+      ],
+      "childIds": [
+        "CB030002"
+      ],
+      "relatedMoveIds": [],
+      "components": "CB000001"
+    },
+    "CB030002": {
+      "parentIds": [
+        "CB020002",
+        "SHT/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CB020002 + SHT/0001"
+    },
+    "CB030001": {
+      "parentIds": [
+        "CB000001",
+        "LPS00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CB000001 + LPS00001"
+    },
+    "CB000002": {
+      "parentIds": [
+        "CB000001",
+        "HLP/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CB000001 + HLP/0001"
+    },
+    "CB030011": {
+      "parentIds": [
+        "CB000001",
+        "CHT/0002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CB000001 + CHT/0002"
+    },
+    "36T00002": {
+      "parentIds": [
+        "36T00001",
+        "CB000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "36T00001 + CB000001"
+    },
+    "CB040002": {
+      "parentIds": [
+        "CB000001",
+        "WST/0001"
+      ],
+      "childIds": [
+        "CB040003"
+      ],
+      "relatedMoveIds": [],
+      "components": "CB000001 + WST/0001"
+    },
+    "CB040003": {
+      "parentIds": [
+        "CB040002",
+        "LT0/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CB040002 + LT0/0001"
+    },
+    "CB040001": {
+      "parentIds": [
+        "CB000001",
+        "SPR/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CB000001 + SPR/0001"
+    },
+    "CB400004": {
+      "parentIds": [
+        "CB000001",
+        "HK0/0002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CB000001 + HK0/0002"
+    },
+    "CB000202": {
+      "parentIds": [
+        "CB000001",
+        "SHT00201"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CB000001 + SHT00201"
+    },
+    "RCB00001": {
+      "parentIds": [],
+      "childIds": [
+        "ORB00204",
+        "RCB00002",
+        "RCB00003",
+        "RCB30656"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RCB00003": {
+      "parentIds": [
+        "RCB00001",
+        "TCT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "RCB00001 + TCT00001"
+    },
+    "RCB00002": {
+      "parentIds": [
+        "RCB00001",
+        "TCD00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "RCB00001 + TCD00001"
+    },
+    "RCB30656": {
+      "parentIds": [
+        "DCK00241",
+        "RCB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "DCK00241 + RCB00001"
+    },
+    "ILT30606": {
+      "parentIds": [
+        "CB000001",
+        "SHT/0202",
+        "SHT00202"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CB000001 + SHT/0202 + SHT00202"
+    },
+    "RCB00701": {
+      "parentIds": [
+        "TNL00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "TNL00001"
+    },
+    "DIP00000": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DIP00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DIP00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DIP00601": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DIP00801": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DIP00620": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "EPH00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ILT00601": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TOS00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "FSW00003": {
+      "parentIds": [
+        "FSW00001"
+      ],
+      "childIds": [
+        "ILT30607"
+      ],
+      "relatedMoveIds": [],
+      "components": "FSW00001"
+    },
+    "FSW00004": {
+      "parentIds": [
+        "FSW00001",
+        "STS00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "FSW00001 + STS00001"
+    },
+    "CDL10002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "OTS00001": {
+      "parentIds": [],
+      "childIds": [
+        "OTS30001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "OTS30001": {
+      "parentIds": [
+        "OTS00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "OTS00001"
+    },
+    "OTS00021": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "OTS00041": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "STS00001": {
+      "parentIds": [],
+      "childIds": [
+        "CST30020",
+        "FSW00004",
+        "STS00601",
+        "STS00602"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "STS00601": {
+      "parentIds": [
+        "STS00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "STS00001"
+    },
+    "STS00602": {
+      "parentIds": [
+        "STS00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "STS00001"
+    },
+    "RFK00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "EFK00001": {
+      "parentIds": [],
+      "childIds": [
+        "ILT30001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TFK00001": {
+      "parentIds": [],
+      "childIds": [
+        "IWT00701"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SLV00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SLV30001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SLV30501": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LSL00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "EFK00002": {
+      "parentIds": [],
+      "childIds": [
+        "RT030005"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BPF00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HLF00001": {
+      "parentIds": [],
+      "childIds": [
+        "BKT30221",
+        "CAR30301",
+        "HK030001",
+        "ILB30021",
+        "ILT30401",
+        "ISR40002",
+        "WRP00802"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HLF00701": {
+      "parentIds": [],
+      "childIds": [
+        "ILT30402"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CTS00001": {
+      "parentIds": [],
+      "childIds": [
+        "CAR30301"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DST00001": {
+      "parentIds": [],
+      "childIds": [
+        "DST20002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DST20002": {
+      "parentIds": [
+        "DST00001",
+        "FSW00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "DST00001 + FSW00001"
+    },
+    "LSK00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "PIN00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "PIN20011": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CFK00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LFK00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LFT00001": {
+      "parentIds": [],
+      "childIds": [
+        "RT200161"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LVF00002": {
+      "parentIds": [],
+      "childIds": [
+        "15R30701",
+        "ECH31001",
+        "ISR31001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "FTL00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "FTL00010": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ZPF00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "EBF00001": {
+      "parentIds": [],
+      "childIds": [
+        "RT030801"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "EBF00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "EBF00401": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT040602": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HK040602": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BFK00001": {
+      "parentIds": [],
+      "childIds": [
+        "LRT30651"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LCS00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "AMS00601": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HRT00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BK000301": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "STR00100": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ILB00001": {
+      "parentIds": [],
+      "childIds": [
+        "ILB00002",
+        "ILB00301",
+        "ILB20001",
+        "ILB30001",
+        "ILB30002",
+        "ILB30003",
+        "ILB30021",
+        "ILB50001",
+        "ILB50002",
+        "ILT30603",
+        "ILT30701"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ILB20001": {
+      "parentIds": [
+        "ILB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILB00001"
+    },
+    "ILB50001": {
+      "parentIds": [
+        "ILB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILB00001"
+    },
+    "ILB50002": {
+      "parentIds": [
+        "ILB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILB00001"
+    },
+    "ILB00002": {
+      "parentIds": [
+        "ILB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILB00001"
+    },
+    "ILB30001": {
+      "parentIds": [
+        "HLP00001",
+        "ILB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLP00001 + ILB00001"
+    },
+    "ILB30003": {
+      "parentIds": [
+        "HLP00001",
+        "ILB00001",
+        "SWP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLP00001 + ILB00001 + SWP00001"
+    },
+    "ILB30021": {
+      "parentIds": [
+        "HLF00001",
+        "ILB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLF00001 + ILB00001"
+    },
+    "ILB30002": {
+      "parentIds": [
+        "HLP00001",
+        "ILB00001",
+        "TO000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLP00001 + ILB00001 + TO000001"
+    },
+    "ILB00301": {
+      "parentIds": [
+        "ILB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILB00001"
+    },
+    "RTW00201": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ILT01010": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ILT30650": {
+      "parentIds": [
+        "DCK00002",
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "DCK00002 + ILT00001"
+    },
+    "ILT00001": {
+      "parentIds": [],
+      "childIds": [
+        "36T00003",
+        "36T00004",
+        "ILT00020",
+        "ILT00401",
+        "ILT00501",
+        "ILT00603",
+        "ILT00701",
+        "ILT00901",
+        "ILT01040",
+        "ILT01401",
+        "ILT20001",
+        "ILT20002",
+        "ILT20003",
+        "ILT20010",
+        "ILT20301",
+        "ILT30001",
+        "ILT30002",
+        "ILT30301",
+        "ILT30401",
+        "ILT30402",
+        "ILT30602",
+        "ILT30607",
+        "ILT30650",
+        "ILT31010",
+        "ILT40001",
+        "ILT40002",
+        "ILT40020",
+        "ILT40030",
+        "ILT40401",
+        "ILT41401",
+        "ILT50001",
+        "ILT50002",
+        "ILT50003",
+        "ILT50004",
+        "ILT50204",
+        "LIL00001",
+        "RCP00601",
+        "RTW00001",
+        "SIG00201",
+        "WRP00002",
+        "WRP20200",
+        "WRP20501",
+        "WRP50001",
+        "WRP50002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ILT50001": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT50002": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [
+        "ILT30604"
+      ],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT50204": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT50003": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT50004": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT00020": {
+      "parentIds": [
+        "ILT00001",
+        "WTP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + WTP00001"
+    },
+    "ILT30001": {
+      "parentIds": [
+        "EFK00001",
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "EFK00001 + ILT00001"
+    },
+    "ILT20002": {
+      "parentIds": [
+        "ILT00001",
+        "TCT00001"
+      ],
+      "childIds": [
+        "ILT00602"
+      ],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + TCT00001"
+    },
+    "ILT20003": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [
+        "ILT30801"
+      ],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT20010": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT20301": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT20001": {
+      "parentIds": [
+        "ILT00001",
+        "SOP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + SOP00001"
+    },
+    "WRP00002": {
+      "parentIds": [
+        "ILT00001",
+        "WRP00001"
+      ],
+      "childIds": [
+        "ILT00801",
+        "WRP00601",
+        "WRP00602",
+        "WRP00802",
+        "WRP10501",
+        "WRP20002"
+      ],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + WRP00001"
+    },
+    "WRP20200": {
+      "parentIds": [
+        "ILT00001",
+        "WRP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + WRP00001"
+    },
+    "ILT40020": {
+      "parentIds": [
+        "ILT00001",
+        "WST/5001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + WST/5001"
+    },
+    "ILT40002": {
+      "parentIds": [
+        "ILT00001",
+        "SNP/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + SNP/0001"
+    },
+    "WRP50001": {
+      "parentIds": [
+        "ILT00001",
+        "WRP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + WRP00001"
+    },
+    "WRP50002": {
+      "parentIds": [
+        "ILT00001",
+        "WRP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + WRP00001"
+    },
+    "WRP00602": {
+      "parentIds": [
+        "WRP00002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "WRP00002"
+    },
+    "WRP20002": {
+      "parentIds": [
+        "WRP00002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "WRP00002"
+    },
+    "ILT40030": {
+      "parentIds": [
+        "HLP00001",
+        "ILT00001"
+      ],
+      "childIds": [
+        "ILT20701"
+      ],
+      "relatedMoveIds": [],
+      "components": "HLP00001 + ILT00001"
+    },
+    "WRP00601": {
+      "parentIds": [
+        "WRP00002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "WRP00002"
+    },
+    "WRP10501": {
+      "parentIds": [
+        "WRP00002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "WRP00002"
+    },
+    "WRP20501": {
+      "parentIds": [
+        "CHT/0003",
+        "ILT00001",
+        "WRP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CHT/0003 + ILT00001 + WRP00001"
+    },
+    "RTW00001": {
+      "parentIds": [
+        "36T00001",
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "36T00001 + ILT00001"
+    },
+    "RTW20001": {
+      "parentIds": [
+        "WRP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "WRP00001"
+    },
+    "ILT00401": {
+      "parentIds": [
+        "BAR/0001",
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BAR/0001 + ILT00001"
+    },
+    "ILT30002": {
+      "parentIds": [
+        "CUT00001",
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CUT00001 + ILT00001"
+    },
+    "ILF00002": {
+      "parentIds": [
+        "HCM/0001",
+        "HCM00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HCM/0001 + HCM00001"
+    },
+    "ILT30301": {
+      "parentIds": [
+        "HLP00001",
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLP00001 + ILT00001"
+    },
+    "ILT00901": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT00501": {
+      "parentIds": [
+        "BAR/0001",
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BAR/0001 + ILT00001"
+    },
+    "ILT30401": {
+      "parentIds": [
+        "HLF00001",
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLF00001 + ILT00001"
+    },
+    "ILT40401": {
+      "parentIds": [
+        "ILT00001",
+        "NEU/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + NEU/0001"
+    },
+    "ILT30402": {
+      "parentIds": [
+        "HLF00701",
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLF00701 + ILT00001"
+    },
+    "ILT00603": {
+      "parentIds": [
+        "ILT00001",
+        "WAV/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + WAV/0001"
+    },
+    "ILT01040": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT00701": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT40001": {
+      "parentIds": [
+        "ILT00001",
+        "SPR/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + SPR/0001"
+    },
+    "ILT30604": {
+      "parentIds": [
+        "ILT50002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT50002"
+    },
+    "ILT20701": {
+      "parentIds": [
+        "ILT40030"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT40030"
+    },
+    "2IL00001": {
+      "parentIds": [],
+      "childIds": [
+        "36T13001",
+        "ILT10401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "I2B00001": {
+      "parentIds": [],
+      "childIds": [
+        "2IL00301",
+        "2IL00302"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "2IL00302": {
+      "parentIds": [
+        "HLP00001",
+        "I2B00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLP00001 + I2B00001"
+    },
+    "2IL00301": {
+      "parentIds": [
+        "HCM00621",
+        "I2B00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HCM00621 + I2B00001"
+    },
+    "ILT10401": {
+      "parentIds": [
+        "2IL00001",
+        "BAR/0001",
+        "TCT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "2IL00001 + BAR/0001 + TCT00001"
+    },
+    "36T00003": {
+      "parentIds": [
+        "36T00001",
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "36T00001 + ILT00001"
+    },
+    "ILT01401": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT41401": {
+      "parentIds": [
+        "ILT00001",
+        "NEU/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + NEU/0001"
+    },
+    "LIL00001": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT31010": {
+      "parentIds": [
+        "HLP/0001",
+        "HLP00001",
+        "ILT00001",
+        "SNP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLP/0001 + HLP00001 + ILT00001 + SNP00001"
+    },
+    "ILT00801": {
+      "parentIds": [
+        "PHL00001",
+        "WRP00002"
+      ],
+      "childIds": [
+        "ILT20801"
+      ],
+      "relatedMoveIds": [],
+      "components": "PHL00001 + WRP00002"
+    },
+    "ILT20801": {
+      "parentIds": [
+        "ILT00801"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00801"
+    },
+    "WRP00802": {
+      "parentIds": [
+        "HLF00001",
+        "WRP00002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLF00001 + WRP00002"
+    },
+    "SIG00201": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "36T13001": {
+      "parentIds": [
+        "2IL00001",
+        "36T00001",
+        "DCK00008"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "2IL00001 + 36T00001 + DCK00008"
+    },
+    "ILT30602": {
+      "parentIds": [
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001"
+    },
+    "ILT00602": {
+      "parentIds": [
+        "ILT20002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT20002"
+    },
+    "ILT30701": {
+      "parentIds": [
+        "HCM00621",
+        "ILB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HCM00621 + ILB00001"
+    },
+    "ILT30603": {
+      "parentIds": [
+        "HCM00621",
+        "ILB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HCM00621 + ILB00001"
+    },
+    "ILT30607": {
+      "parentIds": [
+        "FSW00003",
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "FSW00003 + ILT00001"
+    },
+    "ISR00001": {
+      "parentIds": [],
+      "childIds": [
+        "BLD00001",
+        "ISR00401",
+        "ISR03001",
+        "ISR10001",
+        "ISR10401",
+        "ISR20031",
+        "ISR30003",
+        "ISR30005",
+        "ISR30401",
+        "ISR30650",
+        "ISR30651",
+        "ISR30652",
+        "ISR32001",
+        "ISR32002",
+        "ISR40020",
+        "ISR40031"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ISR32001": {
+      "parentIds": [
+        "BTC/0000",
+        "ISR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BTC/0000 + ISR00001"
+    },
+    "ISR32002": {
+      "parentIds": [
+        "ISR00001",
+        "WST/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ISR00001 + WST/0001"
+    },
+    "ISR00401": {
+      "parentIds": [
+        "BAR/0001",
+        "ISR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BAR/0001 + ISR00001"
+    },
+    "ISR40020": {
+      "parentIds": [
+        "ISR00001",
+        "WST/5001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ISR00001 + WST/5001"
+    },
+    "ISR30003": {
+      "parentIds": [
+        "ISR00001",
+        "SHT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ISR00001 + SHT00001"
+    },
+    "ISR30005": {
+      "parentIds": [
+        "CUT00002",
+        "ISR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CUT00002 + ISR00001"
+    },
+    "ISR40031": {
+      "parentIds": [
+        "ISR00001",
+        "SNP/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ISR00001 + SNP/0001"
+    },
+    "I2R00001": {
+      "parentIds": [],
+      "childIds": [
+        "I2R40031"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "I2R40031": {
+      "parentIds": [
+        "I2R00001",
+        "SNP/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "I2R00001 + SNP/0001"
+    },
+    "ISR20001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ISR10401": {
+      "parentIds": [
+        "EPS00201",
+        "ISR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "EPS00201 + ISR00001"
+    },
+    "ISR03001": {
+      "parentIds": [
+        "ISR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ISR00001"
+    },
+    "ISR10001": {
+      "parentIds": [
+        "ISR00001",
+        "WAV/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ISR00001 + WAV/0001"
+    },
+    "ISR40001": {
+      "parentIds": [],
+      "childIds": [
+        "ISR40002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ISR40002": {
+      "parentIds": [
+        "HLF00001",
+        "ISR40001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLF00001 + ISR40001"
+    },
+    "ISR20031": {
+      "parentIds": [
+        "ISR00001"
+      ],
+      "childIds": [
+        "ISR30031"
+      ],
+      "relatedMoveIds": [],
+      "components": "ISR00001"
+    },
+    "ISR30031": {
+      "parentIds": [
+        "HLP00001",
+        "ISR20031"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLP00001 + ISR20031"
+    },
+    "ISR30651": {
+      "parentIds": [
+        "DCK00002",
+        "ISR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "DCK00002 + ISR00001"
+    },
+    "ISR30652": {
+      "parentIds": [
+        "DCK00003",
+        "ISR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "DCK00003 + ISR00001"
+    },
+    "ISR30650": {
+      "parentIds": [
+        "DCK00241",
+        "ISR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "DCK00241 + ISR00001"
+    },
+    "ISR01400": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ISR00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BLD00001": {
+      "parentIds": [
+        "BLD00002",
+        "ISR00001"
+      ],
+      "childIds": [
+        "BLD00101",
+        "BLD00201",
+        "BLD10002",
+        "BLD30001",
+        "BLD30002",
+        "ORB00040"
+      ],
+      "relatedMoveIds": [],
+      "components": "BLD00002 + ISR00001"
+    },
+    "BLD00201": {
+      "parentIds": [
+        "BLD00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BLD00001"
+    },
+    "BLD30002": {
+      "parentIds": [
+        "BLD00001",
+        "RT0/0003"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BLD00001 + RT0/0003"
+    },
+    "BLD00101": {
+      "parentIds": [
+        "BLD00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BLD00001"
+    },
+    "BLD10002": {
+      "parentIds": [
+        "BLD00001",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BLD00001 + RT000001"
+    },
+    "BLD00401": {
+      "parentIds": [
+        "BLD00002",
+        "LT000001"
+      ],
+      "childIds": [
+        "BLD00040"
+      ],
+      "relatedMoveIds": [],
+      "components": "BLD00002 + LT000001"
+    },
+    "BLD00040": {
+      "parentIds": [
+        "BLD00401"
+      ],
+      "childIds": [
+        "BLD20041"
+      ],
+      "relatedMoveIds": [],
+      "components": "BLD00401"
+    },
+    "BLD20041": {
+      "parentIds": [
+        "BLD00040"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BLD00040"
+    },
+    "BLD30001": {
+      "parentIds": [
+        "BLD00001",
+        "WST/5001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BLD00001 + WST/5001"
+    },
+    "ISR00601": {
+      "parentIds": [],
+      "childIds": [
+        "ISR30601",
+        "ISR30602"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ISR30602": {
+      "parentIds": [
+        "ISR00601",
+        "LPS00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ISR00601 + LPS00001"
+    },
+    "ISR20601": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ISR30601": {
+      "parentIds": [
+        "ISR00601",
+        "LPS00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ISR00601 + LPS00001"
+    },
+    "ISR10901": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HCM00001": {
+      "parentIds": [],
+      "childIds": [
+        "ILF00002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HCM/0001": {
+      "parentIds": [],
+      "childIds": [
+        "ILF00002",
+        "PCD00021"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HLP00001": {
+      "parentIds": [],
+      "childIds": [
+        "2IL00302",
+        "BK030001",
+        "ILB30001",
+        "ILB30002",
+        "ILB30003",
+        "ILT30301",
+        "ILT31010",
+        "ILT40030",
+        "ISR30031"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HLP/0001": {
+      "parentIds": [],
+      "childIds": [
+        "BKS00203",
+        "BKT00202",
+        "CB000002",
+        "ILT31010"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HLP00401": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HCM00201": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HCM02001": {
+      "parentIds": [],
+      "childIds": [
+        "FG300001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HLP00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HCM00601": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HCM00602": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SNP00001": {
+      "parentIds": [],
+      "childIds": [
+        "ILT31010",
+        "LT030003"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SNP/0001": {
+      "parentIds": [],
+      "childIds": [
+        "CT040200",
+        "I2R40031",
+        "ILT40002",
+        "ISR40031",
+        "LT040201",
+        "MAY00401",
+        "OSR40201",
+        "RT040201",
+        "SNP/0701"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SNP/0701": {
+      "parentIds": [
+        "BTC/0000",
+        "SNP/0001"
+      ],
+      "childIds": [
+        "RT000601"
+      ],
+      "relatedMoveIds": [],
+      "components": "BTC/0000 + SNP/0001"
+    },
+    "PHR00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HCM03601": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HCM02601": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HCM/0041": {
+      "parentIds": [],
+      "childIds": [
+        "COP31010"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SWN/0001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HCM00621": {
+      "parentIds": [],
+      "childIds": [
+        "2IL00301",
+        "ILT30603",
+        "ILT30605",
+        "ILT30701"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HOF00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WST/0002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LPS00001": {
+      "parentIds": [],
+      "childIds": [
+        "CAR30001",
+        "CB030001",
+        "ECH00003",
+        "ISR30601",
+        "ISR30602",
+        "WTH30001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "EPS00201": {
+      "parentIds": [],
+      "childIds": [
+        "ISR10401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BAR/0001": {
+      "parentIds": [],
+      "childIds": [
+        "ILT00401",
+        "ILT00501",
+        "ILT10401",
+        "ISR00401",
+        "RT000201",
+        "SPN30701",
+        "SPR00401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SPS/0001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WAV/0001": {
+      "parentIds": [],
+      "childIds": [
+        "ILT00603",
+        "ISR10001",
+        "ORT10001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LPS00003": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BDG/0001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BDG/0002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TO000001": {
+      "parentIds": [],
+      "childIds": [
+        "ILB30002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TO000002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TO020002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TO020003": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "AVT/0001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "AVT/0002": {
+      "parentIds": [],
+      "childIds": [
+        "CT040001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CHT/0002": {
+      "parentIds": [],
+      "childIds": [
+        "CB030011"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ERT/0002": {
+      "parentIds": [],
+      "childIds": [
+        "MR000001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ERT/0401": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ERT/0402": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT0/0020": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT0/0001": {
+      "parentIds": [],
+      "childIds": [
+        "BK030201",
+        "MR000002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT0/0010": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TRT/0001": {
+      "parentIds": [],
+      "childIds": [
+        "COP20606"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT0/0003": {
+      "parentIds": [],
+      "childIds": [
+        "BLD30002",
+        "LRT30650"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LT0/0001": {
+      "parentIds": [],
+      "childIds": [
+        "BNT00001",
+        "CB040003"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LT0/3040": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LT0/0002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LT0/3002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LT0/0003": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CBL40001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HK0/0001": {
+      "parentIds": [],
+      "childIds": [
+        "ECH40001",
+        "HK030001",
+        "SPR40901"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HK0/0002": {
+      "parentIds": [],
+      "childIds": [
+        "CB400004",
+        "OST00402"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HK040001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HK040002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HK0/0301": {
+      "parentIds": [],
+      "childIds": [
+        "WRP42601"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HK030001": {
+      "parentIds": [
+        "HK0/0001",
+        "HLF00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HK0/0001 + HLF00001"
+    },
+    "HLT/0001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LT040001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LT040002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "FHL/0001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "FHL40001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SPN/0001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SPR/0001": {
+      "parentIds": [],
+      "childIds": [
+        "CB040001",
+        "ILT40001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LSP/0001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LSP40001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CT0/0001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ECH40601": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "NEU/0001": {
+      "parentIds": [],
+      "childIds": [
+        "15R30601",
+        "CG400601",
+        "CUT30005",
+        "ILT40401",
+        "ILT41401",
+        "LT000401",
+        "LT000601",
+        "OSR40002",
+        "RCT30401",
+        "RT040001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "NEU/0002": {
+      "parentIds": [],
+      "childIds": [
+        "RT030801",
+        "RT040003"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "NEU/0003": {
+      "parentIds": [],
+      "childIds": [
+        "RT040603"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WST/5001": {
+      "parentIds": [],
+      "childIds": [
+        "BLD30001",
+        "ILT40020",
+        "ISR40020"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "MAY00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "MAY00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "MAY00401": {
+      "parentIds": [
+        "MAY00501",
+        "SNP/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "MAY00501 + SNP/0001"
+    },
+    "MAY00501": {
+      "parentIds": [],
+      "childIds": [
+        "MAY00401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "OBT00401": {
+      "parentIds": [
+        "EWT00001",
+        "ORB00401"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "EWT00001 + ORB00401"
+    },
+    "BK000001": {
+      "parentIds": [],
+      "childIds": [
+        "BK000201",
+        "BK000401",
+        "BK030001",
+        "BK040001",
+        "BK040002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BK000201": {
+      "parentIds": [
+        "BK000001"
+      ],
+      "childIds": [
+        "BK020201",
+        "BK030201"
+      ],
+      "relatedMoveIds": [],
+      "components": "BK000001"
+    },
+    "BK020201": {
+      "parentIds": [
+        "BK000201"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BK000201"
+    },
+    "BK030201": {
+      "parentIds": [
+        "BK000201",
+        "RT0/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BK000201 + RT0/0001"
+    },
+    "BK030001": {
+      "parentIds": [
+        "BK000001",
+        "HLP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BK000001 + HLP00001"
+    },
+    "BK040001": {
+      "parentIds": [
+        "BK000001",
+        "WST/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BK000001 + WST/0001"
+    },
+    "BK040002": {
+      "parentIds": [
+        "BK000001",
+        "BTC/0000"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BK000001 + BTC/0000"
+    },
+    "BK000401": {
+      "parentIds": [
+        "BK000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BK000001"
+    },
+    "SDW00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BOX00100": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HPG00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BLK00901": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WRP00001": {
+      "parentIds": [],
+      "childIds": [
+        "RTW20001",
+        "WRP00002",
+        "WRP02601",
+        "WRP20200",
+        "WRP20501",
+        "WRP50001",
+        "WRP50002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WRP20001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SKP00001": {
+      "parentIds": [],
+      "childIds": [
+        "RT040002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WTP00001": {
+      "parentIds": [],
+      "childIds": [
+        "ILT00020",
+        "SCT31002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WRP02601": {
+      "parentIds": [
+        "WRP00001"
+      ],
+      "childIds": [
+        "WRP42601"
+      ],
+      "relatedMoveIds": [],
+      "components": "WRP00001"
+    },
+    "WRP42601": {
+      "parentIds": [
+        "HK0/0301",
+        "WRP02601"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HK0/0301 + WRP02601"
+    },
+    "EOL00401": {
+      "parentIds": [
+        "EOL00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "EOL00001"
+    },
+    "EOL00001": {
+      "parentIds": [],
+      "childIds": [
+        "EOL00401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SPR00001": {
+      "parentIds": [],
+      "childIds": [
+        "DSR00001",
+        "SPR00401",
+        "SPR00901",
+        "SPR20001",
+        "SPR20021",
+        "SPR20801",
+        "SPR30600"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SPR20001": {
+      "parentIds": [
+        "SPR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "SPR00001"
+    },
+    "SPR20021": {
+      "parentIds": [
+        "SPR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "SPR00001"
+    },
+    "SPR00401": {
+      "parentIds": [
+        "BAR/0001",
+        "SPR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BAR/0001 + SPR00001"
+    },
+    "SPR01001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SPR00801": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SPR00802": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SPR00601": {
+      "parentIds": [],
+      "childIds": [
+        "MIL00620"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "MIL00620": {
+      "parentIds": [
+        "SPR00601"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "SPR00601"
+    },
+    "SPR20801": {
+      "parentIds": [
+        "SPR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "SPR00001"
+    },
+    "SPR30600": {
+      "parentIds": [
+        "SPR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "SPR00001"
+    },
+    "SPR00901": {
+      "parentIds": [
+        "SPR00001"
+      ],
+      "childIds": [
+        "SPR40901"
+      ],
+      "relatedMoveIds": [],
+      "components": "SPR00001"
+    },
+    "SPR40901": {
+      "parentIds": [
+        "HK0/0001",
+        "SPR00901"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HK0/0001 + SPR00901"
+    },
+    "GLT10301": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DSR00001": {
+      "parentIds": [
+        "SPR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "SPR00001"
+    },
+    "OSL00001": {
+      "parentIds": [],
+      "childIds": [
+        "ILT30605",
+        "OSL10001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "OSL10001": {
+      "parentIds": [
+        "OSL00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "OSL00001"
+    },
+    "ILT10004": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "36T00004": {
+      "parentIds": [
+        "36T00001",
+        "ILT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "36T00001 + ILT00001"
+    },
+    "ILT30605": {
+      "parentIds": [
+        "HCM00621",
+        "OSL00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HCM00621 + OSL00001"
+    },
+    "OLT00004": {
+      "parentIds": [],
+      "childIds": [
+        "CT000801"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "OLT30001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "OSR00001": {
+      "parentIds": [],
+      "childIds": [
+        "15R20201",
+        "CUT00004",
+        "CUT30005",
+        "ORT31201",
+        "OSR00401",
+        "OSR30001",
+        "OSR40001",
+        "OSR40002",
+        "OSR40201"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "OSR30001": {
+      "parentIds": [
+        "OSR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "OSR00001"
+    },
+    "OSR40201": {
+      "parentIds": [
+        "OSR00001",
+        "SNP/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "OSR00001 + SNP/0001"
+    },
+    "OSR40001": {
+      "parentIds": [
+        "OSR00001",
+        "WST/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "OSR00001 + WST/0001"
+    },
+    "OSR40002": {
+      "parentIds": [
+        "NEU/0001",
+        "OSR00001"
+      ],
+      "childIds": [
+        "OSR400040"
+      ],
+      "relatedMoveIds": [],
+      "components": "NEU/0001 + OSR00001"
+    },
+    "CUT00004": {
+      "parentIds": [
+        "CUT00002",
+        "OSR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CUT00002 + OSR00001"
+    },
+    "CUT30005": {
+      "parentIds": [
+        "NEU/0001",
+        "OSR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "NEU/0001 + OSR00001"
+    },
+    "15R00001": {
+      "parentIds": [],
+      "childIds": [
+        "15R00002",
+        "15R30601",
+        "15R30650",
+        "15R30701",
+        "ISR30501",
+        "ISR31001",
+        "KWR00001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "15R00002": {
+      "parentIds": [
+        "15R00001"
+      ],
+      "childIds": [
+        "15R00801",
+        "ISR00801"
+      ],
+      "relatedMoveIds": [],
+      "components": "15R00001"
+    },
+    "15R30650": {
+      "parentIds": [
+        "15R00001",
+        "DCK00003"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "15R00001 + DCK00003"
+    },
+    "ISR30501": {
+      "parentIds": [
+        "15R00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "15R00001"
+    },
+    "15R30601": {
+      "parentIds": [
+        "15R00001",
+        "NEU/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "15R00001 + NEU/0001"
+    },
+    "15R30701": {
+      "parentIds": [
+        "15R00001",
+        "LVF00002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "15R00001 + LVF00002"
+    },
+    "ISR31001": {
+      "parentIds": [
+        "15R00001",
+        "LVF00002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "15R00001 + LVF00002"
+    },
+    "OSR00401": {
+      "parentIds": [
+        "OSR00001",
+        "TCN00001"
+      ],
+      "childIds": [
+        "ORT10001",
+        "ORT32001",
+        "OSR30401",
+        "OST00402"
+      ],
+      "relatedMoveIds": [],
+      "components": "OSR00001 + TCN00001"
+    },
+    "OST00402": {
+      "parentIds": [
+        "HK0/0002",
+        "OSR00401"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HK0/0002 + OSR00401"
+    },
+    "OSR30401": {
+      "parentIds": [
+        "OSR00401"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "OSR00401"
+    },
+    "ORT32001": {
+      "parentIds": [
+        "BTC/0000",
+        "OSR00401"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BTC/0000 + OSR00401"
+    },
+    "ORT10001": {
+      "parentIds": [
+        "OSR00401",
+        "WAV/0001"
+      ],
+      "childIds": [
+        "ORT10101"
+      ],
+      "relatedMoveIds": [],
+      "components": "OSR00401 + WAV/0001"
+    },
+    "ORT10101": {
+      "parentIds": [
+        "HLS00001",
+        "ORT10001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLS00001 + ORT10001"
+    },
+    "ORT31201": {
+      "parentIds": [
+        "OSR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "OSR00001"
+    },
+    "KWR00001": {
+      "parentIds": [
+        "15R00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "15R00001"
+    },
+    "ISR00801": {
+      "parentIds": [
+        "15R00002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "15R00002"
+    },
+    "15R20201": {
+      "parentIds": [
+        "OSR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "OSR00001"
+    },
+    "WPL00020": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WPL30020": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "OSR30601": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "15R30001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CH000001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DRP00401": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "FSW20001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "FSW00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DCK00002": {
+      "parentIds": [],
+      "childIds": [
+        "DCK00003",
+        "DCK00201",
+        "ILT30650",
+        "ISR30651"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DCK00201": {
+      "parentIds": [
+        "DCK00002"
+      ],
+      "childIds": [
+        "25C00701",
+        "CT000660",
+        "DCK00241"
+      ],
+      "relatedMoveIds": [],
+      "components": "DCK00002"
+    },
+    "DCK00241": {
+      "parentIds": [
+        "DCK00201"
+      ],
+      "childIds": [
+        "ISR30650",
+        "RCB30656"
+      ],
+      "relatedMoveIds": [],
+      "components": "DCK00201"
+    },
+    "DCK00003": {
+      "parentIds": [
+        "DCK00002"
+      ],
+      "childIds": [
+        "15R30650",
+        "ISR30652",
+        "LRT30650",
+        "LT030650",
+        "RT030650"
+      ],
+      "relatedMoveIds": [],
+      "components": "DCK00002"
+    },
+    "DCK00008": {
+      "parentIds": [],
+      "childIds": [
+        "36T13001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TNL00001": {
+      "parentIds": [],
+      "childIds": [
+        "RCB00701"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CUT00002": {
+      "parentIds": [],
+      "childIds": [
+        "CUT00004",
+        "ISR30005"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DCK00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "DCK/0001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "NWR00601": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RGS00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CAR00001": {
+      "parentIds": [],
+      "childIds": [
+        "CAR00801",
+        "CAR10001",
+        "CAR20001",
+        "CAR30001",
+        "CAR30301"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CAR00801": {
+      "parentIds": [
+        "CAR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CAR00001"
+    },
+    "CAR00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CAR20001": {
+      "parentIds": [
+        "CAR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CAR00001"
+    },
+    "CAR30001": {
+      "parentIds": [
+        "CAR00001",
+        "LPS00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CAR00001 + LPS00001"
+    },
+    "CAR10001": {
+      "parentIds": [
+        "CAR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CAR00001"
+    },
+    "ORB00001": {
+      "parentIds": [],
+      "childIds": [
+        "ORB00202",
+        "ORB00301",
+        "ORB00601",
+        "ORB00701"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ORB00601": {
+      "parentIds": [
+        "ORB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ORB00001"
+    },
+    "ORB00701": {
+      "parentIds": [
+        "ORB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ORB00001"
+    },
+    "ORB00501": {
+      "parentIds": [],
+      "childIds": [
+        "ORB00040",
+        "ORB40045"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ORB00202": {
+      "parentIds": [
+        "ORB00001"
+      ],
+      "childIds": [
+        "15R00801"
+      ],
+      "relatedMoveIds": [],
+      "components": "ORB00001"
+    },
+    "ORB00301": {
+      "parentIds": [
+        "ORB00001"
+      ],
+      "childIds": [
+        "B2B00010",
+        "ORB00030"
+      ],
+      "relatedMoveIds": [],
+      "components": "ORB00001"
+    },
+    "ORB00401": {
+      "parentIds": [],
+      "childIds": [
+        "OBT00401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ISR30401": {
+      "parentIds": [
+        "ISR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ISR00001"
+    },
+    "ORB40741": {
+      "parentIds": [
+        "LT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "LT000001"
+    },
+    "ILT30801": {
+      "parentIds": [
+        "ILT20003"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT20003"
+    },
+    "ORB00204": {
+      "parentIds": [
+        "RCB00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "RCB00001"
+    },
+    "15R00801": {
+      "parentIds": [
+        "15R00002",
+        "ORB00202"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "15R00002 + ORB00202"
+    },
+    "ORB40045": {
+      "parentIds": [
+        "ORB00501"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ORB00501"
+    },
+    "ORB00510": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ORB00410": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ORB00040": {
+      "parentIds": [
+        "BLD00001",
+        "ORB00501"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BLD00001 + ORB00501"
+    },
+    "B2B00010": {
+      "parentIds": [
+        "ORB00301"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ORB00301"
+    },
+    "ORB00030": {
+      "parentIds": [
+        "ORB00301"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ORB00301"
+    },
+    "36T00001": {
+      "parentIds": [],
+      "childIds": [
+        "36T00002",
+        "36T00003",
+        "36T00004",
+        "36T13001",
+        "RCR00002",
+        "RTW00001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RCR00001": {
+      "parentIds": [],
+      "childIds": [
+        "RCR00002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RCR00002": {
+      "parentIds": [
+        "36T00001",
+        "RCR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "36T00001 + RCR00001"
+    },
+    "TIT00001": {
+      "parentIds": [],
+      "childIds": [
+        "TIT20001",
+        "TIT20002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TIT20001": {
+      "parentIds": [
+        "TIT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "TIT00001"
+    },
+    "SCT00001": {
+      "parentIds": [],
+      "childIds": [
+        "SCT02001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TIT20002": {
+      "parentIds": [
+        "TIT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "TIT00001"
+    },
+    "SCT02001": {
+      "parentIds": [
+        "COP00001",
+        "SCT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "COP00001 + SCT00001"
+    },
+    "SCT01001": {
+      "parentIds": [],
+      "childIds": [
+        "SCT31002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SCT31002": {
+      "parentIds": [
+        "SCT01001",
+        "WTP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "SCT01001 + WTP00001"
+    },
+    "SCT30001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BRD00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ECH00001": {
+      "parentIds": [],
+      "childIds": [
+        "CT020001",
+        "ECH00002",
+        "ECH00003",
+        "ECH20001",
+        "ECH20002",
+        "ECH31001",
+        "ECH40001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ECH00002": {
+      "parentIds": [
+        "ECH00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ECH00001"
+    },
+    "ECH00003": {
+      "parentIds": [
+        "ECH00001",
+        "LPS00001"
+      ],
+      "childIds": [
+        "ECH00004"
+      ],
+      "relatedMoveIds": [],
+      "components": "ECH00001 + LPS00001"
+    },
+    "ECH00004": {
+      "parentIds": [
+        "CUT00301",
+        "ECH00003"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CUT00301 + ECH00003"
+    },
+    "ECH40001": {
+      "parentIds": [
+        "ECH00001",
+        "HK0/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ECH00001 + HK0/0001"
+    },
+    "ECH20001": {
+      "parentIds": [
+        "ECH00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ECH00001"
+    },
+    "ECH31001": {
+      "parentIds": [
+        "ECH00001",
+        "LVF00002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ECH00001 + LVF00002"
+    },
+    "ECH20002": {
+      "parentIds": [
+        "ECH00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ECH00001"
+    },
+    "ECH10100": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "COP00001": {
+      "parentIds": [],
+      "childIds": [
+        "COP20001",
+        "COP20002",
+        "COP20606",
+        "SCT02001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "COP20001": {
+      "parentIds": [
+        "COP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "COP00001"
+    },
+    "COP20002": {
+      "parentIds": [
+        "COP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "COP00001"
+    },
+    "COP01001": {
+      "parentIds": [],
+      "childIds": [
+        "COP21002",
+        "COP31010"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "COP31010": {
+      "parentIds": [
+        "COP01001",
+        "HCM/0041"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "COP01001 + HCM/0041"
+    },
+    "COP21001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "COP21002": {
+      "parentIds": [
+        "COP01001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "COP01001"
+    },
+    "COP00602": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "COP00603": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "COP00604": {
+      "parentIds": [],
+      "childIds": [
+        "COP20605"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "COP20606": {
+      "parentIds": [
+        "COP00001",
+        "TRT/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "COP00001 + TRT/0001"
+    },
+    "COP20605": {
+      "parentIds": [
+        "COP00604"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "COP00604"
+    },
+    "COP01400": {
+      "parentIds": [],
+      "childIds": [
+        "COP21400",
+        "COP21401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "COP21400": {
+      "parentIds": [
+        "COP01400"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "COP01400"
+    },
+    "COP21401": {
+      "parentIds": [
+        "COP01400"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "COP01400"
+    },
+    "COP10501": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "COP10502": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "COP21502": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "KWE00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RCP00101": {
+      "parentIds": [],
+      "childIds": [
+        "RCP00601"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RCP00601": {
+      "parentIds": [
+        "ILT00001",
+        "RCP00101"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ILT00001 + RCP00101"
+    },
+    "RCP00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "UPS00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT000001": {
+      "parentIds": [],
+      "childIds": [
+        "BLD10002",
+        "MR000001",
+        "RT000201",
+        "RT000301",
+        "RT000601",
+        "RT030001",
+        "RT030002",
+        "RT030003",
+        "RT030005",
+        "RT030101",
+        "RT030650",
+        "RT030801",
+        "RT032001",
+        "RT040001",
+        "RT040002",
+        "RT040003",
+        "RT040201",
+        "RT040603",
+        "RT200161",
+        "RT200401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT000002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT030003": {
+      "parentIds": [
+        "RT000001",
+        "SHT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "RT000001 + SHT00001"
+    },
+    "RT032001": {
+      "parentIds": [
+        "BTC/0000",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BTC/0000 + RT000001"
+    },
+    "RT030001": {
+      "parentIds": [
+        "HDR00001",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HDR00001 + RT000001"
+    },
+    "RT030002": {
+      "parentIds": [
+        "CUT00001",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CUT00001 + RT000001"
+    },
+    "RT030004": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT030005": {
+      "parentIds": [
+        "EFK00002",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "EFK00002 + RT000001"
+    },
+    "RT030101": {
+      "parentIds": [
+        "HLS00001",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLS00001 + RT000001"
+    },
+    "RT030121": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT040201": {
+      "parentIds": [
+        "RT000001",
+        "SNP/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "RT000001 + SNP/0001"
+    },
+    "RT040001": {
+      "parentIds": [
+        "NEU/0001",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "NEU/0001 + RT000001"
+    },
+    "RT040003": {
+      "parentIds": [
+        "NEU/0002",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "NEU/0002 + RT000001"
+    },
+    "RT030801": {
+      "parentIds": [
+        "EBF00001",
+        "NEU/0002",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "EBF00001 + NEU/0002 + RT000001"
+    },
+    "RT040002": {
+      "parentIds": [
+        "RT000001",
+        "SKP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "RT000001 + SKP00001"
+    },
+    "RT000601": {
+      "parentIds": [
+        "HPN00001",
+        "RT000001",
+        "SNP/0701"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HPN00001 + RT000001 + SNP/0701"
+    },
+    "RT000201": {
+      "parentIds": [
+        "BAR/0001",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BAR/0001 + RT000001"
+    },
+    "RT000301": {
+      "parentIds": [
+        "HLS00001",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HLS00001 + RT000001"
+    },
+    "RT010801": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT010802": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT010401": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "RT200161": {
+      "parentIds": [
+        "LFT00001",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "LFT00001 + RT000001"
+    },
+    "RT200401": {
+      "parentIds": [
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "RT000001"
+    },
+    "ERT00001": {
+      "parentIds": [],
+      "childIds": [
+        "ERT00601",
+        "ERT20010",
+        "ERT30021"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ERT30623": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ERT30021": {
+      "parentIds": [
+        "ERT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ERT00001"
+    },
+    "ERT20010": {
+      "parentIds": [
+        "ERT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ERT00001"
+    },
+    "ERT00601": {
+      "parentIds": [
+        "ERT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ERT00001"
+    },
+    "LT000001": {
+      "parentIds": [],
+      "childIds": [
+        "BLD00401",
+        "LT000401",
+        "LT000601",
+        "LT010001",
+        "LT020001",
+        "LT020002",
+        "LT020003",
+        "LT030002",
+        "LT030003",
+        "LT030650",
+        "LT040201",
+        "ORB40741"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LT020001": {
+      "parentIds": [
+        "LT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "LT000001"
+    },
+    "LT020003": {
+      "parentIds": [
+        "LT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "LT000001"
+    },
+    "LT020002": {
+      "parentIds": [
+        "LT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "LT000001"
+    },
+    "LT030002": {
+      "parentIds": [
+        "CUT00001",
+        "LT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CUT00001 + LT000001"
+    },
+    "WRP00003": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LT030003": {
+      "parentIds": [
+        "LT000001",
+        "SNP00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "LT000001 + SNP00001"
+    },
+    "LT010001": {
+      "parentIds": [
+        "LT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "LT000001"
+    },
+    "LT040201": {
+      "parentIds": [
+        "LT000001",
+        "SNP/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "LT000001 + SNP/0001"
+    },
+    "LT000601": {
+      "parentIds": [
+        "LT000001",
+        "NEU/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "LT000001 + NEU/0001"
+    },
+    "LLT00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HR000001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HR000201": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LWT00002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LWT00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "MR000002": {
+      "parentIds": [
+        "RT0/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "RT0/0001"
+    },
+    "MR000001": {
+      "parentIds": [
+        "ERT/0002",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "ERT/0002 + RT000001"
+    },
+    "RT040603": {
+      "parentIds": [
+        "NEU/0003",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "NEU/0003 + RT000001"
+    },
+    "LT000401": {
+      "parentIds": [
+        "LT000001",
+        "NEU/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "LT000001 + NEU/0001"
+    },
+    "BNT00001": {
+      "parentIds": [
+        "LT0/0001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "LT0/0001"
+    },
+    "WAT00001": {
+      "parentIds": [],
+      "childIds": [
+        "SWT00001",
+        "WAT30001",
+        "WAT30002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WAT30001": {
+      "parentIds": [
+        "FSW00001",
+        "WAT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "FSW00001 + WAT00001"
+    },
+    "WAT30002": {
+      "parentIds": [
+        "BTC/0000",
+        "WAT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BTC/0000 + WAT00001"
+    },
+    "SWT00001": {
+      "parentIds": [
+        "WAT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "WAT00001"
+    },
+    "SGR00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "LT030650": {
+      "parentIds": [
+        "DCK00003",
+        "LT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "DCK00003 + LT000001"
+    },
+    "RT030650": {
+      "parentIds": [
+        "DCK00003",
+        "RT000001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "DCK00003 + RT000001"
+    },
+    "LRT30650": {
+      "parentIds": [
+        "DCK00003",
+        "RT0/0003"
+      ],
+      "childIds": [
+        "LRT30651"
+      ],
+      "relatedMoveIds": [],
+      "components": "DCK00003 + RT0/0003"
+    },
+    "LRT30651": {
+      "parentIds": [
+        "BFK00001",
+        "LRT30650"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "BFK00001 + LRT30650"
+    },
+    "F8T00001": {
+      "parentIds": [],
+      "childIds": [
+        "F8T00100"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "F8T00100": {
+      "parentIds": [
+        "F8T00001",
+        "NWR00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "F8T00001 + NWR00001"
+    },
+    "TMS00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TMS00021": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TMS00041": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TMS00101": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TMS00401": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TMS00004": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SHT00201": {
+      "parentIds": [],
+      "childIds": [
+        "CB000202"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SHT00202": {
+      "parentIds": [],
+      "childIds": [
+        "ILT30606"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SHT/0202": {
+      "parentIds": [],
+      "childIds": [
+        "ILT30606"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BTC/0000": {
+      "parentIds": [],
+      "childIds": [
+        "BK040002",
+        "ISR32001",
+        "ORT32001",
+        "RT032001",
+        "SNP/0701",
+        "WAT30002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WST/0001": {
+      "parentIds": [],
+      "childIds": [
+        "BK040001",
+        "CB040002",
+        "ISR32002",
+        "OSR40001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SHT00001": {
+      "parentIds": [],
+      "childIds": [
+        "ISR30003",
+        "RT030003",
+        "WTH00601"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SHT00401": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SHT/0001": {
+      "parentIds": [],
+      "childIds": [
+        "CB030002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "BTC/0002": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CHT/0001": {
+      "parentIds": [],
+      "childIds": [
+        "IWT00701"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CHT/0003": {
+      "parentIds": [],
+      "childIds": [
+        "WRP20501"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "NCT/0001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HDR00001": {
+      "parentIds": [],
+      "childIds": [
+        "RT030001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TAG00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HPN00001": {
+      "parentIds": [],
+      "childIds": [
+        "RT000601"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "SOP00001": {
+      "parentIds": [],
+      "childIds": [
+        "CT000602",
+        "ILT20001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TCN00001": {
+      "parentIds": [],
+      "childIds": [
+        "OSR00401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HL000001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HLR00001": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TCT00001": {
+      "parentIds": [],
+      "childIds": [
+        "ILT10401",
+        "ILT20002",
+        "RCB00003"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "TCD00001": {
+      "parentIds": [],
+      "childIds": [
+        "IWT00401",
+        "RCB00002"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "NWR00001": {
+      "parentIds": [],
+      "childIds": [
+        "F8T00100"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "HLS00001": {
+      "parentIds": [],
+      "childIds": [
+        "ORT10101",
+        "RT000301",
+        "RT030101"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WTH00001": {
+      "parentIds": [],
+      "childIds": [
+        "CST00001",
+        "ITW40001",
+        "WTH00202",
+        "WTH00601",
+        "WTH00602",
+        "WTH30001"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WTH30001": {
+      "parentIds": [
+        "LPS00001",
+        "WTH00001"
+      ],
+      "childIds": [
+        "WTH30301"
+      ],
+      "relatedMoveIds": [],
+      "components": "LPS00001 + WTH00001"
+    },
+    "WTH00202": {
+      "parentIds": [
+        "WTH00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "WTH00001"
+    },
+    "WTH30301": {
+      "parentIds": [
+        "WTH30001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "WTH30001"
+    },
+    "WTH00201": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "WTH00601": {
+      "parentIds": [
+        "SHT00001",
+        "WTH00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "SHT00001 + WTH00001"
+    },
+    "WTH00602": {
+      "parentIds": [
+        "WTH00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "WTH00001"
+    },
+    "IWT00001": {
+      "parentIds": [],
+      "childIds": [
+        "FG300001",
+        "IWT00401",
+        "IWT00701"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "ITW40001": {
+      "parentIds": [
+        "WTH00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "WTH00001"
+    },
+    "IWT00401": {
+      "parentIds": [
+        "IWT00001",
+        "TCD00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "IWT00001 + TCD00001"
+    },
+    "FG300001": {
+      "parentIds": [
+        "HCM02001",
+        "IWT00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "HCM02001 + IWT00001"
+    },
+    "IWT00701": {
+      "parentIds": [
+        "CHT/0001",
+        "IWT00001",
+        "TFK00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CHT/0001 + IWT00001 + TFK00001"
+    },
+    "EWT00001": {
+      "parentIds": [],
+      "childIds": [
+        "OBT00401"
+      ],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "EWT20031": {
+      "parentIds": [],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": null
+    },
+    "CST00001": {
+      "parentIds": [
+        "WTH00001"
+      ],
+      "childIds": [
+        "CST00002",
+        "CST00401"
+      ],
+      "relatedMoveIds": [],
+      "components": "WTH00001"
+    },
+    "CST00002": {
+      "parentIds": [
+        "CST00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CST00001"
+    },
+    "CST00401": {
+      "parentIds": [
+        "CST00001"
+      ],
+      "childIds": [
+        "CST30020"
+      ],
+      "relatedMoveIds": [],
+      "components": "CST00001"
+    },
+    "CST30020": {
+      "parentIds": [
+        "CST00401",
+        "STS00001"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "CST00401 + STS00001"
+    },
+    "OSR400040": {
+      "parentIds": [
+        "OSR40002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "components": "OSR40002",
+      "displayId": "ISR400040",
+      "name": "Inside 1½ right /neutralised pass",
+      "topic": "Inside 1½ rights",
+      "level": "3",
+      "type": "Addition",
+      "category": null,
+      "group": "Inside 1½ right",
+      "baseMove": null,
+      "positions": null,
+      "seeAlso": null,
+      "tags": null,
+      "description": null,
+      "source": null,
+      "comments": null,
+      "reviewFlag": false,
+      "reviewNotes": null
+    }
+  },
+  "createdMoves": [
+    {
+      "id": "OSR400040",
+      "slug": "OSR400040",
+      "name": "Outside 1½ right /neutralised pass",
+      "topic": "Outside 1½ rights",
+      "level": "3",
+      "type": "Addition",
+      "category": null,
+      "group": "Outside 1½ right",
+      "baseMove": null,
+      "components": "OSR40002",
+      "parentIds": [
+        "OSR40002"
+      ],
+      "childIds": [],
+      "relatedMoveIds": [],
+      "positions": null,
+      "seeAlso": null,
+      "tags": null,
+      "description": null,
+      "source": null,
+      "comments": null,
+      "reviewFlag": false,
+      "reviewNotes": null,
+      "moveOrder": null,
+      "topicCol": null,
+      "topicOrder": null,
+      "familyOrder": null,
+      "valid": true,
+      "errors": null,
+      "hasLocalVideo": false,
+      "videoFiles": [],
+      "videoLinks": []
+    }
+  ],
   "drafts": [
     {
       "draftId": "draft-20260527094240746",

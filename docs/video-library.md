@@ -80,6 +80,7 @@ Existing legacy files get metadata inferred from their filenames where possible.
 - The Source metadata label in the media editor should use accent-colored text instead of muted grey.
 - Timing, Type, and Environment segmented buttons should render the configured badge color when selected and a 50% mix with white when not selected.
 - The media editor should not show a class/workshop field.
+- The Dancers control in the media editor should use the shared searchable picker pattern against known dancers, and selected dancers should appear as a badge list rather than a comma-separated text field.
 
 ### `moveVideoLinks`
 
@@ -199,11 +200,19 @@ Playback behavior:
 
 - Spacebar toggles play/pause unless focus is inside an input, textarea, select, button, or editable element.
 - The playhead can be dragged even before a clip is being edited.
+- When a clip enters draft editing, loop playback and the loop's `With padding` mode must both start enabled by default.
+- In draft editing, the plain loop mode must cover only the move range, while `With padding` must extend that loop to the clip's head and tail padding.
 - In playback mode, when a source video has saved move clips, a compact centered boxed move-context strip must appear above the timeline without visible labels: the center current-move box is always visible and shows `—` when the playhead is not within a move range, while previous/next boxes appear only when that move ended or starts within 2.5 seconds of the playhead.
 - The playback move-context strip must reserve stable left, center, and right slots so the current-move box remains centered even when only previous or next is visible.
 - Previous and next move boxes in the playback move-context strip must be visibly shorter than the center current-move box.
 - The editor attempts playback from `0.00s` when a source video loads, using the shared site mute preference. On a fresh site load the player should default to unmuted, while browser autoplay policy can still reject autoplay so manual play remains available.
 - Timeline positions fall back to saved clip times while video metadata is still loading.
+
+Default draft timing:
+
+- New draft move ranges must default to about `2.5s`, half the previous default length.
+- New draft clips must default to head padding equal to the move length.
+- New draft clips must default to tail padding equal to half the move length.
 
 ## Rendering
 

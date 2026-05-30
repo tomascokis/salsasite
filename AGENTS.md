@@ -2,7 +2,7 @@
 
 ## Environment
 
-This checkout is edited on a dev machine, not on the site host. For browser verification of the running site, use `http://192.168.0.127:18096` instead of starting or testing against a localhost dev server unless the user explicitly asks for local-only testing.
+You are on a dev machine, which is directly accessing the live project folders on the deployment machine. For browser verification of the running site, use `http://192.168.0.127:18096` instead of starting or testing against a localhost dev server unless the user explicitly asks for local-only testing.
 
 Don't run `npm run check` on the local machine.  
 

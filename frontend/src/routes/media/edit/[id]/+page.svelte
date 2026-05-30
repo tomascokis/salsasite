@@ -3,12 +3,13 @@
   import { onDestroy, tick } from 'svelte';
   import ContentBadge from '$lib/components/ContentBadge.svelte';
   import MovePicker from '$lib/components/MovePicker.svelte';
+  import SearchablePicker from '$lib/components/SearchablePicker.svelte';
+  import { publicationStatusFor, processingStatusFor } from '$lib/content-status';
   import {
     applyVideoAudioPreference,
     hasActiveMutedVideoPreference,
     saveVideoAudioPreferenceFromElement
   } from '$lib/video-audio-preference';
-  import { publicationStatusFor, processingStatusFor } from '$lib/content-status';
   import type {
     ClipCountMarker,
     ClipCropRect,
@@ -63,7 +64,9 @@
   type ClipChangeState = 'new' | 'edited';
   const MOVE_SUGGESTION_LIMIT = 8;
   const CLIP_MOVE_BUFFER_MS = 500;
-  const DEFAULT_CLIP_PADDING_MS = 5000;
+  const DEFAULT_MOVE_DURATION_MS = 2500;
+  const DEFAULT_CLIP_HEAD_PADDING_MS = DEFAULT_MOVE_DURATION_MS;
+  const DEFAULT_CLIP_TAIL_PADDING_MS = Math.round(DEFAULT_MOVE_DURATION_MS / 2);
   const PLAYBACK_CONTEXT_WINDOW_MS = 2500;
   const COUNT_PRESET_SEQUENCES: Record<CountTimingPreset, string[]> = {
     'on2-default': ['6', '7', '1', '2', '3', '5'],
@@ -76,6 +79,7 @@
     timingOptions: Array<{ value: VideoTiming; label: string }>;
     contentTypeOptions: Array<{ value: VideoContentType; label: string }>;
     environmentOptions: Array<{ value: VideoEnvironment; label: string }>;
+    dancerOptions: string[];
     moves: MoveOption[];
     assets: UploadAssetView[];
     total: number;
@@ -105,6 +109,8 @@
   let editContentType: VideoContentType = 'music';
   let editEnvironment: VideoEnvironment = 'class';
   let editOriginType: VideoOriginType = 'self-recorded';
+  let editDancerIds: string[] = [];
+  let editDancerQuery = '';
   let editSourceUrl = '';
   let editCreatedAt = '';
   let editRecordDate = '';
@@ -131,16 +137,16 @@
   let draftActionEndMs = 0;
   let autoClipStart = true;
   let autoClipEnd = true;
-  let clipStartContextMs = 5000;
-  let clipEndContextMs = 5000;
+  let clipStartContextMs = DEFAULT_CLIP_HEAD_PADDING_MS;
+  let clipEndContextMs = DEFAULT_CLIP_TAIL_PADDING_MS;
   let lastDraftBoundaryTarget: TimelineMarker | null = null;
   let videoElement: HTMLVideoElement | null = null;
   let isPlaying = false;
-  let isMuted = true;
+  let isMuted = false;
   let videoVolume = 1;
   let isVolumeOpen = false;
-  let hasManuallyMutedAudio = false;
   let isLooping = false;
+  let isLoopingWithPadding = true;
   let playbackError = '';
   let playerDurationMs = 0;
   let playerCurrentMs = 0;
@@ -170,6 +176,7 @@
   let visiblePreviousPlaybackMove: ClipWithUi | null = null;
   let visibleNextPlaybackMove: ClipWithUi | null = null;
   let showPlaybackMoveContext = false;
+  let dancerOptions = data.dancerOptions.map((dancer) => ({ id: dancer, label: dancer }));
 
   let moveNameById = new Map<string, string>();
   $: moveNameById = new Map(availableMoves.map((move) => [move.id, move.name ?? move.id]));
@@ -249,6 +256,8 @@
     syncedMediaPath = selectedAsset.filePath;
     editDisplayName = selectedAsset.displayName;
     editDancers = selectedAsset.dancers.join(', ');
+    editDancerIds = [...selectedAsset.dancers];
+    editDancerQuery = '';
     editTiming = selectedAsset.timing;
     editContentType = selectedAsset.contentType;
     editEnvironment = selectedAsset.environment;
@@ -273,13 +282,13 @@
     isDraftingMove = false;
     draftInitialSnapshot = '';
     draftStartMs = 0;
-    draftEndMs = playerDurationMs ? Math.min(playerDurationMs, DEFAULT_CLIP_PADDING_MS) : DEFAULT_CLIP_PADDING_MS;
+    draftEndMs = playerDurationMs ? Math.min(playerDurationMs, DEFAULT_MOVE_DURATION_MS) : DEFAULT_MOVE_DURATION_MS;
     draftActionStartMs = 0;
-    draftActionEndMs = playerDurationMs ? Math.min(playerDurationMs, DEFAULT_CLIP_PADDING_MS) : DEFAULT_CLIP_PADDING_MS;
+    draftActionEndMs = playerDurationMs ? Math.min(playerDurationMs, DEFAULT_MOVE_DURATION_MS) : DEFAULT_MOVE_DURATION_MS;
     autoClipStart = true;
     autoClipEnd = true;
-    clipStartContextMs = DEFAULT_CLIP_PADDING_MS;
-    clipEndContextMs = DEFAULT_CLIP_PADDING_MS;
+    clipStartContextMs = DEFAULT_CLIP_HEAD_PADDING_MS;
+    clipEndContextMs = DEFAULT_CLIP_TAIL_PADDING_MS;
     if (mediaPathChanged) {
       playerDurationMs = 0;
       playerCurrentMs = 0;
@@ -662,6 +671,8 @@
     clipEndContextMs = Math.max(CLIP_MOVE_BUFFER_MS, clip.endMs - actionEnd);
     autoClipStart = false;
     autoClipEnd = false;
+    isLooping = true;
+    isLoopingWithPadding = true;
     countMode = 'idle';
     countModeIndex = 0;
     isCroppingClip = false;
@@ -937,6 +948,18 @@
     editTags = editTags.filter((entry) => entry !== tag);
   }
 
+  function addSelectedDancer(dancerId: string) {
+    if (!dancerId || editDancerIds.includes(dancerId)) {
+      return;
+    }
+    editDancerIds = [...editDancerIds, dancerId];
+    editDancerQuery = '';
+  }
+
+  function removeSelectedDancer(dancerId: string) {
+    editDancerIds = editDancerIds.filter((entry) => entry !== dancerId);
+  }
+
   function selectAsset(assetId: string) {
     selectedAssetId = assetId;
     syncingAssetKey = null;
@@ -1066,7 +1089,7 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         displayName: editDisplayName,
-        dancers: editDancers,
+        dancers: editDancerIds,
         timing: editTiming,
         contentType: editContentType,
         environment: editEnvironment,
@@ -1214,8 +1237,8 @@
     }
 
     if (!isDraftingMove) {
-      draftEndMs = Math.min(nextDurationMs, Math.max(draftEndMs, DEFAULT_CLIP_PADDING_MS));
-      draftActionEndMs = Math.min(nextDurationMs, Math.max(draftActionEndMs, DEFAULT_CLIP_PADDING_MS));
+      draftEndMs = Math.min(nextDurationMs, Math.max(draftEndMs, DEFAULT_MOVE_DURATION_MS));
+      draftActionEndMs = Math.min(nextDurationMs, Math.max(draftActionEndMs, DEFAULT_MOVE_DURATION_MS));
     }
 
     return true;
@@ -1333,8 +1356,8 @@
       return null;
     }
 
-    const startMs = clampMs(draftStartMs);
-    const endMs = clampMs(draftEndMs);
+    const startMs = clampMs(isLoopingWithPadding ? draftStartMs : draftActionStartMs);
+    const endMs = clampMs(isLoopingWithPadding ? draftEndMs : draftActionEndMs);
     if (endMs <= startMs + 50) {
       return null;
     }
@@ -1409,11 +1432,23 @@
     }
   }
 
+  function toggleLoopPadding() {
+    isLoopingWithPadding = !isLoopingWithPadding;
+    if (!isLooping) {
+      return;
+    }
+
+    const range = activeLoopRange();
+    if (range && (playerCurrentMs < range.startMs || playerCurrentMs > range.endMs)) {
+      seekPreview(range.startMs);
+    }
+  }
+
   function resetClipPadding() {
     autoClipStart = true;
     autoClipEnd = true;
-    clipStartContextMs = DEFAULT_CLIP_PADDING_MS;
-    clipEndContextMs = DEFAULT_CLIP_PADDING_MS;
+    clipStartContextMs = DEFAULT_CLIP_HEAD_PADDING_MS;
+    clipEndContextMs = DEFAULT_CLIP_TAIL_PADDING_MS;
     draftStartMs = clampClipStartMs(Math.max(0, draftActionStartMs - clipStartContextMs));
     draftEndMs = clampClipEndMs(draftActionEndMs + clipEndContextMs);
   }
@@ -1698,8 +1733,8 @@
   function startNewMoveClip() {
     const actionStart = clampMs(playerCurrentMs || 0);
     const actionEnd = Math.min(
-      playerDurationMs || actionStart + DEFAULT_CLIP_PADDING_MS,
-      actionStart + DEFAULT_CLIP_PADDING_MS
+      playerDurationMs || actionStart + DEFAULT_MOVE_DURATION_MS,
+      actionStart + DEFAULT_MOVE_DURATION_MS
     );
     enableMoveEditorAudio();
     activeClipId = createDraftClipId();
@@ -1709,17 +1744,19 @@
     const initialRow = createDraftMoveRow(actionStart, actionEnd);
     draftMoveRows = [initialRow];
     activeDraftMoveRowId = initialRow.id;
-    draftStartMs = Math.max(0, actionStart - DEFAULT_CLIP_PADDING_MS);
+    draftStartMs = Math.max(0, actionStart - DEFAULT_CLIP_HEAD_PADDING_MS);
     draftEndMs = Math.min(
-      playerDurationMs || actionEnd + DEFAULT_CLIP_PADDING_MS,
-      actionEnd + DEFAULT_CLIP_PADDING_MS
+      playerDurationMs || actionEnd + DEFAULT_CLIP_TAIL_PADDING_MS,
+      actionEnd + DEFAULT_CLIP_TAIL_PADDING_MS
     );
     draftStartMs = clampClipStartMs(draftStartMs);
     draftEndMs = clampClipEndMs(draftEndMs);
     autoClipStart = true;
     autoClipEnd = true;
-    clipStartContextMs = DEFAULT_CLIP_PADDING_MS;
-    clipEndContextMs = DEFAULT_CLIP_PADDING_MS;
+    clipStartContextMs = DEFAULT_CLIP_HEAD_PADDING_MS;
+    clipEndContextMs = DEFAULT_CLIP_TAIL_PADDING_MS;
+    isLooping = true;
+    isLoopingWithPadding = true;
     resetTimelineZoom();
     draftInitialSnapshot = JSON.stringify([
       draftMoveRows.map((row) => [row.id, row.moveIds, row.query, row.startMs, row.endMs]),
@@ -1732,6 +1769,7 @@
     activeClipId = null;
     isDraftingMove = false;
     isLooping = false;
+    isLoopingWithPadding = true;
     draftMoveRows = [];
     activeDraftMoveRowId = null;
     draftInitialSnapshot = '';
@@ -1990,8 +2028,8 @@
         (Number.isFinite(playerCurrentMs) ? playerCurrentMs : draftActionEndMs || 0)
     );
     const actionEnd = Math.min(
-      playerDurationMs || actionStart + DEFAULT_CLIP_PADDING_MS,
-      actionStart + DEFAULT_CLIP_PADDING_MS
+      playerDurationMs || actionStart + DEFAULT_MOVE_DURATION_MS,
+      actionStart + DEFAULT_MOVE_DURATION_MS
     );
     const nextRow = createDraftMoveRow(actionStart, actionEnd);
     draftMoveRows = [...draftMoveRows, nextRow];
@@ -2308,6 +2346,17 @@
                         ⟳ loop
                       </button>
                       <button
+                        class:active={isLoopingWithPadding}
+                        class="timeline-loop-button"
+                        type="button"
+                        aria-pressed={isLoopingWithPadding}
+                        aria-label="Loop with padding"
+                        title="Loop with padding"
+                        on:click={toggleLoopPadding}
+                      >
+                        With padding
+                      </button>
+                      <button
                         class="timeline-loop-button"
                         type="button"
                         aria-label="Reset clip padding"
@@ -2551,7 +2600,7 @@
                           on:click={() => openSavedClipEditor(clip)}
                         >
                           <span class="move-chip move-picker-inline-chip saved-editor-chip">
-                            {clip.moveId} · {moveNameById.get(clip.moveId) ?? clip.moveId}
+                            {clip.moveDisplayId ?? clip.moveId} · {moveNameById.get(clip.moveId) ?? clip.moveDisplayId ?? clip.moveId}
                           </span>
                           <span class="saved-editor-placeholder">Add another move</span>
                         </button>
@@ -2595,7 +2644,19 @@
                   </label>
                   <label>
                     <span>Dancers</span>
-                    <input bind:value={editDancers} placeholder="Comma separated" />
+                    <SearchablePicker
+                      options={dancerOptions}
+                      selectedIds={editDancerIds}
+                      query={editDancerQuery}
+                      placeholder="Search dancers"
+                      addPlaceholder="Add dancer"
+                      ariaLabel="Dancers"
+                      selectedPlacement="inside"
+                      floatingDropdown={true}
+                      on:query={(event) => (editDancerQuery = event.detail.query)}
+                      on:select={(event) => addSelectedDancer(event.detail.option.label)}
+                      on:remove={(event) => removeSelectedDancer(event.detail.id)}
+                    />
                   </label>
                   <div class="segmented-field">
                     <span class="segmented-label source-segmented-label">Source</span>
@@ -2718,7 +2779,17 @@
                     <ContentBadge label={environmentLabel(selectedAsset.environment)} className={`media-property-badge ${environmentBadgeClass(selectedAsset.environment)}`} />
                   </dd>
                   <dt>Dancers</dt>
-                  <dd>{selectedAsset.dancers.length ? selectedAsset.dancers.join(', ') : '—'}</dd>
+                  <dd>
+                    {#if selectedAsset.dancers.length}
+                      <span class="shared-chip-row media-dancer-badge-row">
+                        {#each selectedAsset.dancers as dancer}
+                          <span class="shared-chip media-dancer-badge">{dancer}</span>
+                        {/each}
+                      </span>
+                    {:else}
+                      —
+                    {/if}
+                  </dd>
                   <dt>Recorded</dt>
                   <dd>{selectedAsset.recordDate ? formatDate(selectedAsset.recordDate) : '—'}</dd>
                   <dt>Uploaded</dt>

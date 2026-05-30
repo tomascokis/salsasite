@@ -2,6 +2,9 @@
 	"/": [
 		"src/routes/+page.server.ts"
 	],
+	"/api/clips/[clipId]/key": [
+		"src/routes/api/clips/[clipId]/key/+server.ts"
+	],
 	"/api/dancers": [
 		"src/routes/api/dancers/+server.ts"
 	],
@@ -81,6 +84,9 @@
 		"src/routes/progress/editor/+page.server.ts"
 	],
 	"/settings": [],
+	"/settings/pickers": [
+		"src/routes/settings/pickers/+page.server.ts"
+	],
 	"/topics/[slug]": [
 		"src/routes/topics/[slug]/+page.server.ts"
 	],
