@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { setClipKeyVideo } from '$lib/server/video-library';
+import type { RequestHandler } from './$types';
 
-export async function POST({ params, request }) {
+export const POST: RequestHandler = async ({ params, request }) => {
   const clipId = String(params.clipId ?? '').trim();
   const body = await request.json();
   const isKeyVideo = Boolean(body.isKeyVideo);
@@ -19,4 +20,4 @@ export async function POST({ params, request }) {
       { status: 400 }
     );
   }
-}
+};

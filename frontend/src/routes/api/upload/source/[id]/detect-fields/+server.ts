@@ -1,8 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { detectSourceAssetFields } from '$lib/server/video-library';
 import type { VideoOriginType } from '$lib/types';
+import type { RequestHandler } from './$types';
 
-export async function POST({ params, request }) {
+export const POST: RequestHandler = async ({ params, request }) => {
   const body = await request.json().catch(() => ({}));
   const originType = String(body.originType ?? '');
 
@@ -18,4 +19,4 @@ export async function POST({ params, request }) {
       { status: 404 }
     );
   }
-}
+};

@@ -2,13 +2,14 @@ import { json } from '@sveltejs/kit';
 import { queuePosterGeneration } from '$lib/server/posters';
 import { createSourceAsset } from '$lib/server/video-library';
 import type { VideoContentType, VideoEnvironment, VideoOriginType, VideoTiming } from '$lib/types';
+import type { RequestHandler } from './$types';
 
 const VALID_TIMINGS = new Set<VideoTiming>(['on1', 'on2', 'other']);
 const VALID_CONTENT_TYPES = new Set<VideoContentType>(['music', 'counts', 'other']);
 const VALID_ENVIRONMENTS = new Set<VideoEnvironment>(['social', 'class']);
 const VALID_ORIGIN_TYPES = new Set<VideoOriginType>(['self-recorded', 'download']);
 
-export async function POST({ request }) {
+export const POST: RequestHandler = async ({ request }) => {
   const formData = await request.formData();
   const file = formData.get('file');
 
@@ -56,4 +57,4 @@ export async function POST({ request }) {
   void queuePosterGeneration(asset.filePath);
 
   return json({ ok: true, asset });
-}
+};

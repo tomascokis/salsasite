@@ -2,8 +2,9 @@ import { error } from '@sveltejs/kit';
 import { getMoves, getOverviewLayout, getRawMoveReference } from '$lib/server/data';
 import { getSiteMetadata } from '$lib/server/metadata';
 import { filterOverviewLayout } from '$lib/overview-filter';
+import type { PageServerLoad } from './$types';
 
-export async function load({ params }) {
+export const load: PageServerLoad = async ({ params }) => {
   const [moves, rawReferences, layout] = await Promise.all([getMoves(), getRawMoveReference(), getOverviewLayout()]);
   const metadata = await getSiteMetadata(moves, rawReferences);
   const topic = metadata.topics.find((entry) => entry.slug === params.slug);
@@ -17,4 +18,4 @@ export async function load({ params }) {
     entry: topic,
     layout: filteredLayout
   };
-}
+};

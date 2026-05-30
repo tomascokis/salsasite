@@ -1,8 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { getMoves } from '$lib/server/data';
 import { getMediaLibraryPage } from '$lib/server/video-library';
+import type { RequestHandler } from './$types';
 
-export async function GET({ url }) {
+export const GET: RequestHandler = async ({ url }) => {
   const moves = await getMoves();
   const limit = Number(url.searchParams.get('limit') ?? 50);
   const cursor = url.searchParams.get('cursor');
@@ -19,4 +20,4 @@ export async function GET({ url }) {
       dancers
     })
   );
-}
+};

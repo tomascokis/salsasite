@@ -5,8 +5,9 @@ import {
   isPosterGeneratorUnavailable,
   queuePosterGeneration
 } from '$lib/server/posters';
+import type { RequestHandler } from './$types';
 
-export async function GET({ params }) {
+export const GET: RequestHandler = async ({ params }) => {
   const rawPath = params.path ?? '';
   const decodedPath = decodeURIComponent(rawPath);
   const videoFile = decodedPath;
@@ -38,4 +39,4 @@ export async function GET({ params }) {
     unavailable: false,
     posterFile: null
   });
-}
+};

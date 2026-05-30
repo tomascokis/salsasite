@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { saveDancer } from '$lib/server/dancers';
+import type { RequestHandler } from './$types';
 
-export async function POST({ request }) {
+export const POST: RequestHandler = async ({ request }) => {
   const payload = await request.json();
 
   try {
@@ -18,4 +19,4 @@ export async function POST({ request }) {
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : 'Could not save dancer.' }, { status: 400 });
   }
-}
+};

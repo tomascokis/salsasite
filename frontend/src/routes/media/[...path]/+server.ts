@@ -4,6 +4,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { error } from '@sveltejs/kit';
 import { resolveManagedVideoAbsolutePath } from '$lib/server/paths';
+import type { RequestHandler } from './$types';
 
 function mimeTypeFor(filename: string) {
   const ext = path.extname(filename).toLowerCase();
@@ -12,7 +13,7 @@ function mimeTypeFor(filename: string) {
   return 'video/mp4';
 }
 
-export async function GET({ params, request }) {
+export const GET: RequestHandler = async ({ params, request }) => {
   const rawPath = params.path ?? '';
   const decodedPath = decodeURIComponent(rawPath);
   let absolutePath: string;
@@ -65,4 +66,4 @@ export async function GET({ params, request }) {
       'cache-control': 'public, max-age=3600'
     }
   });
-}
+};

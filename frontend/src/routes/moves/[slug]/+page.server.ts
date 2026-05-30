@@ -4,8 +4,9 @@ import { buildRelationshipDiagram } from '$lib/relationship-diagram';
 import { getResolvedMoveVideos } from '$lib/server/video-library';
 import { queuePosterGeneration } from '$lib/server/posters';
 import { getSiteMetadata } from '$lib/server/metadata';
+import type { PageServerLoad } from './$types';
 
-export async function load({ params }) {
+export const load: PageServerLoad = async ({ params }) => {
   const moves = await getMoves();
   const move = moves.find((entry) => entry.slug === params.slug) ?? null;
 
@@ -46,4 +47,4 @@ export async function load({ params }) {
     })),
     videos
   };
-}
+};

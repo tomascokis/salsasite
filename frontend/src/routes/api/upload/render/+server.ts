@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { getRenderStatuses, queueClipRender } from '$lib/server/video-library';
+import type { RequestHandler } from './$types';
 
-export async function GET({ url }) {
+export const GET: RequestHandler = async ({ url }) => {
   const ids = url.searchParams
     .get('ids')
     ?.split(',')
@@ -11,9 +12,9 @@ export async function GET({ url }) {
   return json({
     statuses: await getRenderStatuses(ids)
   });
-}
+};
 
-export async function POST({ request }) {
+export const POST: RequestHandler = async ({ request }) => {
   const body = await request.json();
   const clipIds: string[] = Array.isArray(body.clipIds)
     ? body.clipIds.map((value: unknown) => String(value).trim()).filter(Boolean)
@@ -27,4 +28,4 @@ export async function POST({ request }) {
     ok: true,
     statuses: await getRenderStatuses(clipIds)
   });
-}
+};

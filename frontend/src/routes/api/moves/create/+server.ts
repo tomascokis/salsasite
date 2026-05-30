@@ -4,8 +4,9 @@ import { draftMoveIdFromName } from '$lib/move-id-utils.js';
 import { getMoves } from '$lib/server/data';
 import { deleteMoveDraft, listMoveDrafts, publishMoveDraft, saveMoveDraft } from '$lib/server/move-editor';
 import { relinkDerivedClipsForPublishedMove } from '$lib/server/video-library';
+import type { RequestHandler } from './$types';
 
-export async function POST({ request }) {
+export const POST: RequestHandler = async ({ request }) => {
   const body = await request.json();
   const action = String(body.action ?? 'saveDraft');
 
@@ -59,4 +60,4 @@ export async function POST({ request }) {
       { status: 400 }
     );
   }
-}
+};

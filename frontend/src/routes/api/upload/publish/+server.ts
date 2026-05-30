@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { publishClipsToMoves } from '$lib/server/video-library';
+import type { RequestHandler } from './$types';
 
-export async function POST({ request }) {
+export const POST: RequestHandler = async ({ request }) => {
   const body = await request.json();
   const clipIds: string[] = Array.isArray(body.clipIds)
     ? body.clipIds.map((value: unknown) => String(value).trim()).filter(Boolean)
@@ -16,4 +17,4 @@ export async function POST({ request }) {
       { status: 400 }
     );
   }
-}
+};

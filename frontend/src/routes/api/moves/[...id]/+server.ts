@@ -3,8 +3,9 @@ import { moveDisplayId, normalizeMoveDisplayId } from '$lib/move-id';
 import { getMoves } from '$lib/server/data';
 import { savePublishedMove } from '$lib/server/move-editor';
 import { syncDerivedClipDisplayIdForMove } from '$lib/server/video-library';
+import type { RequestHandler } from './$types';
 
-export async function POST({ params, request }) {
+export const POST: RequestHandler = async ({ params, request }) => {
   const id = String(params.id ?? '').trim().toUpperCase();
   const body = await request.json();
   const moves = await getMoves();
@@ -24,4 +25,4 @@ export async function POST({ params, request }) {
       { status: 400 }
     );
   }
-}
+};

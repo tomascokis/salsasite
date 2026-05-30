@@ -1,13 +1,14 @@
 import { json } from '@sveltejs/kit';
 import { deleteSourceAsset, updateSourceAsset } from '$lib/server/video-library';
 import type { VideoContentType, VideoEnvironment, VideoOriginType, VideoTiming } from '$lib/types';
+import type { RequestHandler } from './$types';
 
 const VALID_TIMINGS = new Set<VideoTiming>(['on1', 'on2', 'other']);
 const VALID_CONTENT_TYPES = new Set<VideoContentType>(['music', 'counts', 'other']);
 const VALID_ENVIRONMENTS = new Set<VideoEnvironment>(['social', 'class']);
 const VALID_ORIGIN_TYPES = new Set<VideoOriginType>(['self-recorded', 'download']);
 
-export async function PUT({ params, request }) {
+export const PUT: RequestHandler = async ({ params, request }) => {
   const body = await request.json();
   const timing = String(body.timing ?? '') as VideoTiming;
   const contentType = String(body.contentType ?? '') as VideoContentType;
@@ -54,9 +55,9 @@ export async function PUT({ params, request }) {
       { status: 404 }
     );
   }
-}
+};
 
-export async function DELETE({ params }) {
+export const DELETE: RequestHandler = async ({ params }) => {
   try {
     const result = await deleteSourceAsset(params.id);
     return json({ ok: true, ...result });
@@ -66,4 +67,4 @@ export async function DELETE({ params }) {
       { status: 404 }
     );
   }
-}
+};

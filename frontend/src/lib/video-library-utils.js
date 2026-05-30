@@ -105,6 +105,12 @@ export function moveSuggestionSearch(moves, query, selectedMoveIds = [], limit =
   };
 }
 
+/**
+ * @param {{ derivedClips?: DerivedClip[]; moveVideoLinks?: MoveVideoLink[] }} librarySlice
+ * @param {string | null | undefined} previousMoveId
+ * @param {string | null | undefined} nextMoveId
+ * @param {string | null | undefined} [nextMoveDisplayId]
+ */
 export function rekeyClipMoveAssociations(librarySlice, previousMoveId, nextMoveId, nextMoveDisplayId = null) {
   const normalizedPreviousMoveId = String(previousMoveId ?? '').trim().toUpperCase();
   const normalizedNextMoveId = String(nextMoveId ?? '').trim().toUpperCase();
@@ -218,3 +224,5 @@ function normalizeSearchText(value) {
 function tokenizeSearchText(value) {
   return normalizeSearchText(value).split(' ').filter(Boolean);
 }
+/** @typedef {import('$lib/types').DerivedClip} DerivedClip */
+/** @typedef {import('$lib/types').MoveVideoLink} MoveVideoLink */

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { error } from '@sveltejs/kit';
 import { resolvePathInsideRoot, resolvePosterRoot } from '$lib/server/paths';
+import type { RequestHandler } from './$types';
 
 function mimeTypeFor(filename: string) {
   const ext = path.extname(filename).toLowerCase();
@@ -13,7 +14,7 @@ function mimeTypeFor(filename: string) {
   return 'image/jpeg';
 }
 
-export async function GET({ params }) {
+export const GET: RequestHandler = async ({ params }) => {
   const rawPath = params.path ?? '';
   const decodedPath = decodeURIComponent(rawPath);
   const posterRoot = resolvePosterRoot();
@@ -39,4 +40,4 @@ export async function GET({ params }) {
       'cache-control': 'public, max-age=3600'
     }
   });
-}
+};

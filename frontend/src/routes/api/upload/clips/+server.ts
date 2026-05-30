@@ -4,6 +4,7 @@ import { getMoves } from '$lib/server/data';
 import { listMoveDrafts } from '$lib/server/move-editor';
 import { saveSourceClips } from '$lib/server/video-library';
 import type { ClipCountMarker, ClipCropRect, CountOverlayPlacement, CountTimingPreset } from '$lib/types';
+import type { RequestHandler } from './$types';
 
 const VALID_COUNT_PLACEMENTS = new Set<CountOverlayPlacement>(['top-left', 'top-right', 'bottom-left', 'bottom-right']);
 const VALID_COUNT_PRESETS = new Set<CountTimingPreset>(['on2-default', 'on2-all', 'on1-default', 'on1-all']);
@@ -53,7 +54,7 @@ function parseCountMarkers(value: unknown): ClipCountMarker[] {
     .filter((entry): entry is ClipCountMarker => Boolean(entry));
 }
 
-export async function POST({ request }) {
+export const POST: RequestHandler = async ({ request }) => {
   const body = await request.json();
   const sourceAssetId = String(body.sourceAssetId ?? '').trim();
   const rawClips = Array.isArray(body.clips) ? body.clips : [];
@@ -63,10 +64,11 @@ export async function POST({ request }) {
   }
 
   const [moves, moveDrafts] = await Promise.all([getMoves(), listMoveDrafts()]);
-  const moveDisplayIdById = new Map([
-    ...moves.map((move) => [move.id.toUpperCase(), moveDisplayId(move)]),
-    ...moveDrafts.map((draft) => [draft.move.id.toUpperCase(), moveDisplayId(draft.move)])
-  ]);
+  const moveDisplayIdEntries: Array<[string, string]> = [
+    ...moves.map((move) => [move.id.toUpperCase(), moveDisplayId(move)] as [string, string]),
+    ...moveDrafts.map((draft) => [draft.move.id.toUpperCase(), moveDisplayId(draft.move)] as [string, string])
+  ];
+  const moveDisplayIdById = new Map<string, string>(moveDisplayIdEntries);
   const knownMoveIds = new Set([
     ...moves.map((move) => move.id.toUpperCase()),
     ...moveDrafts.map((draft) => draft.move.id.toUpperCase())
@@ -141,4 +143,4 @@ export async function POST({ request }) {
       { status: 400 }
     );
   }
-}
+};
