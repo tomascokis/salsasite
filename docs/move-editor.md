@@ -51,7 +51,7 @@ Entering move-editing mode should preserve the user's spatial context while enab
 
 The editor should keep playback predictable while the user marks precise ranges.
 
-- The source video may autoplay muted when loaded, subject to browser autoplay rules.
+- The source video should default to unmuted on a fresh site load, while any autoplay attempt still remains subject to browser autoplay rules.
 - Spacebar toggles playback only when focus is not inside an input, textarea, select, button, or editable element.
 - Clicking the video toggles playback.
 - Move-editor controls must not duplicate a large center play overlay and a bottom-right play button.
@@ -63,9 +63,10 @@ The editor should keep playback predictable while the user marks precise ranges.
 
 Audio should be helpful when editing moves, but should respect the user.
 
-- Track whether the user manually muted the video in the current browser session.
-- If the user has not manually muted, enabling move editing should turn audio on.
-- If the user has manually muted, enabling move editing must not unmute the video.
+- Track whether the user manually muted any site video.
+- If the user manually muted a video, that mute preference must be remembered across the site for up to 3 hours.
+- If no active mute preference exists, enabling move editing should leave audio on.
+- If an active mute preference exists, enabling move editing must not unmute the video.
 - Setting volume to zero counts as a manual mute.
 - On mobile, the volume control should be compact: a button opens a small dropdown/popup volume slider.
 - On desktop, the volume slider may be visible inline inside the compact control group.

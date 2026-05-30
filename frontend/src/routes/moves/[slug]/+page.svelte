@@ -2,6 +2,7 @@
   import { browser } from '$app/environment';
   import { invalidateAll } from '$app/navigation';
   import { moveDisplayId } from '$lib/move-id';
+  import { applyVideoAudioPreference, saveVideoAudioPreferenceFromElement } from '$lib/video-audio-preference';
   import { onDestroy } from 'svelte';
   import AutoResizeTextarea from '$lib/components/AutoResizeTextarea.svelte';
   import ContentBadge from '$lib/components/ContentBadge.svelte';
@@ -35,14 +36,12 @@
     videos: MoveVideoEntry[];
   };
 
-  const VIDEO_VOLUME_SESSION_KEY = 'salsa-encyclopedia:video-volume';
   let videos = data.videos;
   let selectedVideo = 0;
   let selectedVideoVariant: 'full' | 'low' | 'padded-low' = 'full';
   let videoElement: HTMLVideoElement | null = null;
   let posterPollTimeout: ReturnType<typeof setTimeout> | null = null;
   let posterPollTarget: string | null = null;
-  let savedSessionVolume: number | null = null;
   let selectedVideoEntry: MoveVideoEntry | null = null;
   let showCountOverlay = false;
   let currentVideoMs = 0;
@@ -438,35 +437,12 @@
     detailEditorStatus = payload.clip.isKeyVideo ? 'Key video saved.' : 'Key video removed.';
   }
 
-  function normalizeVolume(value: number) {
-    if (Number.isNaN(value)) {
-      return 1;
-    }
-
-    return Math.min(1, Math.max(0, value));
-  }
-
-  function getSavedSessionVolume() {
-    if (!browser) {
-      return 1;
-    }
-
-    if (savedSessionVolume !== null) {
-      return savedSessionVolume;
-    }
-
-    const rawValue = window.sessionStorage.getItem(VIDEO_VOLUME_SESSION_KEY);
-    const parsedValue = rawValue === null ? 1 : Number(rawValue);
-    savedSessionVolume = normalizeVolume(parsedValue);
-    return savedSessionVolume;
-  }
-
-  function applySavedSessionVolume() {
+  function applySavedAudioPreference() {
     if (!browser || !videoElement) {
       return;
     }
 
-    videoElement.volume = getSavedSessionVolume();
+    applyVideoAudioPreference(videoElement);
   }
 
   function handleVolumeChange() {
@@ -474,8 +450,7 @@
       return;
     }
 
-    savedSessionVolume = normalizeVolume(videoElement.volume);
-    window.sessionStorage.setItem(VIDEO_VOLUME_SESSION_KEY, String(savedSessionVolume));
+    saveVideoAudioPreferenceFromElement(videoElement);
   }
 
   function handleVideoTimeUpdate() {
@@ -598,7 +573,7 @@
   }
 
   $: if (videoElement) {
-    applySavedSessionVolume();
+    applySavedAudioPreference();
   }
 
   $: selectedVideoEntry = videos[selectedVideo] ?? null;

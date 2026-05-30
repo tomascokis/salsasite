@@ -3,6 +3,11 @@
   import { onDestroy, tick } from 'svelte';
   import ContentBadge from '$lib/components/ContentBadge.svelte';
   import MovePicker from '$lib/components/MovePicker.svelte';
+  import {
+    applyVideoAudioPreference,
+    hasActiveMutedVideoPreference,
+    saveVideoAudioPreferenceFromElement
+  } from '$lib/video-audio-preference';
   import { publicationStatusFor, processingStatusFor } from '$lib/content-status';
   import type {
     ClipCountMarker,
@@ -1246,7 +1251,7 @@
     }
 
     autoplayedMediaPath = selectedAsset.filePath;
-    videoElement.muted = true;
+    applyVideoAudioPreference(videoElement);
     syncAudioState();
 
     try {
@@ -1265,6 +1270,15 @@
     videoVolume = videoElement.volume;
   }
 
+  function handleAudioPreferenceChange() {
+    if (!videoElement) {
+      return;
+    }
+
+    saveVideoAudioPreferenceFromElement(videoElement);
+    syncAudioState();
+  }
+
   function handleVolumeInput(event: Event) {
     if (!videoElement) {
       return;
@@ -1276,22 +1290,17 @@
     }
 
     const clampedVolume = Math.max(0, Math.min(1, nextVolume));
-    hasManuallyMutedAudio = clampedVolume === 0;
     videoElement.volume = clampedVolume;
     videoElement.muted = videoElement.volume === 0;
-    syncAudioState();
+    handleAudioPreferenceChange();
   }
 
   function toggleVolumeOpen() {
-    if (videoElement && videoElement.muted && videoElement.volume > 0 && !hasManuallyMutedAudio) {
-      videoElement.muted = false;
-      syncAudioState();
-    }
     isVolumeOpen = !isVolumeOpen;
   }
 
   function enableMoveEditorAudio() {
-    if (!videoElement || hasManuallyMutedAudio) {
+    if (!videoElement || hasActiveMutedVideoPreference()) {
       return;
     }
 
@@ -1299,7 +1308,7 @@
       videoElement.volume = 0.5;
     }
     videoElement.muted = false;
-    syncAudioState();
+    handleAudioPreferenceChange();
   }
 
   function seekPreview(milliseconds: number) {
@@ -2215,7 +2224,7 @@
                       isPlaying = false;
                       stopPlaybackAnimation();
                     }}
-                    on:volumechange={syncAudioState}
+                    on:volumechange={handleAudioPreferenceChange}
                     on:error={() => (playbackError = 'This browser could not load the selected video.')}
                     on:click={() => void togglePlayback()}
                   ></video>

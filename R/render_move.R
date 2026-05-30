@@ -115,7 +115,7 @@ render_move_content <- function(id, dt_pw,
         class = paste("tab-pane fade", if (active) "show active"),
         role = "tabpanel",
         tabindex = "0",
-        tags$video(controls = NA, preload = "auto", muted = NA, playsinline = NA, class = "mv-video",
+        tags$video(controls = NA, preload = "auto", playsinline = NA, class = "mv-video",
           tags$source(src = vid_src, type = mime_for(vid_paths[i]))
         )
       )
@@ -191,9 +191,56 @@ render_move_content <- function(id, dt_pw,
   # ---- Build JS ----
   js_tag <- tags$script(HTML("
 document.addEventListener('DOMContentLoaded', function () {
+  var VIDEO_AUDIO_PREFERENCE_STORAGE_KEY = 'salsa-encyclopedia:video-audio-preference';
+  var VIDEO_AUDIO_PREFERENCE_TTL_MS = 3 * 60 * 60 * 1000;
+
+  function normalizeVolume(value) {
+    var numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return 1;
+    }
+
+    return Math.min(1, Math.max(0, numeric));
+  }
+
+  function loadVideoAudioPreference() {
+    try {
+      var rawValue = window.localStorage.getItem(VIDEO_AUDIO_PREFERENCE_STORAGE_KEY);
+      if (!rawValue) return null;
+      var parsed = JSON.parse(rawValue);
+      if (!parsed || !Number.isFinite(Number(parsed.expiresAt)) || Number(parsed.expiresAt) <= Date.now()) {
+        window.localStorage.removeItem(VIDEO_AUDIO_PREFERENCE_STORAGE_KEY);
+        return null;
+      }
+      return {
+        muted: Boolean(parsed.muted),
+        volume: normalizeVolume(parsed.volume)
+      };
+    } catch (e) {
+      try { window.localStorage.removeItem(VIDEO_AUDIO_PREFERENCE_STORAGE_KEY); } catch (err) {}
+      return null;
+    }
+  }
+
+  function saveVideoAudioPreference(video) {
+    try {
+      window.localStorage.setItem(VIDEO_AUDIO_PREFERENCE_STORAGE_KEY, JSON.stringify({
+        muted: Boolean(video.muted || video.volume === 0),
+        volume: video.volume > 0 ? normalizeVolume(video.volume) : 1,
+        expiresAt: Date.now() + VIDEO_AUDIO_PREFERENCE_TTL_MS
+      }));
+    } catch (e) {}
+  }
+
+  function applyVideoAudioPreference(video) {
+    var preference = loadVideoAudioPreference() || { muted: false, volume: 1 };
+    video.volume = preference.volume;
+    video.muted = preference.muted;
+  }
+
   function primeVideo(v) {
     try {
-      v.muted = true;
+      applyVideoAudioPreference(v);
       v.preload = 'auto';
       const p = v.play();
       if (p && typeof p.then === 'function') {
@@ -205,6 +252,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   document.querySelectorAll('.mv-video').forEach(function(v){
+    v.addEventListener('volumechange', function(){ saveVideoAudioPreference(v); });
     if (v.readyState < 2) {
       v.addEventListener('loadeddata', function once(){ v.removeEventListener('loadeddata', once); primeVideo(v); });
       try { v.load(); } catch(e) {}

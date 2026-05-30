@@ -17,6 +17,8 @@ Shared controls on move pages and move editing surfaces must follow `docs/shared
 - When a move has more than four linked videos and no videos have been explicitly promoted, the first four videos in the existing move-video order are the default key videos.
 - Additional non-key videos must remain accessible from the move page through a compact dropdown control instead of expanding the main tab strip.
 - While the move page is in edit mode, an editable selected clip must expose a star toggle that promotes or demotes that clip as a key video.
+- On a fresh site load, move-page videos must start unmuted.
+- If the user manually mutes a video, that mute preference must be remembered across the site for up to 3 hours before videos default back to unmuted.
 
 ## Move Creation And Editing
 
