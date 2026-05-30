@@ -10,6 +10,7 @@ import type {
 import { buildResolvedMoveVideoMetadataIndex } from './video-library';
 import { resolveDataDir, resolveMediaRoot, resolvePosterRoot, resolveSourceRoot } from './paths';
 import { applyMoveEditStore } from './move-editor';
+import { buildOverviewLayout, buildOverviewSearchIndex } from './overview.js';
 
 type JsonCache = {
   manifest?: SiteManifest;
@@ -37,6 +38,7 @@ export async function getManifest() {
     ...cache.manifest,
     counts: {
       ...cache.manifest.counts,
+      moveRows: moves.length,
       movesWithLocalVideo: moves.filter((move) => move.hasLocalVideo).length
     }
   };
@@ -65,14 +67,19 @@ export async function getLayout() {
   return cache.layout;
 }
 
+export async function getOverviewLayout() {
+  const [layout, moves] = await Promise.all([getLayout(), getMoves()]);
+  return buildOverviewLayout(layout, moves);
+}
+
 export async function getProgressSnapshots() {
   cache.progress ??= await readJsonFile<ProgressSnapshot[]>('progress.json');
   return cache.progress;
 }
 
 export async function getSearchIndex() {
-  cache.search ??= await readJsonFile<SearchIndexEntry[]>('search-index.json');
-  return cache.search;
+  const moves = await getMoves();
+  return buildOverviewSearchIndex(moves);
 }
 
 export async function getRawMoveReference() {

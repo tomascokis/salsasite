@@ -1,10 +1,10 @@
 import { error } from '@sveltejs/kit';
-import { getLayout, getMoves, getRawMoveReference } from '$lib/server/data';
+import { getMoves, getOverviewLayout, getRawMoveReference } from '$lib/server/data';
 import { getSiteMetadata, metadataSlug } from '$lib/server/metadata';
 import { filterOverviewLayout } from '$lib/overview-filter';
 
 export async function load({ params }) {
-  const [moves, rawReferences, layout] = await Promise.all([getMoves(), getRawMoveReference(), getLayout()]);
+  const [moves, rawReferences, layout] = await Promise.all([getMoves(), getRawMoveReference(), getOverviewLayout()]);
   const metadata = await getSiteMetadata(moves, rawReferences);
   const family = metadata.families.find((entry) => entry.slug === params.slug);
   if (!family) {

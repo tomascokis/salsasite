@@ -1,4 +1,5 @@
 import type { LayoutColumn, LayoutEntry, MoveRecord } from '$lib/types';
+import { deriveOverviewTitle } from '$lib/server/overview.js';
 
 export interface OverviewFilter {
   topic?: string | null;
@@ -17,10 +18,9 @@ export function filterOverviewLayout(
 
   return layout
     .map((column) => {
-      const entries = preserveRelevantTitles(
-        column.entries.filter((entry) => {
+      const filteredDataEntries = column.entries.filter((entry) => {
           if (entry.entryType !== 'Data') {
-            return true;
+            return false;
           }
 
           const move = entry.id ? moveById.get(entry.id.toLocaleLowerCase()) ?? null : null;
@@ -37,6 +37,15 @@ export function filterOverviewLayout(
           }
 
           return filter.predicate ? filter.predicate(entry, move) : true;
+        });
+
+      const entries = preserveRelevantTitles(
+        filteredDataEntries.map((entry) => {
+          const move = entry.id ? moveById.get(entry.id.toLocaleLowerCase()) ?? null : null;
+          return {
+            entry,
+            title: deriveOverviewTitle(entry, move)
+          };
         })
       );
 
@@ -45,18 +54,28 @@ export function filterOverviewLayout(
     .filter((column) => column.entries.some((entry) => entry.entryType === 'Data'));
 }
 
-function preserveRelevantTitles(entries: LayoutEntry[]) {
+function preserveRelevantTitles(entries: { entry: LayoutEntry; title: string }[]) {
   const result: LayoutEntry[] = [];
-  let pendingTitles: LayoutEntry[] = [];
+  let currentTitle = '';
 
-  for (const entry of entries) {
-    if (entry.entryType !== 'Data') {
-      pendingTitles = [...pendingTitles, entry];
-      continue;
+  for (const { entry, title } of entries) {
+    if (normalizeComparable(title) !== normalizeComparable(currentTitle)) {
+      currentTitle = title;
+      result.push({
+        id: null,
+        slug: null,
+        name: title,
+        entryType: 'Title',
+        group: title,
+        level: null,
+        type: null,
+        layoutOrder: entry.layoutOrder,
+        levelOrder: null,
+        valid: false
+      });
     }
 
-    result.push(...pendingTitles, entry);
-    pendingTitles = [];
+    result.push(entry);
   }
 
   return result;

@@ -20,4 +20,5 @@ Shared controls for metadata must follow `docs/shared-ui-audit.md`, especially s
 - Each family must have a splash page.
 - Topic splash pages must show the normal overview layout filtered to moves in that topic.
 - Family splash pages must show the normal overview layout filtered to moves in that family.
+- Topic and family splash pages must reflect published move edits and newly published moves immediately from the live move dataset.
 - Topic and family splash pages should reuse the overview browsing model instead of becoming standalone marketing/detail pages.

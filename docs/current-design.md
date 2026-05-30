@@ -125,6 +125,8 @@ Implemented user-facing routes:
 - `/settings`: badge color settings stored in browser local storage.
 - `/upload`: compatibility redirect area for older upload navigation.
 
+Overview-style pages use the live published move dataset at runtime. Published moves and published move edits must appear on the home overview and overview-derived topic/family pages without requiring a fresh `layout.json` or `search-index.json` export.
+
 ## Move Model And Editing
 
 Core move data is represented by `MoveRecord` in [frontend/src/lib/types.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/types.ts). A move includes identity, topic/family grouping, level/type, positions, tags, description, source/authorship, comments, review fields, ordering/layout fields, relationship IDs, validity, and video references.
