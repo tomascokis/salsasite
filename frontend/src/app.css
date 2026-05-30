@@ -3116,16 +3116,16 @@ select {
 
 .timeline-card {
   --timeline-transition: 220ms cubic-bezier(0.22, 1, 0.36, 1);
-  --timeline-height: 2.45rem;
-  --timeline-track-top: 0.48rem;
-  --timeline-clip-top: 0.48rem;
-  --timeline-move-top: 0.35rem;
-  --timeline-playhead-top: 0.14rem;
-  --timeline-playhead-bottom: 0.46rem;
-  --timeline-handle-top: calc(var(--timeline-clip-top) + 0.616rem + 2px);
-  --timeline-handle-scale: 0.576;
-  --timeline-edge-top: 0.45rem;
-  --timeline-edge-bottom: 0.5rem;
+  --timeline-height: 40px;
+  --timeline-track-top: 8px;
+  --timeline-clip-top: 8px;
+  --timeline-move-top: 6px;
+  --timeline-playhead-top: 2px;
+  --timeline-playhead-bottom: 8px;
+  --timeline-handle-top: 20px;
+  --timeline-handle-size: 18px;
+  --timeline-edge-top: 8px;
+  --timeline-edge-bottom: 8px;
   display: grid;
   gap: 0.48rem;
   margin: 0;
@@ -3142,16 +3142,16 @@ select {
 }
 
 .timeline-card.expanded {
-  --timeline-height: 4.95rem;
-  --timeline-track-top: 2.18rem;
-  --timeline-clip-top: 2.18rem;
-  --timeline-move-top: 2.05rem;
-  --timeline-playhead-top: 0.35rem;
-  --timeline-playhead-bottom: 0.48rem;
-  --timeline-handle-top: calc(var(--timeline-clip-top) + 0.66rem);
-  --timeline-handle-scale: 1;
-  --timeline-edge-top: 1.7rem;
-  --timeline-edge-bottom: 1.4rem;
+  --timeline-height: 80px;
+  --timeline-track-top: 35px;
+  --timeline-clip-top: 35px;
+  --timeline-move-top: 33px;
+  --timeline-playhead-top: 6px;
+  --timeline-playhead-bottom: 8px;
+  --timeline-handle-top: 45px;
+  --timeline-handle-size: 22px;
+  --timeline-edge-top: 27px;
+  --timeline-edge-bottom: 22px;
   gap: 0.75rem;
   padding-bottom: 1rem;
 }
@@ -3337,7 +3337,7 @@ select {
   top: var(--timeline-edge-top);
   bottom: var(--timeline-edge-bottom);
   z-index: 1;
-  width: 0.9rem;
+  width: 14px;
   pointer-events: none;
   transition:
     top var(--timeline-transition),
@@ -3364,7 +3364,7 @@ select {
 .clip-timeline-selection {
   position: absolute;
   top: var(--timeline-clip-top);
-  height: 0.86rem;
+  height: 14px;
   border-radius: 999px;
   will-change: top, height, opacity, transform;
   transition:
@@ -3397,7 +3397,7 @@ select {
 .clip-timeline-selection.move-range {
   top: var(--timeline-clip-top);
   z-index: 2;
-  height: 0.86rem;
+  height: 14px;
   background: linear-gradient(90deg, #ffd166 0%, #f59e0b 100%);
   opacity: 1;
   animation: activeMoveRise 240ms ease-out 180ms both;
@@ -3407,9 +3407,9 @@ select {
 }
 
 .clip-timeline-selection.move-range.secondary {
-  top: calc(var(--timeline-clip-top) + 1.28rem);
+  top: calc(var(--timeline-clip-top) + 20px);
   z-index: 1;
-  height: 0.64rem;
+  height: 10px;
   background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
   opacity: 0.78;
   animation: secondaryMoveDrop 180ms ease-out;
@@ -3419,9 +3419,9 @@ select {
 }
 
 .clip-timeline-selection.saved-move-range {
-  top: calc(var(--timeline-clip-top) + 1.28rem);
+  top: calc(var(--timeline-clip-top) + 20px);
   z-index: 1;
-  height: 0.64rem;
+  height: 10px;
   padding: 0;
   border: 0;
   background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
@@ -3461,7 +3461,7 @@ select {
 @keyframes activeMoveRise {
   from {
     opacity: 0;
-    transform: translateY(1.28rem) scaleY(0.78);
+    transform: translateY(20px) scaleY(0.78);
   }
   to {
     opacity: 1;
@@ -3472,7 +3472,7 @@ select {
 @keyframes secondaryMoveDrop {
   from {
     opacity: 1;
-    transform: translateY(-0.42rem) scaleY(1.2);
+    transform: translateY(-7px) scaleY(1.2);
   }
   to {
     opacity: 0.78;
@@ -3483,7 +3483,7 @@ select {
 .clip-timeline-playhead {
   position: absolute;
   top: var(--timeline-playhead-top);
-  height: calc(var(--timeline-handle-top) + 0.15rem - var(--timeline-playhead-top));
+  height: calc(var(--timeline-handle-top) + 3px - var(--timeline-playhead-top));
   width: 2px;
   border-radius: 999px;
   background: #ffffff;
@@ -3502,15 +3502,15 @@ select {
   top: var(--timeline-handle-top);
   z-index: 3;
   display: block;
-  width: 1.15rem;
-  height: 1.15rem;
+  width: var(--timeline-handle-size);
+  height: var(--timeline-handle-size);
   padding: 0;
   border: 0;
   border: 2px solid rgba(255, 255, 255, 0.94);
   border-radius: 999px;
   background: linear-gradient(180deg, #e9f7ff 0%, #8ed7ff 100%);
   cursor: grab;
-  transform: translateX(-50%) scale(var(--timeline-handle-scale));
+  transform: translateX(-50%);
   transform-origin: 50% 50%;
   box-shadow:
     0 8px 16px rgba(0, 0, 0, 0.28),
@@ -3539,9 +3539,9 @@ select {
 
 .clip-timeline-marker {
   position: absolute;
-  top: 0.1rem;
-  width: 1.7rem;
-  height: 4.35rem;
+  top: 2px;
+  width: 28px;
+  height: 70px;
   display: block;
   padding: 0;
   border: 0;
@@ -3560,8 +3560,8 @@ select {
   transform: translateX(-50%);
   top: 0;
   z-index: 2;
-  width: 1.46rem;
-  height: 1.16rem;
+  width: 24px;
+  height: 18px;
   border: 0;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
@@ -3588,10 +3588,10 @@ select {
 .clip-timeline-marker-stem {
   position: absolute;
   left: 50%;
-  top: 1.08rem;
+  top: 17px;
   z-index: 1;
   width: 2px;
-  bottom: -0.2rem;
+  bottom: -3px;
   background: rgba(255, 255, 255, 0.72);
   transform: translateX(-50%);
 }

@@ -160,6 +160,8 @@
   let timelineDragSnapConsumed = false;
   let resumePlaybackAfterTimelineDrag = false;
   let timelineElement: HTMLDivElement | null = null;
+  let timelineWidthPx = 0;
+  let timelineResizeObserver: ResizeObserver | null = null;
   let playbackAnimationFrame: number | null = null;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
   let syncingAssetKey: string | null = null;
@@ -248,6 +250,20 @@
 
   $: if (!isDraftingMove && isLooping) {
     isLooping = false;
+  }
+
+  $: if (browser) {
+    timelineResizeObserver?.disconnect();
+    timelineResizeObserver = null;
+    if (timelineElement) {
+      syncTimelineWidth();
+      timelineResizeObserver = new ResizeObserver(() => {
+        syncTimelineWidth();
+      });
+      timelineResizeObserver.observe(timelineElement);
+    } else {
+      timelineWidthPx = 0;
+    }
   }
 
   $: if (selectedAsset && selectedAssetKey && syncingAssetKey !== selectedAssetKey) {
@@ -1564,6 +1580,28 @@
     return Math.max(0, percentForMs(endMs) - percentForMs(startMs));
   }
 
+  function snapPx(px: number) {
+    const dpr = browser && typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    return Math.round(px * dpr) / dpr;
+  }
+
+  function syncTimelineWidth() {
+    if (!timelineElement) {
+      timelineWidthPx = 0;
+      return;
+    }
+
+    timelineWidthPx = snapPx(timelineElement.getBoundingClientRect().width);
+  }
+
+  function timelinePxForMs(milliseconds: number) {
+    if (!timelineWidthPx) {
+      return 0;
+    }
+
+    return snapPx((percentForMs(milliseconds) / 100) * timelineWidthPx);
+  }
+
   function timelineViewportDurationMs() {
     ensureTimelineViewport();
     return Math.max(0, timelineViewportEndMs - timelineViewportStartMs);
@@ -1590,11 +1628,21 @@
   }
 
   function timelineRangeStyle(startMs: number, endMs: number, _scaleKey = '') {
-    return `left: ${percentForMs(startMs)}%; width: ${clipPercentWidth(startMs, endMs)}%`;
+    if (!timelineWidthPx) {
+      return `left: ${percentForMs(startMs)}%; width: ${clipPercentWidth(startMs, endMs)}%`;
+    }
+
+    const leftPx = timelinePxForMs(startMs);
+    const rightPx = timelinePxForMs(endMs);
+    return `left: ${leftPx}px; width: ${Math.max(0, snapPx(rightPx - leftPx))}px`;
   }
 
   function markerLeftStyle(milliseconds: number, _scaleKey = '') {
-    return `left: ${percentForMs(milliseconds)}%`;
+    if (!timelineWidthPx) {
+      return `left: ${percentForMs(milliseconds)}%`;
+    }
+
+    return `left: ${timelinePxForMs(milliseconds)}px`;
   }
 
   function draftMoveRangeStyle(row: DraftMoveRow, scaleKey = '') {
@@ -2103,6 +2151,7 @@
   }
 
   onDestroy(() => {
+    timelineResizeObserver?.disconnect();
     stopPolling();
     stopPlaybackAnimation();
   });

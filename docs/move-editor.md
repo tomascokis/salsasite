@@ -103,6 +103,7 @@ The move editor saves clip definitions before rendering.
 - The timeline must support zooming in and out.
 - When timeline zoom is active, the editor must clearly show that zoom is active.
 - When timeline zoom is active, the editor must provide a reset zoom control.
+- Timeline tracks, saved ranges, playhead lines, knobs, and drag markers must render crisply at rest; the editor must not rely on transform downscaling or fractional sizing that leaves the timeline persistently blurry.
 
 ## Crop Tool
 
