@@ -268,6 +268,14 @@ For derived clips, the move page shows inherited provenance from the source asse
 - source label
 - notes
 
+Derived clip definitions may also store expression descriptors:
+
+- an optional extra label for this clip's expression of the move
+- optional start and end position IDs from the strict position option set
+- an optional timing group ID for rows intentionally bound to the same clip/action timing
+
+The extra label may be shown in clip display contexts such as the media editor row and move-page video tab, but it must not change the canonical move name.
+
 The current tabbed player UI uses this resolved view model. It does not read source videos directly.
 
 ## Posters

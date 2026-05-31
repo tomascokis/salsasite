@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import { getMoves, getRawMoveReference } from '$lib/server/data';
 import { getDancerProfiles } from '$lib/server/dancers';
 import { listMoveDrafts } from '$lib/server/move-editor';
+import { getPositionOptions } from '$lib/server/positions';
 import { getUploadPageData, getMediaLibraryPage, getVideoLibrary } from '$lib/server/video-library';
 import type { VideoContentType, VideoEnvironment, VideoTiming } from '$lib/types';
 import type { PageServerLoad } from './$types';
@@ -33,7 +34,10 @@ export const load: PageServerLoad = async ({ params, url }) => {
   }
 
   const mediaData = await getMediaLibraryPage(moves, { limit: 1 });
-  const dancers = await getDancerProfiles(moves, rawReferences, await getVideoLibrary(moves));
+  const [dancers, positionOptions] = await Promise.all([
+    getDancerProfiles(moves, rawReferences, await getVideoLibrary(moves)),
+    getPositionOptions(moves)
+  ]);
   const publishedMoveIds = new Set(moves.map((move) => move.id));
   const draftMoveOptions = moveDrafts
     .map((draft) => draft.move)
@@ -50,6 +54,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
     contentTypeOptions,
     environmentOptions,
     dancerOptions: dancers.map((dancer) => dancer.displayName),
+    positionOptions,
     moves: [
       ...moves.map((move) => ({
         id: move.id,

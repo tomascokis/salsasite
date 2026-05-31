@@ -3660,7 +3660,7 @@ select {
 
 .draft-move-header {
   display: grid;
-  grid-template-columns: 54px minmax(220px, 1fr) 62px;
+  grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px 54px;
   gap: 0.6rem;
   align-items: end;
   color: #aec0d2;
@@ -3670,13 +3670,20 @@ select {
 
 .draft-move-row {
   display: grid;
-  grid-template-columns: 54px minmax(220px, 1fr) 62px;
+  grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px 54px;
   gap: 0.6rem;
   align-items: end;
 }
 
 .draft-move-row.active {
   position: relative;
+}
+
+.draft-move-row.bound {
+  margin: -0.08rem -0.22rem;
+  padding: 0.18rem 0.22rem;
+  border-radius: 8px;
+  background: rgba(125, 70, 255, 0.12);
 }
 
 .draft-move-row.saved-editor-row {
@@ -4176,6 +4183,30 @@ select {
   grid-column: auto;
 }
 
+.draft-descriptor-field {
+  display: grid;
+}
+
+.draft-descriptor-field input {
+  min-width: 0;
+  height: 2.2rem;
+  box-sizing: border-box;
+  border: 1px solid #d7dee6;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #2f3943;
+  padding: 0.36rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.draft-position-field {
+  min-width: 0;
+}
+
+.draft-bound-button {
+  padding-inline: 0.34rem;
+}
+
 .draft-edit-button {
   height: 2.2rem;
   border: 1px solid rgba(178, 202, 226, 0.28);
@@ -4221,6 +4252,12 @@ select {
   font-size: 0.76rem;
   font-weight: 800;
   cursor: pointer;
+}
+
+.draft-add-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 .draft-add-move-button:hover,
@@ -5790,6 +5827,15 @@ select {
   .draft-move-row {
     grid-template-columns: 44px minmax(0, 1fr) 58px;
     gap: 0.35rem;
+  }
+
+  .draft-move-header span:nth-child(3),
+  .draft-move-header span:nth-child(4),
+  .draft-move-header span:nth-child(5),
+  .draft-descriptor-field,
+  .draft-position-field,
+  .draft-bound-button {
+    grid-column: 2 / -1;
   }
 
   .draft-move-row.saved-editor-row {

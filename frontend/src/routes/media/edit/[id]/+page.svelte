@@ -16,6 +16,7 @@
     CountOverlayPlacement,
     CountTimingPreset,
     DerivedClip,
+    PositionOption,
     VideoContentType,
     VideoEnvironment,
     VideoOriginType,
@@ -54,8 +55,15 @@
   type ClipWithUi = DerivedClip & { selected?: boolean };
   type DraftMoveRow = {
     id: string;
+    originalClipId?: string | null;
     moveIds: string[];
     query: string;
+    descriptorLabel: string;
+    startPositionId: string | null;
+    startPositionQuery: string;
+    endPositionId: string | null;
+    endPositionQuery: string;
+    timingGroupId: string | null;
     startMs: number;
     endMs: number;
   };
@@ -80,6 +88,7 @@
     contentTypeOptions: Array<{ value: VideoContentType; label: string }>;
     environmentOptions: Array<{ value: VideoEnvironment; label: string }>;
     dancerOptions: string[];
+    positionOptions: PositionOption[];
     moves: MoveOption[];
     assets: UploadAssetView[];
     total: number;
@@ -179,6 +188,7 @@
   let visibleNextPlaybackMove: ClipWithUi | null = null;
   let showPlaybackMoveContext = false;
   let dancerOptions = data.dancerOptions.map((dancer) => ({ id: dancer, label: dancer }));
+  let positionPickerOptions = data.positionOptions.map((position) => ({ id: position.id, label: position.label }));
 
   let moveNameById = new Map<string, string>();
   $: moveNameById = new Map(availableMoves.map((move) => [move.id, move.name ?? move.id]));
@@ -189,11 +199,14 @@
 
   $: activeDraftMoveRow = draftMoveRows.find((row) => row.id === activeDraftMoveRowId) ?? null;
   $: activeSavedClip = clipRows.find((clip) => clip.id === activeClipId) ?? null;
+  $: activeDraftOriginalClipIds = new Set(draftMoveRows.map((row) => row.originalClipId).filter((id): id is string => Boolean(id)));
   $: activeCountMarkers = activeSavedClip?.countMarkers ?? [];
   $: currentCountMarker = activeSavedClip ? activeCountMarkers[countModeIndex] ?? null : null;
   $: activePreviewCountMarker = activeVisibleCountMarker(activeCountMarkers, playerCurrentMs);
   $: visibleSavedTimelineClips =
-    isDraftingMove && activeClipId ? clipRows.filter((clip) => clip.id !== activeClipId) : clipRows;
+    isDraftingMove && activeDraftOriginalClipIds.size
+      ? clipRows.filter((clip) => !activeDraftOriginalClipIds.has(clip.id))
+      : isDraftingMove && activeClipId ? clipRows.filter((clip) => clip.id !== activeClipId) : clipRows;
   $: playbackMoveClips = sortedPlaybackClips(clipRows);
   $: currentPlaybackMove = playbackMoveClips.find(
     (clip) => playerCurrentMs >= clipActionStartMs(clip) && playerCurrentMs <= clipActionEndMs(clip)
@@ -228,7 +241,18 @@
     .filter(Boolean);
 
   $: currentDraftSnapshot = JSON.stringify([
-    draftMoveRows.map((row) => [row.id, row.moveIds, row.query, row.startMs, row.endMs]),
+    draftMoveRows.map((row) => [
+      row.id,
+      row.originalClipId ?? '',
+      row.moveIds,
+      row.query,
+      row.descriptorLabel,
+      row.startPositionId ?? '',
+      row.endPositionId ?? '',
+      row.timingGroupId ?? '',
+      row.startMs,
+      row.endMs
+    ]),
     draftStartMs,
     draftEndMs
   ]);
@@ -335,6 +359,10 @@
           clip.moveId,
           clip.isKeyVideo ? 'key' : 'normal',
           clip.label ?? '',
+          clip.descriptorLabel ?? '',
+          clip.startPositionId ?? '',
+          clip.endPositionId ?? '',
+          clip.timingGroupId ?? '',
           clip.startMs,
           clip.endMs,
           clip.actionStartMs ?? '',
@@ -406,14 +434,36 @@
   }
 
   function updateDraftMoveRow(rowId: string, patch: Partial<DraftMoveRow>) {
-    draftMoveRows = draftMoveRows.map((row) => (row.id === rowId ? { ...row, ...patch } : row));
+    const target = draftMoveRows.find((row) => row.id === rowId);
+    const timingPatch = {
+      ...(patch.startMs !== undefined ? { startMs: patch.startMs } : {}),
+      ...(patch.endMs !== undefined ? { endMs: patch.endMs } : {})
+    };
+    const shouldSyncTiming = target?.timingGroupId && (patch.startMs !== undefined || patch.endMs !== undefined);
+
+    draftMoveRows = draftMoveRows.map((row) => {
+      if (row.id === rowId) {
+        return { ...row, ...patch };
+      }
+      if (shouldSyncTiming && row.timingGroupId === target?.timingGroupId) {
+        return { ...row, ...timingPatch };
+      }
+      return row;
+    });
   }
 
-  function createDraftMoveRow(startMs: number, endMs: number): DraftMoveRow {
+  function createDraftMoveRow(startMs: number, endMs: number, timingGroupId: string | null = null): DraftMoveRow {
     return {
       id: createDraftClipId(),
+      originalClipId: null,
       moveIds: [],
       query: '',
+      descriptorLabel: '',
+      startPositionId: null,
+      startPositionQuery: '',
+      endPositionId: null,
+      endPositionQuery: '',
+      timingGroupId,
       startMs,
       endMs
     };
@@ -456,7 +506,7 @@
     }
 
     updateDraftMoveRow(rowId, {
-      moveIds: [...row.moveIds, normalized],
+      moveIds: [normalized],
       query: ''
     });
   }
@@ -476,6 +526,36 @@
 
   function handleDraftMoveQueryInput(rowId: string, value: string) {
     updateDraftMoveRow(rowId, { query: value });
+    activeDraftMoveRowId = rowId;
+  }
+
+  function updateDraftDescriptor(rowId: string, value: string) {
+    updateDraftMoveRow(rowId, { descriptorLabel: value });
+    activeDraftMoveRowId = rowId;
+  }
+
+  function updateDraftPositionQuery(rowId: string, field: 'start' | 'end', value: string) {
+    updateDraftMoveRow(rowId, field === 'start' ? { startPositionQuery: value } : { endPositionQuery: value });
+    activeDraftMoveRowId = rowId;
+  }
+
+  function selectDraftPosition(rowId: string, field: 'start' | 'end', id: string) {
+    updateDraftMoveRow(
+      rowId,
+      field === 'start'
+        ? { startPositionId: id, startPositionQuery: '' }
+        : { endPositionId: id, endPositionQuery: '' }
+    );
+    activeDraftMoveRowId = rowId;
+  }
+
+  function removeDraftPosition(rowId: string, field: 'start' | 'end') {
+    updateDraftMoveRow(
+      rowId,
+      field === 'start'
+        ? { startPositionId: null, startPositionQuery: '' }
+        : { endPositionId: null, endPositionQuery: '' }
+    );
     activeDraftMoveRowId = rowId;
   }
 
@@ -523,7 +603,7 @@
     }
 
     updateDraftMoveRow(rowId, {
-      moveIds: row.moveIds.includes(option.id) ? row.moveIds : [...row.moveIds, option.id],
+      moveIds: [option.id],
       query: ''
     });
     renderStatus = `Draft move "${option.name ?? option.id}" created and selected.`;
@@ -561,7 +641,8 @@
   }
 
   function clipDisplayName(clip: DerivedClip) {
-    return clip.label?.trim() || moveNameById.get(clip.moveId) || clip.moveId;
+    const base = clip.label?.trim() || moveNameById.get(clip.moveId) || clip.moveId;
+    return clip.descriptorLabel?.trim() ? `${base} - ${clip.descriptorLabel.trim()}` : base;
   }
 
   function playbackMoveName(clip: DerivedClip) {
@@ -598,6 +679,10 @@
       clip.moveId,
       clip.isKeyVideo ? 'key' : 'normal',
       clip.label ?? '',
+      clip.descriptorLabel ?? '',
+      clip.startPositionId ?? '',
+      clip.endPositionId ?? '',
+      clip.timingGroupId ?? '',
       clip.manuallyNamed ? 'manual' : 'generated',
       clip.startMs,
       clip.endMs,
@@ -669,15 +754,25 @@
   function openSavedClipEditor(clip: DerivedClip) {
     const actionStart = clipActionStartMs(clip);
     const actionEnd = clipActionEndMs(clip);
-    const row = {
-      ...createDraftMoveRow(actionStart, actionEnd),
-      moveIds: [clip.moveId],
-      query: ''
-    };
+    const groupClips = clip.timingGroupId
+      ? clipRows.filter((entry) => entry.timingGroupId === clip.timingGroupId)
+      : [clip];
+    const rows = groupClips.map((entry) => ({
+      ...createDraftMoveRow(clipActionStartMs(entry), clipActionEndMs(entry), entry.timingGroupId ?? null),
+      originalClipId: entry.id,
+      moveIds: [entry.moveId],
+      query: '',
+      descriptorLabel: entry.descriptorLabel ?? '',
+      startPositionId: entry.startPositionId ?? null,
+      startPositionQuery: '',
+      endPositionId: entry.endPositionId ?? null,
+      endPositionQuery: ''
+    }));
+    const row = rows.find((entry) => entry.originalClipId === clip.id) ?? rows[0];
 
     activeClipId = clip.id;
     isDraftingMove = true;
-    draftMoveRows = [row];
+    draftMoveRows = rows;
     activeDraftMoveRowId = row.id;
     draftActionStartMs = actionStart;
     draftActionEndMs = actionEnd;
@@ -694,7 +789,18 @@
     isCroppingClip = false;
     resetTimelineZoom();
     draftInitialSnapshot = JSON.stringify([
-      draftMoveRows.map((draftRow) => [draftRow.id, draftRow.moveIds, draftRow.query, draftRow.startMs, draftRow.endMs]),
+      draftMoveRows.map((draftRow) => [
+        draftRow.id,
+        draftRow.originalClipId ?? '',
+        draftRow.moveIds,
+        draftRow.query,
+        draftRow.descriptorLabel,
+        draftRow.startPositionId ?? '',
+        draftRow.endPositionId ?? '',
+        draftRow.timingGroupId ?? '',
+        draftRow.startMs,
+        draftRow.endMs
+      ]),
       draftStartMs,
       draftEndMs
     ]);
@@ -1807,7 +1913,18 @@
     isLoopingWithPadding = true;
     resetTimelineZoom();
     draftInitialSnapshot = JSON.stringify([
-      draftMoveRows.map((row) => [row.id, row.moveIds, row.query, row.startMs, row.endMs]),
+      draftMoveRows.map((row) => [
+        row.id,
+        row.originalClipId ?? '',
+        row.moveIds,
+        row.query,
+        row.descriptorLabel,
+        row.startPositionId ?? '',
+        row.endPositionId ?? '',
+        row.timingGroupId ?? '',
+        row.startMs,
+        row.endMs
+      ]),
       draftStartMs,
       draftEndMs
     ]);
@@ -1881,7 +1998,11 @@
 
     const existingClipIndex = clipRows.findIndex((clip) => clip.id === activeClipId);
     const existingClip = existingClipIndex >= 0 ? clipRows[existingClipIndex] : null;
-    let firstGeneratedClip = true;
+    const replacedClipIds = new Set(moveRows.map((row) => row.originalClipId).filter((id): id is string => Boolean(id)));
+    if (existingClip) {
+      replacedClipIds.add(existingClip.id);
+    }
+    const reusedClipIds = new Set<string>();
     const nextClips = moveRows.flatMap((row) => {
       const clipStartMs = Math.max(0, Math.round(row.startMs - Math.max(clipStartContextMs, CLIP_MOVE_BUFFER_MS)));
       const clipEndMs = Math.max(
@@ -1890,8 +2011,14 @@
       );
 
       return row.validMoveIds.map((moveId) => {
-        const reusableClip = firstGeneratedClip ? existingClip : null;
-        firstGeneratedClip = false;
+        const candidateReusableClip =
+          (row.originalClipId ? clipRows.find((clip) => clip.id === row.originalClipId) ?? null : null) ??
+          (replacedClipIds.size <= 1 ? existingClip : null);
+        const reusableClip =
+          candidateReusableClip && !reusedClipIds.has(candidateReusableClip.id) ? candidateReusableClip : null;
+        if (reusableClip) {
+          reusedClipIds.add(reusableClip.id);
+        }
 
         return {
           id: reusableClip?.id ?? createDraftClipId(),
@@ -1899,6 +2026,10 @@
           moveId,
           isKeyVideo: reusableClip?.isKeyVideo ?? false,
           label: reusableClip?.label ?? null,
+          descriptorLabel: row.descriptorLabel.trim() || null,
+          startPositionId: row.startPositionId,
+          endPositionId: row.endPositionId,
+          timingGroupId: row.timingGroupId,
           manuallyNamed: reusableClip?.manuallyNamed ?? false,
           startMs: clipStartMs,
           endMs: clipEndMs,
@@ -1927,7 +2058,9 @@
       return [...clipRows, ...nextClips];
     }
 
-    return [...clipRows.slice(0, existingClipIndex), ...nextClips, ...clipRows.slice(existingClipIndex + 1)];
+    const nextBaseRows = clipRows.filter((clip) => !replacedClipIds.has(clip.id));
+    const insertionIndex = Math.max(0, clipRows.findIndex((clip) => replacedClipIds.has(clip.id)));
+    return [...nextBaseRows.slice(0, insertionIndex), ...nextClips, ...nextBaseRows.slice(insertionIndex)];
   }
 
   async function saveMovesAndQueueRender(continueAdding = false) {
@@ -1951,6 +2084,10 @@
           moveId: clip.moveId,
           isKeyVideo: clip.isKeyVideo,
           label: clip.label,
+          descriptorLabel: clip.descriptorLabel,
+          startPositionId: clip.startPositionId,
+          endPositionId: clip.endPositionId,
+          timingGroupId: clip.timingGroupId,
           manuallyNamed: clip.manuallyNamed,
           startMs: clip.startMs,
           endMs: clip.endMs,
@@ -2036,6 +2173,10 @@
           moveId: clip.moveId,
           isKeyVideo: clip.isKeyVideo,
           label: clip.label,
+          descriptorLabel: clip.descriptorLabel,
+          startPositionId: clip.startPositionId,
+          endPositionId: clip.endPositionId,
+          timingGroupId: clip.timingGroupId,
           manuallyNamed: clip.manuallyNamed,
           startMs: clip.startMs,
           endMs: clip.endMs,
@@ -2081,6 +2222,28 @@
     );
     const nextRow = createDraftMoveRow(actionStart, actionEnd);
     draftMoveRows = [...draftMoveRows, nextRow];
+    selectDraftMoveRow(nextRow.id);
+  }
+
+  function addBoundMove(rowId = activeDraftMoveRowId) {
+    const sourceRow = draftMoveRows.find((row) => row.id === rowId) ?? activeDraftMoveRow;
+    if (!sourceRow) {
+      return;
+    }
+
+    const timingGroupId = sourceRow.timingGroupId ?? createUiId('clip-group');
+    const nextRow = createDraftMoveRow(sourceRow.startMs, sourceRow.endMs, timingGroupId);
+    draftMoveRows = draftMoveRows.flatMap((row) =>
+      row.id === sourceRow.id
+        ? [
+            {
+              ...row,
+              timingGroupId
+            },
+            nextRow
+          ]
+        : [row]
+    );
     selectDraftMoveRow(nextRow.id);
   }
 
@@ -2603,11 +2766,14 @@
                   <div class="clip-draft-form editor-draft-form">
                     <div class="draft-move-header" aria-hidden="true">
                       <span>Start</span>
-                      <span>Moves</span>
+                      <span>Move</span>
+                      <span>Label</span>
+                      <span>Start pos</span>
+                      <span>End pos</span>
                       <span></span>
                     </div>
                     {#each draftMoveRows as row (row.id)}
-                      <div class="draft-move-row" class:active={row.id === activeDraftMoveRowId}>
+                      <div class="draft-move-row" class:active={row.id === activeDraftMoveRowId} class:bound={Boolean(row.timingGroupId)}>
                         <div class="move-start-display">
                           <strong>{formatTenthSeconds(row.startMs)}s</strong>
                         </div>
@@ -2627,15 +2793,62 @@
                             on:remove={(event) => removeDraftMove(row.id, event.detail.moveId)}
                           />
                         </div>
+                        <label class="draft-descriptor-field">
+                          <span class="sr-only">Extra label</span>
+                          <input
+                            value={row.descriptorLabel}
+                            aria-label="Extra move label"
+                            placeholder="Extra label"
+                            on:focus={() => selectDraftMoveRow(row.id)}
+                            on:input={(event) => updateDraftDescriptor(row.id, event.currentTarget.value)}
+                          />
+                        </label>
+                        <div class="draft-position-field">
+                          <SearchablePicker
+                            options={positionPickerOptions}
+                            selectedIds={row.startPositionId ? [row.startPositionId] : []}
+                            query={row.startPositionQuery}
+                            limit={MOVE_SUGGESTION_LIMIT}
+                            placeholder="Start"
+                            addPlaceholder="Start"
+                            ariaLabel="Start position"
+                            selectedPlacement="inside"
+                            floatingDropdown={true}
+                            on:focus={() => selectDraftMoveRow(row.id)}
+                            on:query={(event) => updateDraftPositionQuery(row.id, 'start', event.detail.query)}
+                            on:select={(event) => selectDraftPosition(row.id, 'start', event.detail.id)}
+                            on:remove={() => removeDraftPosition(row.id, 'start')}
+                          />
+                        </div>
+                        <div class="draft-position-field">
+                          <SearchablePicker
+                            options={positionPickerOptions}
+                            selectedIds={row.endPositionId ? [row.endPositionId] : []}
+                            query={row.endPositionQuery}
+                            limit={MOVE_SUGGESTION_LIMIT}
+                            placeholder="End"
+                            addPlaceholder="End"
+                            ariaLabel="End position"
+                            selectedPlacement="inside"
+                            floatingDropdown={true}
+                            on:focus={() => selectDraftMoveRow(row.id)}
+                            on:query={(event) => updateDraftPositionQuery(row.id, 'end', event.detail.query)}
+                            on:select={(event) => selectDraftPosition(row.id, 'end', event.detail.id)}
+                            on:remove={() => removeDraftPosition(row.id, 'end')}
+                          />
+                        </div>
                         {#if row.id === activeDraftMoveRowId}
                           <button class="draft-edit-button active" type="button" disabled aria-pressed="true">Editing</button>
                         {:else}
                           <button class="draft-edit-button" type="button" on:click={() => selectDraftMoveRow(row.id)}>Edit</button>
                         {/if}
+                        <button class="draft-edit-button draft-bound-button" type="button" on:click={() => addBoundMove(row.id)}>
+                          Bind
+                        </button>
                       </div>
                     {/each}
                     {#each visibleSavedTimelineClips as clip (clip.id)}
-                      <div class="draft-move-row saved-editor-row">
+                      <div class="draft-move-row saved-editor-row" class:bound={Boolean(clip.timingGroupId)}>
                         <button
                           class="move-start-display saved-editor-start"
                           type="button"
@@ -2651,7 +2864,11 @@
                           <span class="move-chip move-picker-inline-chip saved-editor-chip">
                             {clip.moveDisplayId ?? clip.moveId} · {moveNameById.get(clip.moveId) ?? clip.moveDisplayId ?? clip.moveId}
                           </span>
-                          <span class="saved-editor-placeholder">Add another move</span>
+                          {#if clip.descriptorLabel}
+                            <span class="saved-editor-placeholder">{clip.descriptorLabel}</span>
+                          {:else}
+                            <span class="saved-editor-placeholder">Add bound move</span>
+                          {/if}
                         </button>
                         <button
                           class="draft-edit-button key-video-star"
@@ -2667,7 +2884,12 @@
                         </button>
                       </div>
                     {/each}
-                    <button class="draft-add-move-button" type="button" on:click={() => void addMoreMoves()}>Add move</button>
+                    <div class="draft-add-actions">
+                      <button class="draft-add-move-button" type="button" on:click={() => void addMoreMoves()}>Add move</button>
+                      {#if activeDraftMoveRow}
+                        <button class="draft-add-move-button" type="button" on:click={() => addBoundMove()}>Add bound move</button>
+                      {/if}
+                    </div>
                   </div>
                 {/if}
                 {#if renderStatus}

@@ -145,6 +145,10 @@ export interface DerivedClip {
   moveDisplayId?: string | null;
   isKeyVideo: boolean;
   label: string | null;
+  descriptorLabel: string | null;
+  startPositionId: string | null;
+  endPositionId: string | null;
+  timingGroupId: string | null;
   manuallyNamed: boolean;
   startMs: number;
   endMs: number;
@@ -209,6 +213,18 @@ export interface MoveVideoEntry {
   countOverlayPlacement: CountOverlayPlacement;
   moveId: string;
   moveDisplayId?: string | null;
+  descriptorLabel: string | null;
+  startPositionId: string | null;
+  startPositionLabel: string | null;
+  endPositionId: string | null;
+  endPositionLabel: string | null;
+  timingGroupId: string | null;
+}
+
+export interface PositionOption {
+  id: string;
+  label: string;
+  source: 'derived' | 'custom';
 }
 
 export interface RelationshipDiagramNode {

@@ -341,7 +341,8 @@
   }
 
   function videoTabLabel(entry: MoveVideoEntry) {
-    return [entry.timingLabel, entry.contentTypeLabel, entry.environmentLabel].filter(Boolean).join(', ') || entry.displayName;
+    const base = [entry.timingLabel, entry.contentTypeLabel, entry.environmentLabel].filter(Boolean).join(', ') || entry.displayName;
+    return entry.descriptorLabel ? `${base} - ${entry.descriptorLabel}` : base;
   }
 
   function videoTabContext(entry: MoveVideoEntry) {

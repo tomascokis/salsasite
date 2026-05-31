@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { moveDisplayId } from '$lib/move-id';
 import { getMoves } from '$lib/server/data';
 import { listMoveDrafts } from '$lib/server/move-editor';
+import { getPositionOptions } from '$lib/server/positions';
 import { saveSourceClips } from '$lib/server/video-library';
 import type { ClipCountMarker, ClipCropRect, CountOverlayPlacement, CountTimingPreset } from '$lib/types';
 import type { RequestHandler } from './$types';
@@ -64,6 +65,8 @@ export const POST: RequestHandler = async ({ request }) => {
   }
 
   const [moves, moveDrafts] = await Promise.all([getMoves(), listMoveDrafts()]);
+  const positionOptions = await getPositionOptions(moves);
+  const knownPositionIds = new Set(positionOptions.map((position) => position.id));
   const moveDisplayIdEntries: Array<[string, string]> = [
     ...moves.map((move) => [move.id.toUpperCase(), moveDisplayId(move)] as [string, string]),
     ...moveDrafts.map((draft) => [draft.move.id.toUpperCase(), moveDisplayId(draft.move)] as [string, string])
@@ -80,6 +83,10 @@ export const POST: RequestHandler = async ({ request }) => {
     moveDisplayId: string | null;
     isKeyVideo: boolean;
     label: string | null;
+    descriptorLabel: string | null;
+    startPositionId: string | null;
+    endPositionId: string | null;
+    timingGroupId: string | null;
     manuallyNamed: boolean;
     startMs: number;
     endMs: number;
@@ -99,6 +106,10 @@ export const POST: RequestHandler = async ({ request }) => {
         null,
       isKeyVideo: Boolean(clip.isKeyVideo),
       label: String(clip.label ?? '').trim() || null,
+      descriptorLabel: String(clip.descriptorLabel ?? '').trim() || null,
+      startPositionId: String(clip.startPositionId ?? '').trim() || null,
+      endPositionId: String(clip.endPositionId ?? '').trim() || null,
+      timingGroupId: String(clip.timingGroupId ?? '').trim() || null,
       manuallyNamed: Boolean(clip.manuallyNamed),
       startMs: Number(clip.startMs ?? 0),
       endMs: Number(clip.endMs ?? 0),
@@ -116,6 +127,8 @@ export const POST: RequestHandler = async ({ request }) => {
     .filter(
       (clip: {
         moveId: string;
+        startPositionId: string | null;
+        endPositionId: string | null;
         startMs: number;
         endMs: number;
         actionStartMs: number | null;
@@ -123,6 +136,8 @@ export const POST: RequestHandler = async ({ request }) => {
       }) =>
         clip.moveId &&
         knownMoveIds.has(clip.moveId) &&
+        (clip.startPositionId === null || knownPositionIds.has(clip.startPositionId)) &&
+        (clip.endPositionId === null || knownPositionIds.has(clip.endPositionId)) &&
         Number.isFinite(clip.startMs) &&
         Number.isFinite(clip.endMs) &&
         (clip.actionStartMs === null || Number.isFinite(clip.actionStartMs)) &&

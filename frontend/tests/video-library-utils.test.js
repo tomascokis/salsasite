@@ -5,6 +5,7 @@ import {
   normalizeDateString,
   moveSuggestionSearch,
   moveSuggestions,
+  derivePositionOptions,
   normalizeOptionalText,
   normalizeTags,
   rekeyClipMoveAssociations,
@@ -51,6 +52,27 @@ test('media suggestions come from source assets and include low quality', () => 
 
   assert.deepEqual(suggestions.classWorkshops, ['L2 class', 'L3 workshop']);
   assert.deepEqual(suggestions.tags, ['demo', 'low quality']);
+});
+
+test('position options are derived and custom entries override duplicates', () => {
+  assert.deepEqual(
+    derivePositionOptions(
+      [
+        { positions: 'closed, open' },
+        { positions: 'Open -> hammerlock' },
+        { positions: 'cross body and sweetheart' }
+      ],
+      [{ label: 'Open' }, 'shadow']
+    ),
+    [
+      { id: 'closed', label: 'closed', source: 'derived' },
+      { id: 'cross-body', label: 'cross body', source: 'derived' },
+      { id: 'hammerlock', label: 'hammerlock', source: 'derived' },
+      { id: 'open', label: 'Open', source: 'custom' },
+      { id: 'shadow', label: 'shadow', source: 'custom' },
+      { id: 'sweetheart', label: 'sweetheart', source: 'derived' }
+    ]
+  );
 });
 
 test('move suggestions match ids, slugs, and names while excluding selected moves', () => {

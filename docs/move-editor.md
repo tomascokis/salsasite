@@ -88,6 +88,13 @@ Dragging trim or move markers is a precision-editing interaction and must not un
 The move editor saves clip definitions before rendering.
 
 - Clip rows are saveable when they contain at least one valid published move or draft move and the row range has positive duration.
+- Each visible clip row represents exactly one move expression.
+- A clip row may store an optional extra move label, optional start position, and optional end position.
+- Start and end positions must come from the strict position picker option set; the media editor must not save arbitrary position text.
+- The optional extra move label describes only that clip expression and must not rename the canonical move.
+- Multiple move expressions that share the same clip/action timing must be represented as separate rows bound by a shared timing group.
+- Bound rows must keep locked same-time behavior: editing timing on one row updates the other rows in the group.
+- Bound rows must share a gently contrasting background so the shared timing relationship is visible.
 - Saving clip definitions may target draft move IDs.
 - Rendering and publishing behavior can still depend on later completion of the draft move workflow, but the editor must not block clip definition work just because a move is still a draft.
 - Saved clips must remain visible in the timeline after they are created, in the same lower timeline lane where move ranges appear during editing.

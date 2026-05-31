@@ -32,6 +32,7 @@ import {
   resolveSourceRoot
 } from './paths';
 import { findPosterForVideoFile, queuePosterGeneration } from './posters';
+import { getPositionOptions, positionLabelById } from './positions';
 import {
   normalizeDateString,
   normalizeOptionalText,
@@ -297,6 +298,10 @@ function normalizeDerivedClip(raw: Partial<DerivedClip>, library: { moveVideoLin
     moveDisplayId: raw.moveDisplayId ? String(raw.moveDisplayId).trim().toUpperCase() : null,
     isKeyVideo: Boolean(raw.isKeyVideo),
     label: raw.label ? String(raw.label) : null,
+    descriptorLabel: normalizeOptionalText(raw.descriptorLabel),
+    startPositionId: normalizeOptionalText(raw.startPositionId),
+    endPositionId: normalizeOptionalText(raw.endPositionId),
+    timingGroupId: normalizeOptionalText(raw.timingGroupId),
     manuallyNamed: Boolean(raw.manuallyNamed),
     startMs: Math.max(0, Math.floor(Number(raw.startMs ?? 0))),
     endMs: Math.max(0, Math.floor(Number(raw.endMs ?? 0))),
@@ -566,6 +571,7 @@ export async function getVideoLibrary(moves?: MoveRecord[]) {
 
 export async function getResolvedMoveVideos(moveId: string, moves: MoveRecord[]) {
   const library = await getVideoLibrary(moves);
+  const positionLabels = positionLabelById(await getPositionOptions(moves));
   const assetById = new Map(library.videoAssets.map((asset) => [asset.id, asset]));
   const clipByOutputAssetId = new Map<string, DerivedClip>();
   library.derivedClips.forEach((clip) => {
@@ -627,7 +633,13 @@ export async function getResolvedMoveVideos(moveId: string, moves: MoveRecord[])
       countMarkers: clip?.publishedAssetId === asset.id ? clip.countMarkers : [],
       countOverlayPlacement: clip?.countOverlayPlacement ?? 'top-left',
       moveId,
-      moveDisplayId: clip?.moveDisplayId ?? moveId
+      moveDisplayId: clip?.moveDisplayId ?? moveId,
+      descriptorLabel: clip?.descriptorLabel ?? null,
+      startPositionId: clip?.startPositionId ?? null,
+      startPositionLabel: clip?.startPositionId ? positionLabels.get(clip.startPositionId) ?? null : null,
+      endPositionId: clip?.endPositionId ?? null,
+      endPositionLabel: clip?.endPositionId ? positionLabels.get(clip.endPositionId) ?? null : null,
+      timingGroupId: clip?.timingGroupId ?? null
     });
   }
 
@@ -1150,6 +1162,10 @@ export async function saveSourceClips(input: {
     moveDisplayId?: string | null;
     isKeyVideo?: boolean;
     label?: string | null;
+    descriptorLabel?: string | null;
+    startPositionId?: string | null;
+    endPositionId?: string | null;
+    timingGroupId?: string | null;
     manuallyNamed?: boolean;
     startMs: number;
     endMs: number;
@@ -1178,6 +1194,10 @@ export async function saveSourceClips(input: {
       const manuallyNamed = Boolean(clipInput.manuallyNamed || (existing?.manuallyNamed && clipInput.label?.trim()));
       const isKeyVideo = clipInput.isKeyVideo === undefined ? existing?.isKeyVideo ?? false : Boolean(clipInput.isKeyVideo);
       const label = manuallyNamed ? clipInput.label?.trim() || existing?.label || null : generatedClipLabel(sourceAsset, moveDisplayId, index);
+      const descriptorLabel = normalizeOptionalText(clipInput.descriptorLabel);
+      const startPositionId = normalizeOptionalText(clipInput.startPositionId);
+      const endPositionId = normalizeOptionalText(clipInput.endPositionId);
+      const timingGroupId = normalizeOptionalText(clipInput.timingGroupId);
       const startMs = Math.max(0, Math.floor(clipInput.startMs));
       const endMs = Math.max(0, Math.floor(clipInput.endMs));
       const actionStartMs =
@@ -1207,6 +1227,10 @@ export async function saveSourceClips(input: {
       const metadataChanged =
         !existing ||
         existing.isKeyVideo !== isKeyVideo ||
+        existing.descriptorLabel !== descriptorLabel ||
+        existing.startPositionId !== startPositionId ||
+        existing.endPositionId !== endPositionId ||
+        existing.timingGroupId !== timingGroupId ||
         !countMarkersEqual(existing.countMarkers, countMarkers) ||
         existing.countOverlayPlacement !== countOverlayPlacement ||
         existing.countTimingPreset !== countTimingPreset;
@@ -1220,6 +1244,10 @@ export async function saveSourceClips(input: {
         moveDisplayId,
         isKeyVideo,
         label,
+        descriptorLabel,
+        startPositionId,
+        endPositionId,
+        timingGroupId,
         manuallyNamed,
         startMs,
         endMs,

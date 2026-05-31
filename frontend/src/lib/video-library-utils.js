@@ -63,6 +63,52 @@ export function sourceSuggestions(assets) {
   };
 }
 
+export function positionSlug(value) {
+  return String(value ?? '')
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'position';
+}
+
+export function derivePositionOptions(moves = [], customEntries = []) {
+  const bySlug = new Map();
+
+  function add(value, source = 'derived') {
+    const label = String(value ?? '').replace(/\s+/g, ' ').trim();
+    if (!label) return;
+    const id = positionSlug(label);
+    const existing = bySlug.get(id);
+    if (existing && existing.source === 'custom') return;
+    bySlug.set(id, {
+      id,
+      label,
+      source: existing?.source === 'custom' || source === 'custom' ? 'custom' : 'derived'
+    });
+  }
+
+  for (const move of moves) {
+    for (const part of splitPositionText(move?.positions)) {
+      add(part, 'derived');
+    }
+  }
+
+  for (const entry of customEntries) {
+    add(entry?.label ?? entry?.name ?? entry, 'custom');
+  }
+
+  return [...bySlug.values()].sort((left, right) =>
+    left.label.localeCompare(right.label, undefined, { sensitivity: 'base' })
+  );
+}
+
+function splitPositionText(value) {
+  return String(value ?? '')
+    .split(/\s*(?:,|;|\||\band\b|->|→)\s*/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 export function moveSuggestions(moves, query, selectedMoveIds = [], limit = 8) {
   return moveSuggestionSearch(moves, query, selectedMoveIds, limit).results;
 }
