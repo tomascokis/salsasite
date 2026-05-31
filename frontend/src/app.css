@@ -3486,19 +3486,6 @@ select {
     0 8px 18px rgba(34, 197, 94, 0.24);
 }
 
-.clip-timeline-selection.changed::after {
-  content: '';
-  position: absolute;
-  top: -0.18rem;
-  right: -0.18rem;
-  width: 0.52rem;
-  height: 0.52rem;
-  border: 2px solid #101820;
-  border-radius: 999px;
-  background: #ffd166;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72);
-}
-
 @keyframes activeMoveRise {
   from {
     opacity: 0;

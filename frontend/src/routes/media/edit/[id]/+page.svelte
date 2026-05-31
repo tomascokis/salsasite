@@ -2713,7 +2713,6 @@
                       type="button"
                       class="clip-timeline-selection saved-move-range"
                       class:active={activeClipId === clip.id}
-                      class:changed={Boolean(clipChangeStates.get(clip.id))}
                       style={savedClipRangeStyle(clip, timelineScaleKey)}
                       aria-label={`${clipDisplayName(clip)} ${clipChangeLabel(clipChangeStates.get(clip.id)).toLowerCase()} clip`}
                       title={`${clipDisplayName(clip)} · ${clipChangeLabel(clipChangeStates.get(clip.id))}`}
@@ -2733,7 +2732,6 @@
                       <div
                         class="clip-timeline-selection move-range"
                         class:active={row.id === activeDraftMoveRowId}
-                        class:changed={hasSaveableDraftChanges}
                         class:secondary={row.id !== activeDraftMoveRowId}
                         style={draftMoveRangeStyle(row, timelineScaleKey)}
                         on:dblclick={(event) => editDraftMoveRowFromTimeline(event, row.id)}
