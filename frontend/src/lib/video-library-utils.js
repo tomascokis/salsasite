@@ -134,34 +134,6 @@ export function applyDefaultKeyVideoFlags(existingClips = [], nextClips = [], so
   });
 }
 
-export function existingClipForMoveEditMode(clips = [], currentMs = 0) {
-  const sortedClips = [...clips]
-    .filter((clip) => clip?.id)
-    .sort((left, right) => {
-      const startDelta = clipActionStartMs(left) - clipActionStartMs(right);
-      return startDelta || clipActionEndMs(left) - clipActionEndMs(right) || String(left.id).localeCompare(String(right.id));
-    });
-
-  if (!sortedClips.length) {
-    return null;
-  }
-
-  const currentPositionMs = Number(currentMs);
-  const safeCurrentMs = Number.isFinite(currentPositionMs) ? currentPositionMs : 0;
-  const activeClip = sortedClips.find(
-    (clip) => safeCurrentMs >= clipActionStartMs(clip) && safeCurrentMs <= clipActionEndMs(clip)
-  );
-  if (activeClip) {
-    return activeClip;
-  }
-
-  return sortedClips.reduce((nearest, clip) => {
-    const nearestDistance = distanceFromClipActionRange(nearest, safeCurrentMs);
-    const clipDistance = distanceFromClipActionRange(clip, safeCurrentMs);
-    return clipDistance < nearestDistance ? clip : nearest;
-  }, sortedClips[0]);
-}
-
 function splitPositionText(value) {
   return String(value ?? '')
     .split(/\s*(?:,|;|\||\band\b|->|→)\s*/i)
@@ -277,28 +249,6 @@ export function rekeyClipMoveAssociations(librarySlice, previousMoveId, nextMove
     moveVideoLinks,
     changed
   };
-}
-
-function clipActionStartMs(clip) {
-  const actionStartMs = Number(clip?.actionStartMs);
-  return Number.isFinite(actionStartMs) ? actionStartMs : Number(clip?.startMs ?? 0);
-}
-
-function clipActionEndMs(clip) {
-  const actionEndMs = Number(clip?.actionEndMs);
-  return Number.isFinite(actionEndMs) ? actionEndMs : Number(clip?.endMs ?? clipActionStartMs(clip));
-}
-
-function distanceFromClipActionRange(clip, currentMs) {
-  if (currentMs < clipActionStartMs(clip)) {
-    return clipActionStartMs(clip) - currentMs;
-  }
-
-  if (currentMs > clipActionEndMs(clip)) {
-    return currentMs - clipActionEndMs(clip);
-  }
-
-  return 0;
 }
 
 function scoreMoveSuggestion(move, normalizedQuery, queryTokens) {

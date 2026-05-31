@@ -11,7 +11,6 @@
     hasActiveMutedVideoPreference,
     saveVideoAudioPreferenceFromElement
   } from '$lib/video-audio-preference';
-  import { existingClipForMoveEditMode } from '$lib/video-library-utils.js';
   import { snapMoveBoundaryForDrag } from '$lib/timeline-snapping.js';
   import type {
     ClipCountMarker,
@@ -2034,6 +2033,26 @@
     ]);
   }
 
+  function openMoveEditor() {
+    if (!confirmDiscardDraftMoveChanges()) {
+      return;
+    }
+
+    activeClipId = null;
+    isDraftingMove = true;
+    draftMoveRows = [];
+    activeDraftMoveRowId = null;
+    isLooping = false;
+    isLoopingWithPadding = true;
+    countMode = 'idle';
+    countModeIndex = 0;
+    isCroppingClip = false;
+    cropDragStart = null;
+    lastDraftBoundaryTarget = null;
+    resumePlaybackAfterTimelineDrag = false;
+    draftInitialSnapshot = JSON.stringify([[], draftStartMs, draftEndMs]);
+  }
+
   function exitDraftMove() {
     if (!confirmDiscardDraftMoveChanges()) {
       return;
@@ -2321,12 +2340,11 @@
 
   async function addMoreMoves() {
     if (!isDraftingMove) {
-      const existingClip = existingClipForMoveEditMode(clipRows, playerCurrentMs) as ClipWithUi | null;
-      if (existingClip) {
-        openSavedClipEditor(existingClip);
-        return;
-      }
+      openMoveEditor();
+      return;
+    }
 
+    if (!activeClipId || !draftMoveRows.length) {
       startNewMoveClip();
       return;
     }
@@ -2615,7 +2633,7 @@
 
               <div class:expanded={isDraftingMove} class="timeline-card">
                 <div class="timeline-meta">
-                  {#if isDraftingMove}
+                  {#if activeDraftMoveRow}
                     <span><strong>Clip</strong> {formatSeconds(draftStartMs)}s - {formatSeconds(draftEndMs)}s</span>
                     <span><strong>Move</strong> {formatSeconds(draftActionStartMs)}s - {formatSeconds(draftActionEndMs)}s</span>
                     <span><strong>Length</strong> {formatSeconds(Math.max(0, draftEndMs - draftStartMs))}s</span>
@@ -2666,50 +2684,52 @@
                         ({formatRoundedSeconds(timelineViewportStartMs)}s - {formatRoundedSeconds(timelineViewportEndMs)}s)
                       {/if}
                     </span>
-                    <span class="timeline-tool-actions">
-                      <button
-                        class:active={isLooping}
-                        class="timeline-loop-button"
-                        type="button"
-                        aria-pressed={isLooping}
-                        aria-label="Loop clip range"
-                        title="Loop clip range"
-                        on:click={toggleLoop}
-                      >
-                        ⟳ loop
-                      </button>
-                      <button
-                        class:active={isLoopingWithPadding}
-                        class="timeline-loop-button"
-                        type="button"
-                        aria-pressed={isLoopingWithPadding}
-                        aria-label="Loop with padding"
-                        title="Loop with padding"
-                        on:click={toggleLoopPadding}
-                      >
-                        With padding
-                      </button>
-                      <button
-                        class="timeline-loop-button"
-                        type="button"
-                        aria-label="Reset clip padding"
-                        title="Reset clip padding"
-                        on:click={resetClipPadding}
-                      >
-                        Reset padding
-                      </button>
-                      {#if isTimelineZoomed()}
+                    {#if activeDraftMoveRow}
+                      <span class="timeline-tool-actions">
+                        <button
+                          class:active={isLooping}
+                          class="timeline-loop-button"
+                          type="button"
+                          aria-pressed={isLooping}
+                          aria-label="Loop clip range"
+                          title="Loop clip range"
+                          on:click={toggleLoop}
+                        >
+                          ⟳ loop
+                        </button>
+                        <button
+                          class:active={isLoopingWithPadding}
+                          class="timeline-loop-button"
+                          type="button"
+                          aria-pressed={isLoopingWithPadding}
+                          aria-label="Loop with padding"
+                          title="Loop with padding"
+                          on:click={toggleLoopPadding}
+                        >
+                          With padding
+                        </button>
                         <button
                           class="timeline-loop-button"
                           type="button"
-                          aria-label="Reset timeline zoom"
-                          title="Reset timeline zoom"
-                          on:click={resetTimelineZoom}
+                          aria-label="Reset clip padding"
+                          title="Reset clip padding"
+                          on:click={resetClipPadding}
                         >
-                          Reset zoom
+                          Reset padding
                         </button>
-                      {/if}
-                    </span>
+                        {#if isTimelineZoomed()}
+                          <button
+                            class="timeline-loop-button"
+                            type="button"
+                            aria-label="Reset timeline zoom"
+                            title="Reset timeline zoom"
+                            on:click={resetTimelineZoom}
+                          >
+                            Reset zoom
+                          </button>
+                        {/if}
+                      </span>
+                    {/if}
                   {/if}
                 </div>
                 {#if !isDraftingMove && playbackMoveClips.length}
@@ -2773,7 +2793,7 @@
                       }}
                     ></button>
                   {/each}
-                  {#if isDraftingMove}
+                  {#if isDraftingMove && activeDraftMoveRow}
                     <div
                       class="clip-timeline-selection clip-range"
                       style={timelineRangeStyle(draftStartMs, draftEndMs, timelineScaleKey)}
@@ -2798,7 +2818,7 @@
                     title="Playback position"
                     on:pointerdown={(event) => (event.stopPropagation(), startPlayheadDrag(event))}
                   ></div>
-                  {#if isDraftingMove}
+                  {#if isDraftingMove && activeDraftMoveRow}
                   <button
                     type="button"
                     class="clip-timeline-marker clip-marker"
