@@ -49,10 +49,26 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     const moves = await getMoves();
+    const draftId = body.draftId ? String(body.draftId) : undefined;
+    const existingDraft = draftId
+      ? (await listMoveDrafts()).find((entry) => entry.draftId === draftId) ?? null
+      : null;
     const savedDraft = await saveMoveDraft(moves, {
       ...(body.move ?? {}),
-      draftId: body.draftId ? String(body.draftId) : undefined
+      draftId
     });
+
+    if (existingDraft) {
+      const previousMoveId = existingDraft.move.id;
+      const previousDisplayId = moveDisplayId(existingDraft.move);
+      const nextMoveId = savedDraft.move.id;
+      const nextDisplayId = moveDisplayId(savedDraft.move);
+
+      if (previousMoveId !== nextMoveId || previousDisplayId !== nextDisplayId) {
+        await relinkDerivedClipsForPublishedMove(previousMoveId, nextMoveId, nextDisplayId);
+      }
+    }
+
     return json({ ok: true, draft: savedDraft });
   } catch (error) {
     return json(

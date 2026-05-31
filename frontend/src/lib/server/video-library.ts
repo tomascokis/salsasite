@@ -42,7 +42,10 @@ import {
   sourceSuggestions,
   uploadMonthKey
 } from '$lib/video-library-utils';
+import { moveDisplayId } from '$lib/move-id';
+import { generatedMoveIdStem } from '$lib/move-id-utils.js';
 import { publicationStatusFor } from '$lib/content-status';
+import { listMoveDrafts } from './move-editor';
 
 const LIBRARY_FILENAME = 'video-library.json';
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.m4v', '.mov']);
@@ -511,13 +514,42 @@ function publishClipToMove(library: VideoLibrary, clip: DerivedClip, publishedAt
   return clip;
 }
 
+function derivedClipVariantPaths(library: VideoLibrary) {
+  const paths = new Set<string>();
+  for (const clip of library.derivedClips) {
+    [
+      clip.lowResOutputFilePath,
+      clip.lowResPaddedOutputFilePath,
+      clip.publishedLowResFilePath,
+      clip.publishedLowResPaddedFilePath
+    ].forEach((filePath) => {
+      if (filePath) {
+        paths.add(normalizeManagedVideoPath(filePath));
+      }
+    });
+  }
+  return paths;
+}
+
 async function bootstrapLegacyMoveAssets(library: VideoLibrary, moves: MoveRecord[]) {
   const moveIds = new Set(moves.map((move) => move.id.toUpperCase()));
+  const variantPaths = derivedClipVariantPaths(library);
+  const variantAssetIds = new Set(
+    library.videoAssets
+      .filter((asset) => asset.kind === 'move' && variantPaths.has(normalizeManagedVideoPath(asset.filePath)))
+      .map((asset) => asset.id)
+  );
+  const linkCountBeforeVariantCleanup = library.moveVideoLinks.length;
+  library.moveVideoLinks = library.moveVideoLinks.filter((link) => !variantAssetIds.has(link.assetId));
   const files = await walkVideoFiles(resolveMediaRoot(), MOVE_VIDEO_PREFIX);
-  let changed = false;
+  let changed = library.moveVideoLinks.length !== linkCountBeforeVariantCleanup;
 
   for (const file of files) {
     const normalizedPath = normalizeManagedVideoPath(file.relativePath);
+    if (variantPaths.has(normalizedPath)) {
+      continue;
+    }
+
     let asset = library.videoAssets.find((entry) => normalizeManagedVideoPath(entry.filePath) === normalizedPath);
 
     if (!asset) {
@@ -560,7 +592,8 @@ export async function getVideoLibrary(moves?: MoveRecord[]) {
   const library = await readLibraryFromDisk();
 
   if (moves) {
-    const changed = await bootstrapLegacyMoveAssets(library, moves);
+    let changed = await bootstrapLegacyMoveAssets(library, moves);
+    changed = (await relinkOrphanedGeneratedDraftMoveIds(library, moves)) || changed;
     if (changed) {
       await writeLibraryToDisk(library);
       return structuredClone(library);
@@ -568,6 +601,49 @@ export async function getVideoLibrary(moves?: MoveRecord[]) {
   }
 
   return library;
+}
+
+async function relinkOrphanedGeneratedDraftMoveIds(library: VideoLibrary, moves: MoveRecord[]) {
+  const publishedMoveIds = new Set(moves.map((move) => move.id.toUpperCase()));
+  const activeDraftIds = new Set((await listMoveDrafts()).map((draft) => draft.move.id.toUpperCase()));
+  const aliasCandidates = new Map<string, MoveRecord | null>();
+
+  for (const move of moves) {
+    const generatedDraftId = generatedMoveIdStem(move.name ?? '');
+    const normalizedMoveId = move.id.toUpperCase();
+    if (!generatedDraftId || generatedDraftId === normalizedMoveId || publishedMoveIds.has(generatedDraftId) || activeDraftIds.has(generatedDraftId)) {
+      continue;
+    }
+
+    aliasCandidates.set(generatedDraftId, aliasCandidates.has(generatedDraftId) ? null : move);
+  }
+
+  let changed = false;
+  for (const [draftMoveId, move] of aliasCandidates.entries()) {
+    if (!move) {
+      continue;
+    }
+
+    const hasOrphanedMedia =
+      library.derivedClips.some((clip) => String(clip.moveId ?? '').trim().toUpperCase() === draftMoveId) ||
+      library.moveVideoLinks.some((link) => String(link.moveId ?? '').trim().toUpperCase() === draftMoveId);
+    if (!hasOrphanedMedia) {
+      continue;
+    }
+
+    const relinked = rekeyClipMoveAssociations(library, draftMoveId, move.id, moveDisplayId(move));
+    if (!relinked.changed) {
+      continue;
+    }
+
+    library.derivedClips = relinked.derivedClips as DerivedClip[];
+    library.moveVideoLinks = relinked.moveVideoLinks as MoveVideoLink[];
+    await syncDerivedClipDisplayIdForMoveInLibrary(library, move.id, moveDisplayId(move));
+    sortLibrary(library);
+    changed = true;
+  }
+
+  return changed;
 }
 
 export async function getResolvedMoveVideos(moveId: string, moves: MoveRecord[]) {

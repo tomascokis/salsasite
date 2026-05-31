@@ -222,13 +222,17 @@ export function rekeyClipMoveAssociations(librarySlice, previousMoveId, nextMove
   const seenLinks = new Set();
   const moveVideoLinks = [];
   for (const link of librarySlice?.moveVideoLinks ?? []) {
-    const nextLink =
-      String(link?.moveId ?? '').trim().toUpperCase() === normalizedPreviousMoveId
-        ? {
-            ...link,
-            moveId: normalizedNextMoveId
-          }
-        : link;
+    const shouldRekeyLink = String(link?.moveId ?? '').trim().toUpperCase() === normalizedPreviousMoveId;
+    const nextLink = shouldRekeyLink
+      ? {
+          ...link,
+          moveId: normalizedNextMoveId
+        }
+      : link;
+
+    if (shouldRekeyLink) {
+      changed = true;
+    }
 
     const dedupeKey = `${String(nextLink?.moveId ?? '').trim().toUpperCase()}::${String(nextLink?.assetId ?? '')}`;
     if (seenLinks.has(dedupeKey)) {

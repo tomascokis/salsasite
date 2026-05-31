@@ -224,6 +224,25 @@ test('publishing a draft move rekeys linked clips and deduplicates move video li
   ]);
 });
 
+test('publishing a draft move reports changed when only move video links are rekeyed', () => {
+  const result = rekeyClipMoveAssociations(
+    {
+      derivedClips: [],
+      moveVideoLinks: [
+        { id: 'link-1', moveId: 'FAIRGROUND', assetId: 'asset-1' }
+      ]
+    },
+    'FAIRGROUND',
+    'FRG00001',
+    'FRG00001'
+  );
+
+  assert.equal(result.changed, true);
+  assert.deepEqual(result.moveVideoLinks, [
+    { id: 'link-1', moveId: 'FRG00001', assetId: 'asset-1' }
+  ]);
+});
+
 test('upload month grouping uses stable UTC month labels', () => {
   assert.equal(uploadMonthKey('2026-05-18T09:30:00.000Z'), 'May 2026');
   assert.equal(uploadMonthKey('2026-05-18'), 'May 2026');
