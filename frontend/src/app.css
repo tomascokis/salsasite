@@ -3666,7 +3666,7 @@ select {
 
 .draft-move-header {
   display: grid;
-  grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px;
+  grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px 62px 62px;
   gap: 0.6rem;
   align-items: end;
   color: #aec0d2;
@@ -3676,7 +3676,7 @@ select {
 
 .draft-move-row {
   display: grid;
-  grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px;
+  grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px 62px 62px;
   gap: 0.6rem;
   align-items: end;
   --clip-row-font-size: 0.8rem;
@@ -3695,7 +3695,6 @@ select {
 }
 
 .draft-move-row.saved-editor-row {
-  grid-template-columns: 54px minmax(220px, 1fr) 42px 62px 62px;
   align-items: stretch;
 }
 
@@ -3704,7 +3703,8 @@ select {
 }
 
 .saved-editor-start,
-.saved-editor-move {
+.saved-editor-move,
+.saved-editor-cell {
   appearance: none;
   min-width: 0;
   border: 0;
@@ -3740,6 +3740,27 @@ select {
   background: #ffffff;
   color: #2f3943;
   font-size: var(--clip-row-font-size);
+}
+
+.saved-editor-cell {
+  display: flex;
+  height: 2.2rem;
+  box-sizing: border-box;
+  align-items: center;
+  overflow: hidden;
+  padding: 0.36rem 0.5rem;
+  border: 1px solid #d7dee6;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #2f3943;
+  font-size: var(--clip-row-font-size);
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-editor-cell.empty {
+  color: #9b9b9b;
 }
 
 .saved-editor-chip {
@@ -5851,7 +5872,7 @@ select {
   }
 
   .draft-move-row.saved-editor-row {
-    grid-template-columns: 44px minmax(0, 1fr) 40px 58px 58px;
+    grid-template-columns: 44px minmax(0, 1fr) 58px;
   }
 
   .move-picker-input-inline input {

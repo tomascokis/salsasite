@@ -564,6 +564,11 @@
     activeDraftMoveRowId = rowId;
   }
 
+  function positionLabel(positionId: string | null | undefined) {
+    if (!positionId) return null;
+    return positionPickerOptions.find((option) => option.id === positionId)?.label ?? positionId;
+  }
+
   async function createDraftMoveFromQuery(rowId: string, value: string) {
     const name = value.trim();
     if (!name) {
@@ -2819,6 +2824,8 @@
                       <span>Start pos</span>
                       <span>End pos</span>
                       <span></span>
+                      <span></span>
+                      <span></span>
                     </div>
                     {#each editorMoveRows as item (item.key)}
                       {#if item.kind === 'draft'}
@@ -2912,11 +2919,30 @@
                             <span class="move-chip move-picker-inline-chip saved-editor-chip">
                               {clip.moveDisplayId ?? clip.moveId} · {moveNameById.get(clip.moveId) ?? clip.moveDisplayId ?? clip.moveId}
                             </span>
-                            {#if clip.descriptorLabel}
-                              <span class="saved-editor-placeholder">{clip.descriptorLabel}</span>
-                            {:else}
-                              <span class="saved-editor-placeholder">Add bound move</span>
-                            {/if}
+                          </button>
+                          <button
+                            class="saved-editor-cell"
+                            class:empty={!clip.descriptorLabel}
+                            type="button"
+                            on:click={() => openSavedClipEditor(clip)}
+                          >
+                            {clip.descriptorLabel || '—'}
+                          </button>
+                          <button
+                            class="saved-editor-cell"
+                            class:empty={!clip.startPositionId}
+                            type="button"
+                            on:click={() => openSavedClipEditor(clip)}
+                          >
+                            {positionLabel(clip.startPositionId) || '—'}
+                          </button>
+                          <button
+                            class="saved-editor-cell"
+                            class:empty={!clip.endPositionId}
+                            type="button"
+                            on:click={() => openSavedClipEditor(clip)}
+                          >
+                            {positionLabel(clip.endPositionId) || '—'}
                           </button>
                           <button
                             class="draft-edit-button key-video-star"

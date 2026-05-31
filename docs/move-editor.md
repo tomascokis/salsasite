@@ -102,6 +102,7 @@ The move editor saves clip definitions before rendering.
 - Outside active move editing, saved clips must be positioned against the full source-video timeline, not a stale edit zoom or clip viewport.
 - While the move editor is open, previously saved clips must also appear as compact rows in the editor form so they can be selected for editing from the same surface as new draft rows.
 - Selecting or editing a clip must not reorder the clip rows; active draft rows should replace their saved row in place.
+- Saved clip rows must use the same Start, Move, Label, Start position, and End position columns as editable rows, even when older clips do not yet have descriptor or position values.
 - New move clips must default to key/prime while the target move has fewer than four clips; once the target move has four clips, additional new clips default to non-key/non-prime.
 - Saved clip rows and the active clip toolbar must provide a star toggle for marking that clip as a key video for its move page.
 - Saved clip rows must provide a visible delete action for removing a move clip.
