@@ -155,8 +155,7 @@
     }
   };
 
-  function optionsFor(template: EntityPickerTemplate) {
-    const state = stateFor(template.key);
+  function optionsFor(template: EntityPickerTemplate, state: PickerState) {
     if (template.key === 'family') return mergeCreatedSearchOptions(familyOptions, state.createdValues);
     if (template.key === 'dancer') return mergeCreatedSearchOptions(dancerOptions, state.createdValues);
     return mergeCreatedMoveOptions(data.moves, state.createdValues);
@@ -166,8 +165,8 @@
     return pickerStates[key];
   }
 
-  function labelFor(template: EntityPickerTemplate, value: string) {
-    const match = optionsFor(template).find((option) => option.id === value);
+  function labelFor(template: EntityPickerTemplate, state: PickerState, value: string) {
+    const match = optionsFor(template, state).find((option) => option.id === value);
     if (!match) {
       return value;
     }
@@ -244,23 +243,23 @@
 
   <div class="picker-lab-grid">
     {#each templates as template}
-      {@const state = stateFor(template.key)}
+      {@const state = pickerStates[template.key]}
       <section class="picker-lab-card panel meta-card">
         <EntityPicker
           {template}
-          options={optionsFor(template)}
+          options={optionsFor(template, state)}
           selectedIds={state.selectedIds}
           query={state.query}
-          on:query={(event) => updateState(template.key, { query: event.detail.query })}
-          on:select={(event) => selectValue(template.key, event.detail.id)}
-          on:remove={(event) => removeValue(template.key, event.detail.id)}
-          on:create={(event) => createValue(template.key, event.detail.value)}
+          onquery={(detail) => updateState(template.key, { query: detail.query })}
+          onselect={(detail) => selectValue(template.key, detail.id)}
+          onremove={(detail) => removeValue(template.key, detail.id)}
+          oncreate={(detail) => createValue(template.key, detail.value)}
         />
 
         <div class="picker-lab-state">
           <div>
             <span class="picker-lab-state-label">Selected</span>
-            <p>{state.selectedIds.length ? state.selectedIds.map((value) => labelFor(template, value)).join(', ') : 'Nothing selected'}</p>
+            <p>{state.selectedIds.length ? state.selectedIds.map((value) => labelFor(template, state, value)).join(', ') : 'Nothing selected'}</p>
           </div>
           <div>
             <span class="picker-lab-state-label">Created on page</span>

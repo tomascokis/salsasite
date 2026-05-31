@@ -15,6 +15,11 @@
   export let query = '';
   export let limit = 8;
   export let disabled = false;
+  export let onselect: ((detail: { id: string; option?: EntityPickerSearchOption; move?: EntityPickerMoveOption }) => void) | undefined = undefined;
+  export let onremove: ((detail: { id: string }) => void) | undefined = undefined;
+  export let onquery: ((detail: { query: string }) => void) | undefined = undefined;
+  export let onfocus: ((detail: Record<string, never>) => void) | undefined = undefined;
+  export let oncreate: ((detail: { value: string }) => void) | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     select: {
@@ -30,6 +35,31 @@
 
   $: searchableOptions = options as EntityPickerSearchOption[];
   $: moveOptions = options as EntityPickerMoveOption[];
+
+  function emitSelect(detail: { id: string; option?: EntityPickerSearchOption; move?: EntityPickerMoveOption }) {
+    dispatch('select', detail);
+    onselect?.(detail);
+  }
+
+  function emitRemove(detail: { id: string }) {
+    dispatch('remove', detail);
+    onremove?.(detail);
+  }
+
+  function emitQuery(detail: { query: string }) {
+    dispatch('query', detail);
+    onquery?.(detail);
+  }
+
+  function emitFocus() {
+    dispatch('focus', {});
+    onfocus?.({});
+  }
+
+  function emitCreate(detail: { value: string }) {
+    dispatch('create', detail);
+    oncreate?.(detail);
+  }
 </script>
 
 <div class="entity-picker-field">
@@ -60,11 +90,11 @@
       showId={template.showId ?? true}
       showName={template.showName ?? true}
       showPoster={template.showPoster ?? false}
-      on:query={(event) => dispatch('query', { query: event.detail.query })}
-      on:focus={() => dispatch('focus', {})}
-      on:select={(event) => dispatch('select', { id: event.detail.moveId, move: event.detail.move })}
-      on:remove={(event) => dispatch('remove', { id: event.detail.moveId })}
-      on:create={(event) => dispatch('create', { value: event.detail.query })}
+      onquery={(detail) => emitQuery({ query: detail.query })}
+      onfocus={emitFocus}
+      onselect={(detail) => emitSelect({ id: detail.moveId, move: detail.move })}
+      onremove={(detail) => emitRemove({ id: detail.moveId })}
+      oncreate={(detail) => emitCreate({ value: detail.query })}
     />
   {:else}
     <SearchablePicker
@@ -85,11 +115,11 @@
       moreText={template.moreText ?? 'and more...'}
       allowCreate={template.allowCreate ?? false}
       createLabel={template.createLabel ?? 'Use'}
-      on:query={(event) => dispatch('query', { query: event.detail.query })}
-      on:focus={() => dispatch('focus', {})}
-      on:select={(event) => dispatch('select', { id: event.detail.id, option: event.detail.option })}
-      on:remove={(event) => dispatch('remove', { id: event.detail.id })}
-      on:create={(event) => dispatch('create', { value: event.detail.value })}
+      onquery={(detail) => emitQuery({ query: detail.query })}
+      onfocus={emitFocus}
+      onselect={(detail) => emitSelect({ id: detail.id, option: detail.option })}
+      onremove={(detail) => emitRemove({ id: detail.id })}
+      oncreate={(detail) => emitCreate({ value: detail.value })}
     />
   {/if}
 </div>

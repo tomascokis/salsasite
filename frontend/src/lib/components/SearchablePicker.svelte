@@ -25,6 +25,11 @@
   export let allowCreate = false;
   export let createLabel = 'Use';
   export let maxSelected: number | null = null;
+  export let onselect: ((detail: { option: SearchablePickerOption; id: string }) => void) | undefined = undefined;
+  export let onremove: ((detail: { id: string }) => void) | undefined = undefined;
+  export let onquery: ((detail: { query: string }) => void) | undefined = undefined;
+  export let onfocus: ((detail: Record<string, never>) => void) | undefined = undefined;
+  export let oncreate: ((detail: { value: string }) => void) | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     select: { option: SearchablePickerOption; id: string };
@@ -146,7 +151,9 @@
 
   function setQuery(value: string) {
     query = value;
-    dispatch('query', { query });
+    const detail = { query };
+    dispatch('query', detail);
+    onquery?.(detail);
     void scheduleFloatingDropdownUpdate();
   }
 
@@ -182,7 +189,9 @@
       return;
     }
 
-    dispatch('select', { option, id: option.id });
+    const detail = { option, id: option.id };
+    dispatch('select', detail);
+    onselect?.(detail);
     setQuery('');
   }
 
@@ -192,12 +201,22 @@
       return;
     }
 
-    dispatch('create', { value });
+    const detail = { value };
+    dispatch('create', detail);
+    oncreate?.(detail);
     setQuery('');
   }
 
   function removeOption(id: string) {
-    dispatch('remove', { id });
+    const detail = { id };
+    dispatch('remove', detail);
+    onremove?.(detail);
+  }
+
+  function handleRemoveKeydown(event: KeyboardEvent, id: string) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    removeOption(id);
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -240,7 +259,7 @@
   {#if selectedPlacement === 'before' && showSelected && selectedIds.length}
     <div class="shared-chip-row">
       {#each selectedIds as id}
-        <button type="button" class="shared-chip" aria-label={`Remove ${selectedLabel(id)}`} on:mousedown|preventDefault on:click={() => removeOption(id)}>
+        <button type="button" class="shared-chip" aria-label={`Remove ${selectedLabel(id)}`} onpointerdown={(event) => { event.preventDefault(); removeOption(id); }} onkeydown={(event) => handleRemoveKeydown(event, id)}>
           {selectedLabel(id)} x
         </button>
       {/each}
@@ -254,7 +273,7 @@
   >
     {#if selectedPlacement === 'inside' && showSelected && selectedIds.length}
       {#each selectedIds as id}
-        <button type="button" class="shared-chip searchable-picker-inline-chip" aria-label={`Remove ${selectedLabel(id)}`} on:mousedown|preventDefault on:click={() => removeOption(id)}>
+        <button type="button" class="shared-chip searchable-picker-inline-chip" aria-label={`Remove ${selectedLabel(id)}`} onpointerdown={(event) => { event.preventDefault(); removeOption(id); }} onkeydown={(event) => handleRemoveKeydown(event, id)}>
           {selectedLabel(id)} x
         </button>
       {/each}
@@ -269,12 +288,13 @@
         autocorrect="off"
         spellcheck="false"
         {disabled}
-        on:focus={() => {
+        onfocus={() => {
           dispatch('focus', {});
+          onfocus?.({});
           void scheduleFloatingDropdownUpdate();
         }}
-        on:input={(event) => setQuery((event.currentTarget as HTMLInputElement).value)}
-        on:keydown={handleKeydown}
+        oninput={(event) => setQuery((event.currentTarget as HTMLInputElement).value)}
+        onkeydown={handleKeydown}
       />
     {/if}
 
@@ -294,9 +314,8 @@
               class="searchable-picker-option"
               class:active={index === activeSuggestionIndex}
               aria-selected={index === activeSuggestionIndex}
-              on:mousedown|preventDefault
-              on:click={() => selectOption(option.id)}
-              on:mouseenter={() => (activeSuggestionIndex = index)}
+              onpointerdown={(event) => { event.preventDefault(); selectOption(option.id); }}
+              onmouseenter={() => (activeSuggestionIndex = index)}
             >
               {#if option.imageUrl}
                 <span class="searchable-picker-option-image" aria-hidden="true">
@@ -318,9 +337,8 @@
               class="searchable-picker-option"
               class:active={activeSuggestionIndex === suggestionResults.length}
               aria-selected={activeSuggestionIndex === suggestionResults.length}
-              on:mousedown|preventDefault
-              on:click={createOption}
-              on:mouseenter={() => (activeSuggestionIndex = suggestionResults.length)}
+              onpointerdown={(event) => { event.preventDefault(); createOption(); }}
+              onmouseenter={() => (activeSuggestionIndex = suggestionResults.length)}
             >
               <span class="searchable-picker-option-text">
                 <strong>{createLabel} "{query.trim()}"</strong>
@@ -340,7 +358,7 @@
   {#if selectedPlacement === 'after' && showSelected && selectedIds.length}
     <div class="shared-chip-row">
       {#each selectedIds as id}
-        <button type="button" class="shared-chip" aria-label={`Remove ${selectedLabel(id)}`} on:mousedown|preventDefault on:click={() => removeOption(id)}>
+        <button type="button" class="shared-chip" aria-label={`Remove ${selectedLabel(id)}`} onpointerdown={(event) => { event.preventDefault(); removeOption(id); }} onkeydown={(event) => handleRemoveKeydown(event, id)}>
           {selectedLabel(id)} x
         </button>
       {/each}

@@ -34,6 +34,11 @@
   export let createText = 'Create new move';
   export let autocapitalize: 'none' | 'characters' | 'off' | 'on' | 'sentences' | 'words' = 'off';
   export let maxSelected: number | null = null;
+  export let onselect: ((detail: { move: MoveOption; moveId: string }) => void) | undefined = undefined;
+  export let onremove: ((detail: { moveId: string }) => void) | undefined = undefined;
+  export let onquery: ((detail: { query: string }) => void) | undefined = undefined;
+  export let onfocus: ((detail: Record<string, never>) => void) | undefined = undefined;
+  export let oncreate: ((detail: { query: string }) => void) | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     select: { move: MoveOption; moveId: string };
@@ -94,7 +99,9 @@
 
   function setQuery(value: string) {
     query = value;
-    dispatch('query', { query });
+    const detail = { query };
+    dispatch('query', detail);
+    onquery?.(detail);
     void scheduleFloatingDropdownUpdate();
   }
 
@@ -170,12 +177,22 @@
       return;
     }
 
-    dispatch('select', { move, moveId: move.id });
+    const detail = { move, moveId: move.id };
+    dispatch('select', detail);
+    onselect?.(detail);
     setQuery('');
   }
 
   function removeMove(moveId: string) {
-    dispatch('remove', { moveId });
+    const detail = { moveId };
+    dispatch('remove', detail);
+    onremove?.(detail);
+  }
+
+  function handleRemoveKeydown(event: KeyboardEvent, moveId: string) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    removeMove(moveId);
   }
 
   function createMove() {
@@ -183,7 +200,9 @@
       return;
     }
 
-    dispatch('create', { query: normalizedQuery });
+    const detail = { query: normalizedQuery };
+    dispatch('create', detail);
+    oncreate?.(detail);
     setQuery('');
   }
 
@@ -242,8 +261,8 @@
           type="button"
           class="move-chip"
           aria-label={`Remove ${moveLabel(moveId)}`}
-          on:mousedown|preventDefault
-          on:click={() => removeMove(moveId)}
+          onpointerdown={(event) => { event.preventDefault(); removeMove(moveId); }}
+          onkeydown={(event) => handleRemoveKeydown(event, moveId)}
         >
           {moveLabel(moveId)} x
         </button>
@@ -261,8 +280,8 @@
           type="button"
           class="move-chip move-picker-inline-chip"
           aria-label={`Remove ${moveLabel(moveId)}`}
-          on:mousedown|preventDefault
-          on:click={() => removeMove(moveId)}
+          onpointerdown={(event) => { event.preventDefault(); removeMove(moveId); }}
+          onkeydown={(event) => handleRemoveKeydown(event, moveId)}
         >
           {moveLabel(moveId)} x
         </button>
@@ -278,12 +297,13 @@
         autocorrect="off"
         spellcheck="false"
         {disabled}
-        on:focus={() => {
+        onfocus={() => {
           dispatch('focus', {});
+          onfocus?.({});
           void scheduleFloatingDropdownUpdate();
         }}
-        on:input={handleInput}
-        on:keydown={handleKeydown}
+        oninput={handleInput}
+        onkeydown={handleKeydown}
       />
     {/if}
     {#if hasQuery && !selectionFull}
@@ -301,9 +321,8 @@
             class="move-picker-option move-picker-create-option"
             class:active={activeSuggestionIndex === 0}
             aria-selected={activeSuggestionIndex === 0}
-            on:mousedown|preventDefault
-            on:click={createMove}
-            on:mouseenter={() => (activeSuggestionIndex = 0)}
+            onpointerdown={(event) => { event.preventDefault(); createMove(); }}
+            onmouseenter={() => (activeSuggestionIndex = 0)}
           >
             <span class="move-picker-option-text">
               <strong>{createText}</strong>
@@ -319,9 +338,8 @@
               class="move-picker-option"
               class:active={index + suggestionIndexOffset === activeSuggestionIndex}
               aria-selected={index + suggestionIndexOffset === activeSuggestionIndex}
-              on:mousedown|preventDefault
-              on:click={() => selectMove(move.id)}
-              on:mouseenter={() => (activeSuggestionIndex = index + suggestionIndexOffset)}
+              onpointerdown={(event) => { event.preventDefault(); selectMove(move.id); }}
+              onmouseenter={() => (activeSuggestionIndex = index + suggestionIndexOffset)}
             >
               {#if showPoster}
                 <span class="move-picker-option-poster" aria-hidden="true">
@@ -356,8 +374,8 @@
           type="button"
           class="move-chip"
           aria-label={`Remove ${moveLabel(moveId)}`}
-          on:mousedown|preventDefault
-          on:click={() => removeMove(moveId)}
+          onpointerdown={(event) => { event.preventDefault(); removeMove(moveId); }}
+          onkeydown={(event) => handleRemoveKeydown(event, moveId)}
         >
           {moveLabel(moveId)} x
         </button>
