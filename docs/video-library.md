@@ -196,6 +196,7 @@ Current constraints:
 - Draft move editor rows must keep the Start time, Moves picker content, and Edit control in separate aligned columns; saved clip rows and selected move chips must not inherit generic button chrome that creates nested boxes or visual overlap.
 - Timeline move ranges that are currently open for editing must remain orange, while move ranges that are not currently open for editing must appear green.
 - Timeline ranges must not show small circular changed or unsaved badges; unsaved state belongs in the Save action and status text instead.
+- Timeline playhead handles must render as complete circles without clipping in both compact playback mode and expanded draft-editing mode.
 - When dragging a move start or move end marker, crossing another move boundary or landing within a small screen-precision tolerance of it must snap to that boundary once for that drag. After that first snap, moving away during the same drag must not keep snapping.
 
 Playback behavior:

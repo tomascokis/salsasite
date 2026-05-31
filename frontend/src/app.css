@@ -3530,6 +3530,7 @@ select {
   top: var(--timeline-handle-top);
   z-index: 3;
   display: block;
+  box-sizing: border-box;
   width: var(--timeline-handle-size);
   height: var(--timeline-handle-size);
   padding: 0;
