@@ -36,6 +36,7 @@ import { getPositionOptions, positionLabelById } from './positions';
 import {
   normalizeDateString,
   normalizeOptionalText,
+  applyDefaultKeyVideoFlags,
   rekeyClipMoveAssociations,
   normalizeTags,
   sourceSuggestions,
@@ -1187,12 +1188,12 @@ export async function saveSourceClips(input: {
       library.derivedClips.filter((clip) => clip.sourceAssetId === input.sourceAssetId).map((clip) => [clip.id, clip])
     );
 
-    const nextClips: DerivedClip[] = input.clips.map((clipInput, index) => {
+    const nextClipsWithoutKeyDefaults = input.clips.map((clipInput, index) => {
       const existing = clipInput.id ? existingById.get(clipInput.id) ?? null : null;
       const moveId = clipInput.moveId.trim().toUpperCase();
       const moveDisplayId = String(clipInput.moveDisplayId ?? existing?.moveDisplayId ?? moveId).trim().toUpperCase() || moveId;
       const manuallyNamed = Boolean(clipInput.manuallyNamed || (existing?.manuallyNamed && clipInput.label?.trim()));
-      const isKeyVideo = clipInput.isKeyVideo === undefined ? existing?.isKeyVideo ?? false : Boolean(clipInput.isKeyVideo);
+      const isKeyVideo = clipInput.isKeyVideo === undefined ? existing?.isKeyVideo : Boolean(clipInput.isKeyVideo);
       const label = manuallyNamed ? clipInput.label?.trim() || existing?.label || null : generatedClipLabel(sourceAsset, moveDisplayId, index);
       const descriptorLabel = normalizeOptionalText(clipInput.descriptorLabel);
       const startPositionId = normalizeOptionalText(clipInput.startPositionId);
@@ -1224,19 +1225,6 @@ export async function saveSourceClips(input: {
         existing.actionStartMs !== actionStartMs ||
         existing.actionEndMs !== actionEndMs ||
         !cropRectsEqual(existing.cropRect, cropRect);
-      const metadataChanged =
-        !existing ||
-        existing.isKeyVideo !== isKeyVideo ||
-        existing.descriptorLabel !== descriptorLabel ||
-        existing.startPositionId !== startPositionId ||
-        existing.endPositionId !== endPositionId ||
-        existing.timingGroupId !== timingGroupId ||
-        !countMarkersEqual(existing.countMarkers, countMarkers) ||
-        existing.countOverlayPlacement !== countOverlayPlacement ||
-        existing.countTimingPreset !== countTimingPreset;
-      const changed = renderChanged || metadataChanged || existing?.label !== label || existing?.manuallyNamed !== manuallyNamed;
-      const timestamp = changed ? nowIso() : existing.updatedAt;
-
       return {
         id: existing?.id ?? randomUUID(),
         sourceAssetId: input.sourceAssetId,
@@ -1267,7 +1255,38 @@ export async function saveSourceClips(input: {
         status: renderChanged ? 'pending' : existing?.status ?? 'pending',
         error: renderChanged ? null : existing?.error ?? null,
         createdAt: existing?.createdAt ?? nowIso(),
-        updatedAt: timestamp
+        updatedAt: existing?.updatedAt ?? nowIso()
+      };
+    });
+    const nextClipsWithKeyDefaults = applyDefaultKeyVideoFlags(
+      library.derivedClips,
+      nextClipsWithoutKeyDefaults,
+      input.sourceAssetId
+    ) as DerivedClip[];
+    const nextClips: DerivedClip[] = nextClipsWithKeyDefaults.map((clip) => {
+      const existing = existingById.get(clip.id) ?? null;
+      const metadataChanged =
+        !existing ||
+        existing.isKeyVideo !== clip.isKeyVideo ||
+        existing.descriptorLabel !== clip.descriptorLabel ||
+        existing.startPositionId !== clip.startPositionId ||
+        existing.endPositionId !== clip.endPositionId ||
+        existing.timingGroupId !== clip.timingGroupId ||
+        !countMarkersEqual(existing.countMarkers, clip.countMarkers) ||
+        existing.countOverlayPlacement !== clip.countOverlayPlacement ||
+        existing.countTimingPreset !== clip.countTimingPreset;
+      const renderChanged =
+        !existing ||
+        existing.moveId !== clip.moveId ||
+        existing.startMs !== clip.startMs ||
+        existing.endMs !== clip.endMs ||
+        existing.actionStartMs !== clip.actionStartMs ||
+        existing.actionEndMs !== clip.actionEndMs ||
+        !cropRectsEqual(existing.cropRect, clip.cropRect);
+      const changed = renderChanged || metadataChanged || existing?.label !== clip.label || existing?.manuallyNamed !== clip.manuallyNamed;
+      return {
+        ...clip,
+        updatedAt: changed ? nowIso() : clip.updatedAt
       };
     });
 

@@ -102,6 +102,38 @@ export function derivePositionOptions(moves = [], customEntries = []) {
   );
 }
 
+export function applyDefaultKeyVideoFlags(existingClips = [], nextClips = [], sourceAssetId, maxKeyVideos = 4) {
+  const clipCountsByMove = new Map();
+
+  function moveKey(moveId) {
+    return String(moveId ?? '').trim().toUpperCase();
+  }
+
+  function countClip(clip) {
+    const key = moveKey(clip?.moveId);
+    if (!key) return;
+    clipCountsByMove.set(key, (clipCountsByMove.get(key) ?? 0) + 1);
+  }
+
+  for (const clip of existingClips) {
+    if (String(clip?.sourceAssetId ?? '') === String(sourceAssetId ?? '')) {
+      continue;
+    }
+    countClip(clip);
+  }
+
+  return nextClips.map((clip) => {
+    const key = moveKey(clip?.moveId);
+    const existingCount = clipCountsByMove.get(key) ?? 0;
+    const isKeyVideo = clip.isKeyVideo === undefined ? existingCount < maxKeyVideos : Boolean(clip.isKeyVideo);
+    countClip(clip);
+    return {
+      ...clip,
+      isKeyVideo
+    };
+  });
+}
+
 function splitPositionText(value) {
   return String(value ?? '')
     .split(/\s*(?:,|;|\||\band\b|->|→)\s*/i)

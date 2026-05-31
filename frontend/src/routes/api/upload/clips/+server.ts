@@ -81,7 +81,7 @@ export const POST: RequestHandler = async ({ request }) => {
     id?: string;
     moveId: string;
     moveDisplayId: string | null;
-    isKeyVideo: boolean;
+    isKeyVideo?: boolean;
     label: string | null;
     descriptorLabel: string | null;
     startPositionId: string | null;
@@ -104,7 +104,7 @@ export const POST: RequestHandler = async ({ request }) => {
         String(clip.moveDisplayId ?? '').trim().toUpperCase() ||
         moveDisplayIdById.get(String(clip.moveId ?? '').trim().toUpperCase()) ||
         null,
-      isKeyVideo: Boolean(clip.isKeyVideo),
+      isKeyVideo: typeof clip.isKeyVideo === 'boolean' ? clip.isKeyVideo : undefined,
       label: String(clip.label ?? '').trim() || null,
       descriptorLabel: String(clip.descriptorLabel ?? '').trim() || null,
       startPositionId: String(clip.startPositionId ?? '').trim() || null,

@@ -6,6 +6,7 @@ import {
   moveSuggestionSearch,
   moveSuggestions,
   derivePositionOptions,
+  applyDefaultKeyVideoFlags,
   normalizeOptionalText,
   normalizeTags,
   rekeyClipMoveAssociations,
@@ -73,6 +74,24 @@ test('position options are derived and custom entries override duplicates', () =
       { id: 'sweetheart', label: 'sweetheart', source: 'derived' }
     ]
   );
+});
+
+test('new clips default to key videos only for the first four clips per move', () => {
+  const existing = [
+    { id: 'other-1', sourceAssetId: 'source-a', moveId: 'RT000001', isKeyVideo: true },
+    { id: 'other-2', sourceAssetId: 'source-a', moveId: 'RT000001', isKeyVideo: false },
+    { id: 'same-source-replaced', sourceAssetId: 'source-b', moveId: 'RT000001', isKeyVideo: true }
+  ];
+
+  const next = applyDefaultKeyVideoFlags(existing, [
+    { id: 'new-1', sourceAssetId: 'source-b', moveId: 'RT000001' },
+    { id: 'new-2', sourceAssetId: 'source-b', moveId: 'RT000001' },
+    { id: 'new-3', sourceAssetId: 'source-b', moveId: 'RT000001' },
+    { id: 'new-4', sourceAssetId: 'source-b', moveId: 'RT000001' },
+    { id: 'manual', sourceAssetId: 'source-b', moveId: 'RT000001', isKeyVideo: false }
+  ], 'source-b');
+
+  assert.deepEqual(next.map((clip) => clip.isKeyVideo), [true, true, false, false, false]);
 });
 
 test('move suggestions match ids, slugs, and names while excluding selected moves', () => {

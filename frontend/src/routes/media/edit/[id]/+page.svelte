@@ -2024,7 +2024,7 @@
           id: reusableClip?.id ?? createDraftClipId(),
           sourceAssetId: selectedAsset.id,
           moveId,
-          isKeyVideo: reusableClip?.isKeyVideo ?? false,
+          isKeyVideo: reusableClip?.isKeyVideo,
           label: reusableClip?.label ?? null,
           descriptorLabel: row.descriptorLabel.trim() || null,
           startPositionId: row.startPositionId,

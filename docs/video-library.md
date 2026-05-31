@@ -166,6 +166,7 @@ Uploading stores the original file in `video-sources/` and creates a `source` as
 - Move pages receive media clip links only after a clip has rendered successfully.
 - Modern move metadata inherited from parent media should update on move pages automatically when a ready clip is saved or rendered.
 - Derived clips may persist a key-video flag that promotes them into the move page's limited main tab set when a move has many videos.
+- New derived clips default to key videos for a move until that move has four clips; later clips default to non-key unless promoted manually.
 - Legacy direct video links may be replaced only where an explicit migration workflow allows it.
 
 ## Clip Naming Contract
