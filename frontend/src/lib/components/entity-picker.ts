@@ -32,6 +32,7 @@ export type EntityPickerTemplate =
       selectedPlacement?: 'before' | 'after' | 'inside';
       floatingDropdown?: boolean;
       showSelected?: boolean;
+      maxSelected?: number | null;
     }
   | {
       key: string;
@@ -48,6 +49,7 @@ export type EntityPickerTemplate =
       selectedPlacement?: 'before' | 'after' | 'inside';
       floatingDropdown?: boolean;
       showSelected?: boolean;
+      maxSelected?: number | null;
       showId?: boolean;
       showName?: boolean;
       showPoster?: boolean;

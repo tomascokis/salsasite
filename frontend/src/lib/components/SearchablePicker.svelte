@@ -24,6 +24,7 @@
   export let moreText = 'and more...';
   export let allowCreate = false;
   export let createLabel = 'Use';
+  export let maxSelected: number | null = null;
 
   const dispatch = createEventDispatcher<{
     select: { option: SearchablePickerOption; id: string };
@@ -50,6 +51,7 @@
   $: suggestionCount = suggestionResults.length + (canCreate ? 1 : 0);
   $: hasMoreSuggestions = matches.total > suggestionResults.length;
   $: hasVisibleSelection = showSelected && selectedIds.length > 0;
+  $: selectionFull = maxSelected !== null && selectedIds.length >= maxSelected;
   $: inputPlaceholder = hasVisibleSelection ? addPlaceholder : placeholder;
   $: useFloatingDropdown = floatingDropdown || selectedPlacement === 'inside';
 
@@ -62,7 +64,7 @@
     activeSuggestionIndex = Math.max(0, suggestionCount - 1);
   }
 
-  $: if (useFloatingDropdown && hasQuery) {
+  $: if (useFloatingDropdown && hasQuery && !selectionFull) {
     void scheduleFloatingDropdownUpdate();
   }
 
@@ -157,17 +159,26 @@
   function updateFloatingDropdown() {
     if (!useFloatingDropdown || !inputWrapElement) return;
     const rect = inputWrapElement.getBoundingClientRect();
+    const gap = 4;
+    const viewportPadding = 8;
+    const maxDropdownHeight = 352;
+    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const availableAbove = rect.top - viewportPadding;
+    const openAbove = availableBelow < 220 && availableAbove > availableBelow;
+    const availableHeight = Math.max(80, Math.min(maxDropdownHeight, openAbove ? availableAbove - gap : availableBelow - gap));
     floatingDropdownStyle = [
       'position: fixed',
-      `top: ${rect.bottom + 4}px`,
       `left: ${rect.left}px`,
-      `width: ${rect.width}px`
+      `width: ${rect.width}px`,
+      `max-height: ${availableHeight}px`,
+      openAbove ? 'top: auto' : 'bottom: auto',
+      openAbove ? `bottom: ${window.innerHeight - rect.top + gap}px` : `top: ${rect.bottom + gap}px`
     ].join('; ');
   }
 
   function selectOption(id: string) {
     const option = findOption(id);
-    if (!option || selectedIds.includes(option.id) || excludedIds.includes(option.id)) {
+    if (!option || selectionFull || selectedIds.includes(option.id) || excludedIds.includes(option.id)) {
       return;
     }
 
@@ -177,7 +188,7 @@
 
   function createOption() {
     const value = query.trim();
-    if (!value || !allowCreate) {
+    if (!value || !allowCreate || selectionFull) {
       return;
     }
 
@@ -190,7 +201,7 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && hasQuery && suggestionCount) {
+    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && hasQuery && suggestionCount && !selectionFull) {
       event.preventDefault();
       const delta = event.key === 'ArrowDown' ? 1 : -1;
       activeSuggestionIndex = (activeSuggestionIndex + delta + suggestionCount) % suggestionCount;
@@ -199,6 +210,10 @@
 
     if (event.key === 'Enter') {
       event.preventDefault();
+      if (selectionFull) {
+        return;
+      }
+
       if (activeSuggestionIndex < suggestionResults.length && suggestionResults.length) {
         selectOption(suggestionResults[activeSuggestionIndex]?.id ?? suggestionResults[0].id);
       } else if (canCreate) {
@@ -245,23 +260,25 @@
       {/each}
     {/if}
 
-    <input
-      value={query}
-      placeholder={inputPlaceholder}
-      aria-label={hasVisibleSelection ? addPlaceholder : ariaLabel}
-      autocomplete="off"
-      autocorrect="off"
-      spellcheck="false"
-      {disabled}
-      on:focus={() => {
-        dispatch('focus', {});
-        void scheduleFloatingDropdownUpdate();
-      }}
-      on:input={(event) => setQuery((event.currentTarget as HTMLInputElement).value)}
-      on:keydown={handleKeydown}
-    />
+    {#if !selectionFull}
+      <input
+        value={query}
+        placeholder={inputPlaceholder}
+        aria-label={hasVisibleSelection ? addPlaceholder : ariaLabel}
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+        {disabled}
+        on:focus={() => {
+          dispatch('focus', {});
+          void scheduleFloatingDropdownUpdate();
+        }}
+        on:input={(event) => setQuery((event.currentTarget as HTMLInputElement).value)}
+        on:keydown={handleKeydown}
+      />
+    {/if}
 
-    {#if hasQuery}
+    {#if hasQuery && !selectionFull}
       <div
         class="searchable-picker-dropdown"
         class:searchable-picker-dropdown-floating={useFloatingDropdown}

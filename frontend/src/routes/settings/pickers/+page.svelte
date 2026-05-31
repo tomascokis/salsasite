@@ -87,6 +87,53 @@
       .join(' · ')
   }));
 
+  function optionKey(value: string) {
+    return value.trim().toLocaleLowerCase();
+  }
+
+  function mergeCreatedSearchOptions(baseOptions: typeof familyOptions, createdValues: string[]) {
+    const seen = new Set(baseOptions.map((option) => optionKey(option.id)));
+    const createdOptions = createdValues
+      .filter((value) => {
+        const key = optionKey(value);
+        if (!key || seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      })
+      .map((value) => ({
+        id: value,
+        label: value,
+        secondary: 'Created on page'
+      }));
+
+    return [...createdOptions, ...baseOptions];
+  }
+
+  function mergeCreatedMoveOptions(baseOptions: MoveOption[], createdValues: string[]) {
+    const seen = new Set(baseOptions.map((option) => optionKey(option.id)));
+    const createdOptions = createdValues
+      .filter((value) => {
+        const key = optionKey(value);
+        if (!key || seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      })
+      .map((value) => ({
+        id: value,
+        slug: value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+        name: value,
+        level: null,
+        posterFile: null,
+        isDraft: true
+      }));
+
+    return [...createdOptions, ...baseOptions];
+  }
+
   let pickerStates: Record<string, PickerState> = {
     family: {
       query: '',
@@ -109,9 +156,10 @@
   };
 
   function optionsFor(template: EntityPickerTemplate) {
-    if (template.key === 'family') return familyOptions;
-    if (template.key === 'dancer') return dancerOptions;
-    return data.moves;
+    const state = stateFor(template.key);
+    if (template.key === 'family') return mergeCreatedSearchOptions(familyOptions, state.createdValues);
+    if (template.key === 'dancer') return mergeCreatedSearchOptions(dancerOptions, state.createdValues);
+    return mergeCreatedMoveOptions(data.moves, state.createdValues);
   }
 
   function stateFor(key: string) {
@@ -123,7 +171,12 @@
     if (!match) {
       return value;
     }
-    return 'label' in match ? match.label : [match.displayId ?? match.id, match.name].filter(Boolean).join(' ');
+    if ('label' in match) {
+      return match.label;
+    }
+
+    const publicId = match.displayId ?? match.id;
+    return match.name && match.name !== publicId ? `${publicId} ${match.name}` : match.name ?? publicId;
   }
 
   function updateState(key: string, next: Partial<PickerState>) {

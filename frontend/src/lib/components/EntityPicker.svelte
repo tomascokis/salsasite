@@ -52,6 +52,7 @@
       selectedPlacement={template.selectedPlacement ?? 'inside'}
       floatingDropdown={template.floatingDropdown ?? true}
       disabled={disabled}
+      maxSelected={template.maxSelected ?? null}
       emptyText={template.emptyText ?? 'No matching moves'}
       moreText={template.moreText ?? 'and more...'}
       allowCreate={template.allowCreate ?? false}
@@ -79,6 +80,7 @@
       selectedPlacement={template.selectedPlacement ?? 'inside'}
       floatingDropdown={template.floatingDropdown ?? true}
       disabled={disabled}
+      maxSelected={template.maxSelected ?? null}
       emptyText={template.emptyText ?? 'No matches'}
       moreText={template.moreText ?? 'and more...'}
       allowCreate={template.allowCreate ?? false}
