@@ -27,6 +27,7 @@ export type EntityPickerTemplate =
       ariaLabel: string;
       emptyText?: string;
       moreText?: string;
+      limit?: number;
       allowCreate?: boolean;
       createLabel?: string;
       selectedPlacement?: 'before' | 'after' | 'inside';
@@ -44,6 +45,7 @@ export type EntityPickerTemplate =
       ariaLabel: string;
       emptyText?: string;
       moreText?: string;
+      limit?: number;
       allowCreate?: boolean;
       createText?: string;
       selectedPlacement?: 'before' | 'after' | 'inside';

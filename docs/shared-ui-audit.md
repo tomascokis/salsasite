@@ -36,6 +36,7 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - The picker lab move family picker must be single-select, with no extra input/background prompt visible after one family is selected.
 - Picker lab values created on the page must behave like real picker options for later search, selection, display, and removal.
 - The picker lab move picker must search the full move catalog, not a sampled subset.
+- The picker lab must expose loaded option counts and only use visible suggestion limits, not hidden dataset limits, so picker functionality can be tested in the page.
 - Move picker `No preview` poster placeholders must center the text within the thumbnail area.
 - Editable list/grid UI should be a shared pattern for metadata and dancer management surfaces that are viewable by default with small edit affordances.
 - Context menu interactions used for relationship editing must support right-click and long-press.

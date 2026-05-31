@@ -58,7 +58,13 @@
   $: search = moveSuggestionSearch(moves, query, excludedMoveIds, limit);
   $: suggestionResults = search.results;
   $: hasQuery = normalizedQuery.length > 0;
-  $: hasCreateOption = allowCreate && hasQuery;
+  $: normalizedExactQuery = normalizeSearchText(query);
+  $: hasExactMoveMatch =
+    hasQuery &&
+    moves.some((move) =>
+      [move.id, move.displayId, move.name, move.slug].some((value) => normalizeSearchText(value) === normalizedExactQuery)
+    );
+  $: hasCreateOption = allowCreate && hasQuery && !hasExactMoveMatch;
   $: suggestionIndexOffset = hasCreateOption ? 1 : 0;
   $: optionCount = suggestionResults.length + suggestionIndexOffset;
   $: hasMoreSuggestions = search.total > suggestionResults.length;
@@ -82,6 +88,14 @@
 
   function normalizeMoveId(value: string) {
     return value.trim().toUpperCase();
+  }
+
+  function normalizeSearchText(value: string | null | undefined) {
+    return String(value ?? '')
+      .toLocaleLowerCase()
+      .replace(/[_:\/-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   function findMove(moveId: string) {

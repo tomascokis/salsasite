@@ -38,6 +38,7 @@
       createLabel: 'Use family',
       selectedPlacement: 'inside',
       floatingDropdown: true,
+      limit: 24,
       maxSelected: 1
     },
     {
@@ -51,7 +52,8 @@
       allowCreate: true,
       createLabel: 'Use dancer',
       selectedPlacement: 'inside',
-      floatingDropdown: true
+      floatingDropdown: true,
+      limit: 24
     },
     {
       key: 'move',
@@ -67,7 +69,8 @@
       floatingDropdown: true,
       showPoster: true,
       showId: true,
-      showName: true
+      showName: true,
+      limit: 24
     }
   ];
 
@@ -245,10 +248,11 @@
   <div class="picker-lab-grid">
     {#each templates as template}
       {@const state = pickerStates[template.key]}
+      {@const options = optionsFor(template, state)}
       <section class="picker-lab-card panel meta-card">
         <EntityPicker
           {template}
-          options={optionsFor(template, state)}
+          {options}
           selectedIds={state.selectedIds}
           query={state.query}
           onquery={(detail) => updateState(template.key, { query: detail.query })}
@@ -265,6 +269,10 @@
           <div>
             <span class="picker-lab-state-label">Created on page</span>
             <p>{state.createdValues.length ? state.createdValues.join(', ') : 'No ad hoc values yet'}</p>
+          </div>
+          <div>
+            <span class="picker-lab-state-label">Catalog loaded</span>
+            <p>{options.length} options, showing up to {template.limit ?? 8} matches per query</p>
           </div>
           <div>
             <span class="picker-lab-state-label">Last action</span>

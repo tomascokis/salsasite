@@ -74,7 +74,7 @@
       {selectedIds}
       {excludedIds}
       {query}
-      {limit}
+      limit={template.limit ?? limit}
       placeholder={template.placeholder}
       addPlaceholder={template.addPlaceholder}
       ariaLabel={template.ariaLabel}
@@ -102,7 +102,7 @@
       {selectedIds}
       {excludedIds}
       {query}
-      {limit}
+      limit={template.limit ?? limit}
       placeholder={template.placeholder}
       addPlaceholder={template.addPlaceholder}
       ariaLabel={template.ariaLabel}
