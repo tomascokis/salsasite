@@ -18,6 +18,7 @@ type StoredDancer = DancerRecord;
 type DancerStore = {
   version: 1;
   dancers: StoredDancer[];
+  deletedDancerSlugs: string[];
 };
 
 type DancerInput = {
@@ -37,7 +38,8 @@ const LEVEL_VALUES = new Set<DancerLevel>(['world-class', 'pro', 'semi-pro', 'am
 function emptyStore(): DancerStore {
   return {
     version: 1,
-    dancers: []
+    dancers: [],
+    deletedDancerSlugs: []
   };
 }
 
@@ -90,6 +92,23 @@ function splitDancers(value: string | null | undefined) {
     .filter(Boolean);
 }
 
+function normalizeDeletedDancerSlugs(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return Array.from(
+    new Set(
+      value
+        .map((entry) => normalizeName(entry))
+        .filter(Boolean)
+        .map((entry) => dancerSlug(entry))
+        .filter(Boolean)
+    )
+  ).sort((left, right) => left.localeCompare(right));
+}
+
+function dancerSlugFromId(id: string) {
+  return dancerSlug(id.startsWith('dancer:') ? id.slice('dancer:'.length) : id);
+}
+
 async function readStore() {
   try {
     const contents = await fs.readFile(storePath(), 'utf-8');
@@ -97,7 +116,8 @@ async function readStore() {
     return {
       ...emptyStore(),
       ...parsed,
-      dancers: Array.isArray(parsed.dancers) ? parsed.dancers : []
+      dancers: Array.isArray(parsed.dancers) ? parsed.dancers : [],
+      deletedDancerSlugs: normalizeDeletedDancerSlugs(parsed.deletedDancerSlugs)
     };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -144,7 +164,7 @@ function derivedDancers(rawReferences: RawMoveReferenceRecord[], library: VideoL
     }));
 }
 
-function mergeDancers(derived: DancerRecord[], stored: StoredDancer[]) {
+function mergeDancers(derived: DancerRecord[], stored: StoredDancer[], deletedDancerSlugs: Set<string>) {
   const bySlug = new Map(derived.map((dancer) => [dancer.slug, dancer]));
 
   for (const dancer of stored) {
@@ -173,7 +193,9 @@ function mergeDancers(derived: DancerRecord[], stored: StoredDancer[]) {
     });
   }
 
-  return [...bySlug.values()].sort((left, right) => left.displayName.localeCompare(right.displayName, undefined, { sensitivity: 'base' }));
+  return [...bySlug.values()]
+    .filter((dancer) => !deletedDancerSlugs.has(dancer.slug))
+    .sort((left, right) => left.displayName.localeCompare(right.displayName, undefined, { sensitivity: 'base' }));
 }
 
 function assetHasDancer(asset: VideoAsset, dancer: DancerRecord) {
@@ -192,7 +214,8 @@ export async function getDancerProfiles(
   library: VideoLibrary
 ): Promise<DancerProfile[]> {
   const store = await readStore();
-  const dancers = mergeDancers(derivedDancers(rawReferences, library), store.dancers);
+  const deletedDancerSlugs = new Set(store.deletedDancerSlugs);
+  const dancers = mergeDancers(derivedDancers(rawReferences, library), store.dancers, deletedDancerSlugs);
   const movesById = new Map(moves.map((move) => [move.id, move]));
 
   return Promise.all(
@@ -265,7 +288,30 @@ export async function saveDancer(input: DancerInput) {
   store.dancers = existing
     ? store.dancers.map((dancer) => (dancer.id === existing.id ? next : dancer))
     : [...store.dancers, next];
+  store.deletedDancerSlugs = store.deletedDancerSlugs.filter((slug) => slug !== next.slug);
 
   await writeStore(store);
   return next;
+}
+
+export async function deleteDancer(id: string) {
+  const normalizedId = String(id ?? '').trim();
+  if (!normalizedId) {
+    throw new Error('Dancer id is required.');
+  }
+
+  const store = await readStore();
+  const existing = store.dancers.find((dancer) => dancer.id === normalizedId);
+  const slug = existing?.slug ?? dancerSlugFromId(normalizedId);
+  const deletedDancerSlugs = new Set(store.deletedDancerSlugs);
+  deletedDancerSlugs.add(slug);
+
+  store.dancers = store.dancers.filter((dancer) => dancer.id !== normalizedId && dancer.slug !== slug);
+  store.deletedDancerSlugs = [...deletedDancerSlugs].sort((left, right) => left.localeCompare(right));
+
+  await writeStore(store);
+  return {
+    id: normalizedId,
+    slug
+  };
 }

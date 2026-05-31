@@ -842,6 +842,43 @@ select {
   gap: 0.7rem;
 }
 
+.dancer-profile-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.dancer-profile-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.dancer-profile-actions .pill {
+  cursor: pointer;
+}
+
+.dancer-profile-actions .pill:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.danger-pill {
+  border-color: #d9b8b8;
+  color: #8a3333;
+  background: #fffafa;
+}
+
+.danger-pill:hover,
+.danger-pill:focus-visible {
+  border-color: #c99494;
+  background: #fff2f2;
+}
+
 .dancer-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

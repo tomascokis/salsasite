@@ -22,3 +22,4 @@ Shared controls on dancer pages must follow `docs/shared-ui-audit.md`, especiall
 - Dancer list/profile editing should use the shared editable list/grid pattern where practical.
 - The profile view must show dances associated with the dancer.
 - The profile view must show moves associated with the dancer.
+- A dancer profile must be deletable from the profile workflow. Deleting a profile removes the stored dancer row when one exists and suppresses derived profiles with the same dancer slug without deleting associated media, move records, or source metadata.

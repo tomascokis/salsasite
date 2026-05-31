@@ -32,6 +32,7 @@
   let query = '';
   let isEditing = false;
   let isSaving = false;
+  let isDeleting = false;
   let status = '';
   let fullName = '';
   let displayName = '';
@@ -147,6 +148,42 @@
     isEditing = false;
     status = 'Saved.';
   }
+
+  async function deleteDancer() {
+    if (!selectedDancer) return;
+
+    const dancerToDelete = selectedDancer;
+    const shouldDelete = window.confirm(`Delete "${dancerToDelete.displayName}"? Associated dances and moves will stay in place.`);
+    if (!shouldDelete) return;
+
+    isDeleting = true;
+    status = 'Deleting...';
+
+    const currentIndex = dancers.findIndex((dancer) => dancer.id === dancerToDelete.id);
+    const fallbackDancer = dancers[currentIndex + 1] ?? dancers[currentIndex - 1] ?? null;
+    try {
+      const response = await fetch('/api/dancers', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: dancerToDelete.id })
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        status = payload.error ?? 'Could not delete dancer.';
+        return;
+      }
+
+      await invalidateAll();
+      selectedId = fallbackDancer?.id ?? null;
+      isEditing = false;
+      status = 'Deleted.';
+    } catch (error) {
+      status = error instanceof Error ? error.message : 'Could not delete dancer.';
+    } finally {
+      isDeleting = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -261,6 +298,9 @@
             </label>
           </div>
           <div class="move-editor-actions metadata-actions">
+            {#if selectedId}
+              <button class="header-button danger-button" type="button" disabled={isDeleting} on:click={deleteDancer}>Delete</button>
+            {/if}
             <button type="button" on:click={() => (isEditing = false)}>Cancel</button>
             <button class="header-button" type="button" disabled={isSaving} on:click={saveDancer}>Save</button>
           </div>
@@ -268,9 +308,14 @@
       {:else if selectedDancer}
         <section class="panel meta-card dancer-profile-card">
           <div class="panel-header">
-            <div class="media-properties-title">
-              <h3>{selectedDancer.displayName}</h3>
-              <button class="pill" type="button" on:click={startEditDancer}>Edit</button>
+            <div class="dancer-profile-heading">
+              <div class="media-properties-title">
+                <h3>{selectedDancer.displayName}</h3>
+              </div>
+              <div class="dancer-profile-actions">
+                <button class="pill" type="button" disabled={isDeleting} on:click={startEditDancer}>Edit</button>
+                <button class="pill danger-pill" type="button" disabled={isDeleting} on:click={deleteDancer}>Delete</button>
+              </div>
             </div>
           </div>
 
