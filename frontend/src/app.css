@@ -3632,6 +3632,12 @@ select {
   color: #ffffff;
 }
 
+.timeline-move-action.danger,
+.draft-edit-button.danger {
+  border-color: rgba(213, 92, 92, 0.48);
+  color: #ffd2d2;
+}
+
 .timeline-move-action:hover,
 .timeline-move-action:focus-visible {
   background: rgba(255, 255, 255, 0.12);
@@ -3687,7 +3693,7 @@ select {
 }
 
 .draft-move-row.saved-editor-row {
-  grid-template-columns: 54px minmax(220px, 1fr) 42px 62px;
+  grid-template-columns: 54px minmax(220px, 1fr) 42px 62px 62px;
   align-items: stretch;
 }
 
@@ -5839,7 +5845,7 @@ select {
   }
 
   .draft-move-row.saved-editor-row {
-    grid-template-columns: 44px minmax(0, 1fr) 40px 58px;
+    grid-template-columns: 44px minmax(0, 1fr) 40px 58px 58px;
   }
 
   .move-picker-input-inline input {

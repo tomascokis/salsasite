@@ -2755,6 +2755,13 @@
                     >
                       {activeSavedClip.isKeyVideo ? '★' : '☆'}
                     </button>
+                    <button
+                      class="timeline-move-action danger"
+                      type="button"
+                      on:click={() => removeSavedClip(activeSavedClip.id)}
+                    >
+                      Delete clip
+                    </button>
                   {/if}
                   {#if hasUnsavedClipRowChanges}
                     <button class="timeline-move-action primary" type="button" on:click={() => void saveClipLabelChanges()}>
@@ -2881,6 +2888,9 @@
                         </button>
                         <button class="draft-edit-button" type="button" on:click={() => openSavedClipEditor(clip)}>
                           Edit
+                        </button>
+                        <button class="draft-edit-button danger" type="button" on:click={() => removeSavedClip(clip.id)}>
+                          Delete
                         </button>
                       </div>
                     {/each}
