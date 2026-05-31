@@ -3320,12 +3320,16 @@ select {
 
 .clip-timeline {
   position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   height: var(--timeline-height);
   touch-action: none;
   cursor: pointer;
   user-select: none;
-  overflow: visible;
-  contain: layout;
+  overflow: clip;
+  contain: layout paint;
   will-change: height;
   transition: height var(--timeline-transition);
 }
@@ -4667,6 +4671,7 @@ select {
 
 .media-editor-default-layout {
   display: grid;
+  grid-template-areas: 'video info';
   grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
   gap: 0.85rem;
   align-items: start;
@@ -4680,7 +4685,12 @@ select {
   min-width: 0;
 }
 
+.media-editor-default-layout .video-panel {
+  grid-area: video;
+}
+
 .media-properties-card {
+  grid-area: info;
   position: sticky;
   top: 0.85rem;
   width: 100%;
@@ -4757,6 +4767,21 @@ select {
 
 .media-property-badge + .media-property-badge {
   border-left: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+@container media-editor-detail (max-width: calc(78rem + 20rem + 0.85rem)) {
+  .media-editor-default-layout,
+  .media-editor-default-layout.editor-active {
+    grid-template-areas:
+      'info'
+      'video';
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.65rem;
+  }
+
+  .media-editor-default-layout .media-properties-card {
+    position: static;
+  }
 }
 
 .media-dancer-badge-row {
@@ -5484,6 +5509,7 @@ select {
 
 .media-editor-page .upload-column-wide {
   width: 100%;
+  container: media-editor-detail / inline-size;
 }
 
 .settings-page {
@@ -5826,6 +5852,9 @@ select {
 
   .media-editor-default-layout,
   .media-editor-default-layout.editor-active {
+    grid-template-areas:
+      'info'
+      'video';
     grid-template-columns: minmax(0, 1fr);
     gap: 0.65rem;
   }
@@ -6147,6 +6176,9 @@ select {
   }
 
   .media-editor-default-layout {
+    grid-template-areas:
+      'info'
+      'video';
     grid-template-columns: minmax(0, 1fr);
   }
 

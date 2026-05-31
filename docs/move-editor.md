@@ -46,6 +46,8 @@ Entering move-editing mode should preserve the user's spatial context while enab
 - The side metadata card must remain fully inside the viewport; its rounded corners and edit control must not be clipped by horizontal overflow.
 - The layout must remain usable on mobile; the video/editor must not overflow horizontally or push controls off-screen.
 - Mobile layout should prefer a single-column editor with compact controls.
+- The timeline must never paint past the video/editor column into the side metadata area or past the window edge.
+- When the editor does not have enough inline space for both the video/timeline column and the side metadata card, the metadata card must move above the video/timeline instead of remaining as a squeezed side column.
 
 ## Video Playback
 
