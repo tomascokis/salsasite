@@ -9,7 +9,7 @@ export async function load() {
   const [metadata, library] = await Promise.all([getSiteMetadata(moves, rawReferences), getVideoLibrary(moves)]);
   const dancers = await getDancerProfiles(moves, rawReferences, library);
   const moveOptions = await Promise.all(
-    moves.slice(0, 120).map(async (move) => ({
+    moves.map(async (move) => ({
       id: move.id,
       displayId: move.displayId ?? null,
       slug: move.slug,
