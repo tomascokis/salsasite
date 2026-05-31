@@ -3679,6 +3679,8 @@ select {
   grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px;
   gap: 0.6rem;
   align-items: end;
+  --clip-row-font-size: 0.8rem;
+  --clip-row-secondary-font-size: 0.72rem;
 }
 
 .draft-move-row.active {
@@ -3737,6 +3739,7 @@ select {
   border-radius: 10px;
   background: #ffffff;
   color: #2f3943;
+  font-size: var(--clip-row-font-size);
 }
 
 .saved-editor-chip {
@@ -4202,7 +4205,8 @@ select {
   background: #ffffff;
   color: #2f3943;
   padding: 0.36rem 0.5rem;
-  font-size: 0.8rem;
+  font-size: var(--clip-row-font-size);
+  line-height: 1.2;
 }
 
 .draft-position-field {
@@ -4216,7 +4220,7 @@ select {
   background: rgba(255, 255, 255, 0.07);
   color: #dbe8f5;
   padding: 0.32rem 0.46rem;
-  font-size: 0.72rem;
+  font-size: var(--clip-row-font-size);
   font-weight: 800;
   cursor: pointer;
 }
@@ -4256,7 +4260,7 @@ select {
   border-radius: 999px;
   padding: 0.28rem 0.55rem;
   cursor: pointer;
-  font-size: 0.72rem;
+  font-size: 0.76rem;
 }
 
 .move-picker-inline-chip {
@@ -4271,6 +4275,38 @@ select {
 .move-chip:focus-visible {
   background: #eef6ff;
   outline: none;
+}
+
+.draft-move-row .move-picker input,
+.draft-move-row .searchable-picker input,
+.draft-move-row .move-picker-input-inline,
+.draft-move-row .searchable-picker-input-inline,
+.draft-move-row .move-picker-option,
+.draft-move-row .searchable-picker-option,
+.draft-move-row .move-picker-empty,
+.draft-move-row .move-picker-more,
+.draft-move-row .searchable-picker-empty,
+.draft-move-row .searchable-picker-more {
+  font-size: var(--clip-row-font-size);
+}
+
+.draft-move-row .move-picker-input-inline input,
+.draft-move-row .searchable-picker-input-inline input {
+  font-size: var(--clip-row-font-size);
+  line-height: 1.2;
+}
+
+.draft-move-row .move-chip,
+.draft-move-row .shared-chip,
+.draft-move-row .saved-editor-placeholder,
+.draft-move-row .move-picker-option-text span,
+.draft-move-row .searchable-picker-option-text span {
+  font-size: var(--clip-row-secondary-font-size);
+}
+
+.draft-move-row .move-picker-option-text strong,
+.draft-move-row .searchable-picker-option-text strong {
+  font-size: var(--clip-row-font-size);
 }
 
 .clip-draft-form {
