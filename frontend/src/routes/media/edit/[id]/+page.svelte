@@ -172,6 +172,8 @@
   let timelineDragTarget: TimelineMarker | null = null;
   let timelineDragPreviousMs: number | null = null;
   let timelineDragSnapConsumed = false;
+  let timelineDragCaptureElement: HTMLElement | null = null;
+  let timelineDragPointerId: number | null = null;
   let resumePlaybackAfterTimelineDrag = false;
   let timelineElement: HTMLDivElement | null = null;
   let timelineWidthPx = 0;
@@ -213,6 +215,10 @@
     isDraftingMove && activeDraftOriginalClipIds.size
       ? clipRows.filter((clip) => !activeDraftOriginalClipIds.has(clip.id))
       : isDraftingMove && activeClipId ? clipRows.filter((clip) => clip.id !== activeClipId) : clipRows;
+  $: savedSnapBoundaryClips =
+    isDraftingMove && activeDraftOriginalClipIds.size
+      ? clipRows.filter((clip) => !activeDraftOriginalClipIds.has(clip.id))
+      : clipRows;
   $: editorMoveRows = editorRowsForDisplay(clipRows, draftMoveRows, isDraftingMove);
   $: playbackMoveClips = sortedPlaybackClips(clipRows);
   $: currentPlaybackMove = playbackMoveClips.find(
@@ -1681,7 +1687,7 @@
       ...draftMoveRows
         .filter((row) => row.id !== activeDraftMoveRowId)
         .flatMap((row) => [row.startMs, row.endMs]),
-      ...visibleSavedTimelineClips.flatMap((clip) => [clipActionStartMs(clip), clipActionEndMs(clip)])
+      ...savedSnapBoundaryClips.flatMap((clip) => [clipActionStartMs(clip), clipActionEndMs(clip)])
     ];
     const minimum = target === 'moveEnd' ? draftActionStartMs + 250 : 0;
     const maximum = target === 'moveStart' ? Math.max(0, draftActionEndMs - 250) : inferredTimelineDurationMs();
@@ -1835,6 +1841,9 @@
     }
 
     event.preventDefault();
+    timelineDragCaptureElement = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    timelineDragPointerId = event.pointerId;
+    timelineDragCaptureElement?.setPointerCapture?.(event.pointerId);
     if (target && target !== 'playhead' && videoElement && !videoElement.paused) {
       resumePlaybackAfterTimelineDrag = true;
       videoElement.pause();
@@ -1873,6 +1882,15 @@
   function stopTimelineDrag() {
     const releasedTarget = timelineDragTarget;
     const shouldResume = resumePlaybackAfterTimelineDrag;
+    if (
+      timelineDragCaptureElement &&
+      timelineDragPointerId !== null &&
+      timelineDragCaptureElement.hasPointerCapture?.(timelineDragPointerId)
+    ) {
+      timelineDragCaptureElement.releasePointerCapture?.(timelineDragPointerId);
+    }
+    timelineDragCaptureElement = null;
+    timelineDragPointerId = null;
     timelineDragTarget = null;
     timelineDragPreviousMs = null;
     timelineDragSnapConsumed = false;
