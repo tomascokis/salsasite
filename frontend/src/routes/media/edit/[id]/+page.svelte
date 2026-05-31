@@ -10,6 +10,7 @@
     hasActiveMutedVideoPreference,
     saveVideoAudioPreferenceFromElement
   } from '$lib/video-audio-preference';
+  import { snapMoveBoundaryForDrag } from '$lib/timeline-snapping.js';
   import type {
     ClipCountMarker,
     ClipCropRect,
@@ -78,6 +79,7 @@
   const DEFAULT_MOVE_DURATION_MS = 2500;
   const DEFAULT_CLIP_HEAD_PADDING_MS = DEFAULT_MOVE_DURATION_MS;
   const DEFAULT_CLIP_TAIL_PADDING_MS = Math.round(DEFAULT_MOVE_DURATION_MS / 2);
+  const MOVE_BOUNDARY_SNAP_TOLERANCE_PX = 8;
   const PLAYBACK_CONTEXT_WINDOW_MS = 2500;
   const COUNT_PRESET_SEQUENCES: Record<CountTimingPreset, string[]> = {
     'on2-default': ['6', '7', '1', '2', '3', '5'],
@@ -1625,7 +1627,7 @@
   }
 
   function setDraftBoundary(target: TimelineMarker, valueMs: number, seek = true, snap = true) {
-    const nextValue = clampMs(snap ? snapMoveBoundaryForDrag(target, valueMs) : valueMs);
+    const nextValue = clampMs(snap ? snapTimelineMoveBoundaryForDrag(target, valueMs) : valueMs);
     lastDraftBoundaryTarget = target;
     if (target === 'playhead') {
       seekPreview(nextValue);
@@ -1689,36 +1691,37 @@
       .sort((left, right) => left - right);
   }
 
-  function snapMoveBoundaryForDrag(target: TimelineMarker, valueMs: number) {
-    if (
-      timelineDragSnapConsumed ||
-      timelineDragPreviousMs === null ||
-      (target !== 'moveStart' && target !== 'moveEnd')
-    ) {
-      timelineDragPreviousMs = valueMs;
-      return valueMs;
+  function moveBoundarySnapToleranceMs() {
+    if (!timelineWidthPx) {
+      return 0;
     }
 
-    const previousMs = timelineDragPreviousMs;
-    const direction = Math.sign(valueMs - previousMs);
-    if (!direction) {
-      return valueMs;
-    }
+    ensureTimelineViewport();
+    const viewportSpanMs = Math.max(0, timelineViewportEndMs - timelineViewportStartMs);
+    return Math.ceil((viewportSpanMs / timelineWidthPx) * MOVE_BOUNDARY_SNAP_TOLERANCE_PX);
+  }
 
-    const boundaries = moveBoundarySnapCandidates(target);
-    const snapped =
-      direction > 0
-        ? boundaries.find((boundary) => boundary > previousMs && boundary <= valueMs)
-        : [...boundaries].reverse().find((boundary) => boundary < previousMs && boundary >= valueMs);
+  function snapTimelineMoveBoundaryForDrag(target: TimelineMarker, valueMs: number) {
+    const result = snapMoveBoundaryForDrag({
+      target,
+      valueMs,
+      previousMs: timelineDragPreviousMs,
+      snapConsumed: timelineDragSnapConsumed,
+      boundaries: moveBoundarySnapCandidates(target),
+      toleranceMs: moveBoundarySnapToleranceMs()
+    });
 
-    if (snapped === undefined) {
-      timelineDragPreviousMs = valueMs;
-      return valueMs;
-    }
+    timelineDragPreviousMs = result.previousMs;
+    timelineDragSnapConsumed = result.snapConsumed;
+    return result.valueMs;
+  }
 
-    timelineDragSnapConsumed = true;
-    timelineDragPreviousMs = snapped;
-    return snapped;
+  function timelineMarkerValue(target: TimelineMarker, fallbackMs: number) {
+    if (target === 'clipStart') return draftStartMs;
+    if (target === 'clipEnd') return draftEndMs;
+    if (target === 'moveStart') return draftActionStartMs;
+    if (target === 'moveEnd') return draftActionEndMs;
+    return fallbackMs;
   }
 
   function percentForMs(milliseconds: number) {
@@ -1843,15 +1846,16 @@
     }
     timelineDragTarget = target ?? 'playhead';
     timelineDragSnapConsumed = false;
-    timelineDragPreviousMs =
-      timelineDragTarget === 'moveStart'
-        ? draftActionStartMs
-        : timelineDragTarget === 'moveEnd'
-          ? draftActionEndMs
-          : timelineMsFromPointer(event);
     const nextValue = timelineMsFromPointer(event);
-    setDraftBoundary(timelineDragTarget, nextValue, true, false);
-    timelineDragPreviousMs = nextValue;
+    const markerValue = timelineMarkerValue(timelineDragTarget, nextValue);
+    timelineDragPreviousMs = markerValue;
+    if (timelineDragTarget === 'playhead') {
+      setDraftBoundary(timelineDragTarget, nextValue, true, false);
+      timelineDragPreviousMs = nextValue;
+      return;
+    }
+
+    seekPreview(markerValue);
   }
 
   function startPlayheadDrag(event: PointerEvent) {
