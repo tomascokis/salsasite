@@ -1,5 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { beforeNavigate } from '$app/navigation';
   import { onDestroy, tick } from 'svelte';
   import ContentBadge from '$lib/components/ContentBadge.svelte';
   import MovePicker from '$lib/components/MovePicker.svelte';
@@ -274,6 +275,16 @@
 
   $: hasSaveableDraftChanges =
     hasDraftChanges && draftMoveRows.some((row) => row.moveIds.some((moveId) => moveNameById.has(moveId)) && row.endMs > row.startMs);
+
+  beforeNavigate((navigation) => {
+    if (navigation.willUnload || !hasDraftChanges) {
+      return;
+    }
+
+    if (!confirmDiscardDraftMoveChanges()) {
+      navigation.cancel();
+    }
+  });
 
   $: if (!isDraftingMove) {
     const timelineDurationMs = inferredTimelineDurationMs();
@@ -809,6 +820,10 @@
   }
 
   function openSavedClipEditor(clip: DerivedClip) {
+    if (!confirmDiscardDraftMoveChanges()) {
+      return;
+    }
+
     const actionStart = clipActionStartMs(clip);
     const actionEnd = clipActionEndMs(clip);
     const groupClips = clip.timingGroupId
@@ -1139,7 +1154,19 @@
     editDancerIds = editDancerIds.filter((entry) => entry !== dancerId);
   }
 
+  function confirmDiscardDraftMoveChanges() {
+    if (!hasDraftChanges || !browser) {
+      return true;
+    }
+
+    return window.confirm('Discard unsaved draft move edits?');
+  }
+
   function selectAsset(assetId: string) {
+    if (assetId !== selectedAssetId && !confirmDiscardDraftMoveChanges()) {
+      return;
+    }
+
     selectedAssetId = assetId;
     syncingAssetKey = null;
     stopPolling();
@@ -1956,6 +1983,10 @@
   }
 
   function startNewMoveClip() {
+    if (!confirmDiscardDraftMoveChanges()) {
+      return;
+    }
+
     const actionStart = clampMs(playerCurrentMs || 0);
     const actionEnd = Math.min(
       playerDurationMs || actionStart + DEFAULT_MOVE_DURATION_MS,
@@ -2002,6 +2033,10 @@
   }
 
   function exitDraftMove() {
+    if (!confirmDiscardDraftMoveChanges()) {
+      return;
+    }
+
     activeClipId = null;
     isDraftingMove = false;
     isLooping = false;
@@ -2053,6 +2088,15 @@
       event.preventDefault();
       placeCurrentCount();
     }
+  }
+
+  function handleBeforeUnload(event: BeforeUnloadEvent) {
+    if (!hasDraftChanges) {
+      return;
+    }
+
+    event.preventDefault();
+    event.returnValue = '';
   }
 
   function clipRowsWithDraftForSave() {
@@ -2395,7 +2439,7 @@
   <title>Media | Salsa Encyclopedia</title>
 </svelte:head>
 
-<svelte:window on:pointermove={handleTimelinePointerMove} on:pointerup={stopTimelineDrag} on:keydown={handleKeydown} />
+<svelte:window on:pointermove={handleTimelinePointerMove} on:pointerup={stopTimelineDrag} on:keydown={handleKeydown} on:beforeunload={handleBeforeUnload} />
 
 <div class="stack upload-page media-page media-editor-page">
   <section class="panel upload-shell">
