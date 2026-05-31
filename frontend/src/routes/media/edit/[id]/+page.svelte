@@ -853,8 +853,8 @@
     draftEndMs = clampClipEndMs(clip.endMs);
     clipStartContextMs = Math.max(CLIP_MOVE_BUFFER_MS, actionStart - clip.startMs);
     clipEndContextMs = Math.max(CLIP_MOVE_BUFFER_MS, clip.endMs - actionEnd);
-    autoClipStart = false;
-    autoClipEnd = false;
+    autoClipStart = true;
+    autoClipEnd = true;
     isLooping = true;
     isLoopingWithPadding = true;
     countMode = 'idle';

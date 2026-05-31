@@ -185,7 +185,7 @@ The editor has one timeline and two ranges.
 | Move range | The exact part where the move happens. |
 | Clip range | The wider rendered clip, including context before and after the move. |
 
-New clips start with context around the move. The outer clip markers follow the move markers until the user manually edits that side.
+New clips start with context around the move. The outer clip markers follow the move markers until the user manually edits that side. Saved clips reopened for editing must preserve their current padding distances and keep the same follow behavior until the user manually edits a clip edge.
 
 Current constraints:
 
