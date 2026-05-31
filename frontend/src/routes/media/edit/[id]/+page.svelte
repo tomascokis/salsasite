@@ -2737,6 +2737,10 @@
                 <div class="timeline-move-actions">
                   {#if isDraftingMove}
                     <button class="timeline-move-action" type="button" on:click={exitDraftMove}>Exit</button>
+                    <button class="timeline-move-action" type="button" on:click={() => void addMoreMoves()}>Add move</button>
+                    {#if activeDraftMoveRow}
+                      <button class="timeline-move-action" type="button" on:click={() => addBoundMove()}>Add bound move</button>
+                    {/if}
                     {#if hasSaveableDraftChanges}
                       <button class="timeline-move-action primary" type="button" on:click={() => saveMovesAndQueueRender()}>
                         Save
@@ -2843,9 +2847,6 @@
                         {:else}
                           <button class="draft-edit-button" type="button" on:click={() => selectDraftMoveRow(row.id)}>Edit</button>
                         {/if}
-                        <button class="draft-edit-button draft-bound-button" type="button" on:click={() => addBoundMove(row.id)}>
-                          Bind
-                        </button>
                       </div>
                     {/each}
                     {#each visibleSavedTimelineClips as clip (clip.id)}
@@ -2888,12 +2889,6 @@
                         </button>
                       </div>
                     {/each}
-                    <div class="draft-add-actions">
-                      <button class="draft-add-move-button" type="button" on:click={() => void addMoreMoves()}>Add move</button>
-                      {#if activeDraftMoveRow}
-                        <button class="draft-add-move-button" type="button" on:click={() => addBoundMove()}>Add bound move</button>
-                      {/if}
-                    </div>
                   </div>
                 {/if}
                 {#if renderStatus}

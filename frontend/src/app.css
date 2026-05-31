@@ -3666,7 +3666,7 @@ select {
 
 .draft-move-header {
   display: grid;
-  grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px 54px;
+  grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px;
   gap: 0.6rem;
   align-items: end;
   color: #aec0d2;
@@ -3676,7 +3676,7 @@ select {
 
 .draft-move-row {
   display: grid;
-  grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px 54px;
+  grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px;
   gap: 0.6rem;
   align-items: end;
 }
@@ -4209,10 +4209,6 @@ select {
   min-width: 0;
 }
 
-.draft-bound-button {
-  padding-inline: 0.34rem;
-}
-
 .draft-edit-button {
   height: 2.2rem;
   border: 1px solid rgba(178, 202, 226, 0.28);
@@ -4245,31 +4241,6 @@ select {
 .key-video-toggle[aria-pressed='true'] {
   background: rgba(255, 209, 102, 0.18);
   color: #ffd24d;
-}
-
-.draft-add-move-button {
-  justify-self: start;
-  margin-top: 0.2rem;
-  border: 1px solid rgba(178, 202, 226, 0.28);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.07);
-  color: #dbe8f5;
-  padding: 0.34rem 0.58rem;
-  font-size: 0.76rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.draft-add-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.draft-add-move-button:hover,
-.draft-add-move-button:focus-visible {
-  background: rgba(255, 255, 255, 0.12);
-  outline: none;
 }
 
 .move-chip-row {
@@ -5839,8 +5810,7 @@ select {
   .draft-move-header span:nth-child(4),
   .draft-move-header span:nth-child(5),
   .draft-descriptor-field,
-  .draft-position-field,
-  .draft-bound-button {
+  .draft-position-field {
     grid-column: 2 / -1;
   }
 
