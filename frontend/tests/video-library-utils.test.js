@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   normalizeDateString,
+  existingClipForMoveEditMode,
   moveSuggestionSearch,
   moveSuggestions,
   derivePositionOptions,
@@ -92,6 +93,27 @@ test('new clips default to key videos only for the first four clips per move', (
   ], 'source-b');
 
   assert.deepEqual(next.map((clip) => clip.isKeyVideo), [true, true, false, false, false]);
+});
+
+test('move edit mode selects the saved clip under the playhead instead of creating a new one', () => {
+  const clips = [
+    { id: 'early', startMs: 1000, endMs: 5000, actionStartMs: 2000, actionEndMs: 4000 },
+    { id: 'current', startMs: 8000, endMs: 13000, actionStartMs: 9000, actionEndMs: 12000 },
+    { id: 'late', startMs: 20000, endMs: 25000, actionStartMs: 21000, actionEndMs: 24000 }
+  ];
+
+  assert.equal(existingClipForMoveEditMode(clips, 9500)?.id, 'current');
+});
+
+test('move edit mode falls back to the nearest saved clip when no clip contains the playhead', () => {
+  const clips = [
+    { id: 'first', startMs: 1000, endMs: 5000, actionStartMs: 2000, actionEndMs: 4000 },
+    { id: 'nearest', startMs: 8000, endMs: 12000, actionStartMs: 9000, actionEndMs: 11000 },
+    { id: 'later', startMs: 20000, endMs: 25000, actionStartMs: 21000, actionEndMs: 24000 }
+  ];
+
+  assert.equal(existingClipForMoveEditMode(clips, 7000)?.id, 'nearest');
+  assert.equal(existingClipForMoveEditMode([], 7000), null);
 });
 
 test('move suggestions match ids, slugs, and names while excluding selected moves', () => {

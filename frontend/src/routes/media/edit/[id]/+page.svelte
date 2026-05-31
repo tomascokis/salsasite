@@ -11,6 +11,7 @@
     hasActiveMutedVideoPreference,
     saveVideoAudioPreferenceFromElement
   } from '$lib/video-audio-preference';
+  import { existingClipForMoveEditMode } from '$lib/video-library-utils.js';
   import { snapMoveBoundaryForDrag } from '$lib/timeline-snapping.js';
   import type {
     ClipCountMarker,
@@ -2320,6 +2321,12 @@
 
   async function addMoreMoves() {
     if (!isDraftingMove) {
+      const existingClip = existingClipForMoveEditMode(clipRows, playerCurrentMs) as ClipWithUi | null;
+      if (existingClip) {
+        openSavedClipEditor(existingClip);
+        return;
+      }
+
       startNewMoveClip();
       return;
     }
