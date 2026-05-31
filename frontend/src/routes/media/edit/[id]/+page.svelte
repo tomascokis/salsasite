@@ -75,6 +75,9 @@
   type TimelineMarker = 'clipStart' | 'clipEnd' | 'moveStart' | 'moveEnd' | 'playhead';
   type CountModeStep = 'idle' | 'placing';
   type ClipChangeState = 'new' | 'edited';
+  type RefreshLibraryOptions = {
+    preserveDraftEditor?: boolean;
+  };
   const MOVE_SUGGESTION_LIMIT = 8;
   const CLIP_MOVE_BUFFER_MS = 500;
   const DEFAULT_MOVE_DURATION_MS = 2500;
@@ -1174,9 +1177,11 @@
 
   async function refreshLibrary(
     nextSelectedAssetId: string | null = selectedAssetId,
-    limit = Math.max(50, assets.length || 50)
+    limit = Math.max(50, assets.length || 50),
+    options: RefreshLibraryOptions = {}
   ) {
     void limit;
+    const shouldPreserveDraftEditor = Boolean(options.preserveDraftEditor && isDraftingMove);
     const response = await fetch('/api/upload/library');
     if (!response.ok) {
       return;
@@ -1186,13 +1191,22 @@
     assets = payload.assets;
     totalAssets = payload.assets.length;
     nextCursor = null;
-    if (nextSelectedAssetId && assets.some((asset: UploadAssetView) => asset.id === nextSelectedAssetId)) {
-      selectedAssetId = nextSelectedAssetId;
-      syncingAssetKey = null;
-    } else {
-      selectedAssetId = assets[0]?.id ?? null;
-      syncingAssetKey = null;
+
+    const nextSelectedAsset =
+      nextSelectedAssetId && assets.some((asset: UploadAssetView) => asset.id === nextSelectedAssetId)
+        ? assets.find((asset: UploadAssetView) => asset.id === nextSelectedAssetId) ?? null
+        : assets[0] ?? null;
+
+    selectedAssetId = nextSelectedAsset?.id ?? null;
+
+    if (shouldPreserveDraftEditor && nextSelectedAsset && nextSelectedAsset.filePath === syncedMediaPath) {
+      syncingAssetKey = assetSyncKey(nextSelectedAsset);
+      persistedClipRows = nextSelectedAsset.clips.map((clip: DerivedClip) => ({ ...clip }));
+      clipRows = nextSelectedAsset.clips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
+      return;
     }
+
+    syncingAssetKey = null;
   }
 
   async function loadMoreMedia() {
@@ -2395,7 +2409,7 @@
 
     if (!clipIds.length) {
       stopPolling();
-      await refreshLibrary(selectedAssetId);
+      await refreshLibrary(selectedAssetId, undefined, { preserveDraftEditor: true });
       return;
     }
 
@@ -2416,7 +2430,7 @@
 
     renderStatus = 'Render complete and published to moves.';
     stopPolling();
-    await refreshLibrary(selectedAssetId);
+    await refreshLibrary(selectedAssetId, undefined, { preserveDraftEditor: true });
   }
 
   function startPolling() {
