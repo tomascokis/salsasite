@@ -2793,6 +2793,7 @@
                             limit={MOVE_SUGGESTION_LIMIT}
                             selectedPlacement="inside"
                             allowCreate={true}
+                            maxSelected={1}
                             on:focus={() => selectDraftMoveRow(row.id)}
                             on:query={(event) => handleDraftMoveQueryInput(row.id, event.detail.query)}
                             on:create={(event) => createDraftMoveFromQuery(row.id, event.detail.query)}

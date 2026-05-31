@@ -89,6 +89,7 @@ The move editor saves clip definitions before rendering.
 
 - Clip rows are saveable when they contain at least one valid published move or draft move and the row range has positive duration.
 - Each visible clip row represents exactly one move expression.
+- Each clip row must allow only one move selection at a time; adding another move expression requires a separate row.
 - A clip row may store an optional extra move label, optional start position, and optional end position.
 - Start and end positions must come from the strict position picker option set; the media editor must not save arbitrary position text.
 - The optional extra move label describes only that clip expression and must not rename the canonical move.

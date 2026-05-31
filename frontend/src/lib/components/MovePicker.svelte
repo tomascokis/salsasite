@@ -33,6 +33,7 @@
   export let allowCreate = false;
   export let createText = 'Create new move';
   export let autocapitalize: 'none' | 'characters' | 'off' | 'on' | 'sentences' | 'words' = 'off';
+  export let maxSelected: number | null = null;
 
   const dispatch = createEventDispatcher<{
     select: { move: MoveOption; moveId: string };
@@ -57,6 +58,7 @@
   $: optionCount = suggestionResults.length + suggestionIndexOffset;
   $: hasMoreSuggestions = search.total > suggestionResults.length;
   $: hasVisibleSelection = showSelected && selectedIds.length > 0;
+  $: selectionFull = maxSelected !== null && selectedIds.length >= maxSelected;
   $: inputPlaceholder = hasVisibleSelection ? addPlaceholder : placeholder;
   $: useFloatingDropdown = floatingDropdown || selectedPlacement === 'inside';
 
@@ -69,7 +71,7 @@
     activeSuggestionIndex = Math.max(0, optionCount - 1);
   }
 
-  $: if (useFloatingDropdown && hasQuery) {
+  $: if (useFloatingDropdown && hasQuery && !selectionFull) {
     void scheduleFloatingDropdownUpdate();
   }
 
@@ -164,7 +166,7 @@
 
   function selectMove(moveId: string) {
     const move = findMove(moveId);
-    if (!move || selectedIds.includes(move.id) || excludedIds.includes(move.id)) {
+    if (!move || selectionFull || selectedIds.includes(move.id) || excludedIds.includes(move.id)) {
       return;
     }
 
@@ -177,7 +179,7 @@
   }
 
   function createMove() {
-    if (!hasCreateOption) {
+    if (!hasCreateOption || selectionFull) {
       return;
     }
 
@@ -266,23 +268,25 @@
         </button>
       {/each}
     {/if}
-    <input
-      value={query}
-      placeholder={inputPlaceholder}
-      aria-label={hasVisibleSelection ? addPlaceholder : ariaLabel}
-      {autocapitalize}
-      autocomplete="off"
-      autocorrect="off"
-      spellcheck="false"
-      {disabled}
-      on:focus={() => {
-        dispatch('focus', {});
-        void scheduleFloatingDropdownUpdate();
-      }}
-      on:input={handleInput}
-      on:keydown={handleKeydown}
-    />
-    {#if hasQuery}
+    {#if !selectionFull}
+      <input
+        value={query}
+        placeholder={inputPlaceholder}
+        aria-label={hasVisibleSelection ? addPlaceholder : ariaLabel}
+        {autocapitalize}
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+        {disabled}
+        on:focus={() => {
+          dispatch('focus', {});
+          void scheduleFloatingDropdownUpdate();
+        }}
+        on:input={handleInput}
+        on:keydown={handleKeydown}
+      />
+    {/if}
+    {#if hasQuery && !selectionFull}
       <div
         class="move-picker-dropdown"
         class:move-picker-dropdown-floating={useFloatingDropdown}
