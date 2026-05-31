@@ -37,7 +37,8 @@
       allowCreate: true,
       createLabel: 'Use family',
       selectedPlacement: 'inside',
-      floatingDropdown: true
+      floatingDropdown: true,
+      maxSelected: 1
     },
     {
       key: 'dancer',

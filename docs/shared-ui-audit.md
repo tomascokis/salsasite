@@ -33,6 +33,7 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - Publication state, processing state, and legacy/modern markers should use the same badge/status language across move pages, media browsing, and clip editing.
 - Searchable pickers must be the shared pattern for topics, families, dancers, regions, and move selection.
 - Family, dancer, and move add/search fields should be exercised first through the picker lab test page and then adopted from the shared entity picker module rather than reimplemented locally.
+- The picker lab move family picker must be single-select, with no extra input/background prompt visible after one family is selected.
 - Picker lab values created on the page must behave like real picker options for later search, selection, display, and removal.
 - Move picker `No preview` poster placeholders must center the text within the thumbnail area.
 - Editable list/grid UI should be a shared pattern for metadata and dancer management surfaces that are viewable by default with small edit affordances.
