@@ -3255,13 +3255,16 @@ select {
   --timeline-transition: 220ms cubic-bezier(0.22, 1, 0.36, 1);
   --timeline-height: 54px;
   --timeline-track-top: 8px;
+  --timeline-track-height: 14px;
   --timeline-clip-top: 8px;
   --timeline-move-top: 6px;
   --timeline-lower-lane-offset: 34px;
   --timeline-playhead-top: 2px;
   --timeline-playhead-bottom: 8px;
-  --timeline-handle-top: 20px;
-  --timeline-handle-size: 18px;
+  --timeline-handle-top: calc(var(--timeline-track-top) + var(--timeline-track-height));
+  --timeline-handle-size: calc(
+    var(--timeline-clip-top) + var(--timeline-lower-lane-offset) - var(--timeline-handle-top)
+  );
   --timeline-edge-top: 8px;
   --timeline-edge-bottom: 8px;
   display: grid;
@@ -3287,8 +3290,6 @@ select {
   --timeline-lower-lane-offset: 40px;
   --timeline-playhead-top: 6px;
   --timeline-playhead-bottom: 8px;
-  --timeline-handle-top: 45px;
-  --timeline-handle-size: 22px;
   --timeline-edge-top: 27px;
   --timeline-edge-bottom: 22px;
   gap: 0.75rem;
@@ -3507,7 +3508,7 @@ select {
 .clip-timeline-selection {
   position: absolute;
   top: var(--timeline-clip-top);
-  height: 14px;
+  height: var(--timeline-track-height);
   border-radius: 999px;
   will-change: top, height, opacity, transform;
   transition:
