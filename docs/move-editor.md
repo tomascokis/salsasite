@@ -43,6 +43,7 @@ Entering move-editing mode should preserve the user's spatial context while enab
 
 - When move editing is enabled, the video player must stay at its current layout size.
 - Edit mode must not expand the player, collapse side panels, or change the media editor grid just to provide more video room.
+- The media editor source video player should use a compact height cap that is 15% shorter than the previous `min(56vh, 560px)` cap.
 - Edit mode must keep the timeline and clip controls visible without the video dominating the viewport.
 - The side metadata card must remain fully inside the viewport; its rounded corners and edit control must not be clipped by horizontal overflow.
 - The layout must remain usable on mobile; the video/editor must not overflow horizontally or push controls off-screen.
@@ -114,8 +115,8 @@ The move editor saves clip definitions before rendering.
 - While the move editor is open, previously saved clips must also appear as compact rows in the editor form so they can be selected for editing from the same surface as new draft rows.
 - Selecting or editing a clip must not reorder the clip rows; active draft rows should replace their saved row in place.
 - Saved clip rows must use the same Start, Move, Label, Start position, and End position columns as editable rows, even when older clips do not yet have descriptor or position values.
-- The move clip row area in edit mode must use a fixed six-row viewport with its own vertical scroll when more rows exist, so adding saved or draft move rows does not keep pushing the player/timeline layout taller.
-- Selecting a saved clip or draft move that is outside the current six-row viewport must automatically scroll the row viewport just enough to reveal the selected row.
+- The move clip row area in edit mode must use a fixed five-row viewport by default with its own vertical scroll when more rows exist, so adding saved or draft move rows does not keep pushing the player/timeline layout taller.
+- Selecting a saved clip or draft move that is outside the current five-row viewport must automatically scroll the row viewport just enough to reveal the selected row.
 - New move clips must default to key/prime while the target move has fewer than four clips; once the target move has four clips, additional new clips default to non-key/non-prime.
 - Saved clip rows and the active clip toolbar must provide a star toggle for marking that clip as a key video for its move page.
 - Saved clip rows must provide a visible delete action for removing a move clip.
