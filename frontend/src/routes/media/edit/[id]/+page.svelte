@@ -178,6 +178,7 @@
   let timelineDragPointerId: number | null = null;
   let resumePlaybackAfterTimelineDrag = false;
   let timelineElement: HTMLDivElement | null = null;
+  let draftMoveRowWindowElement: HTMLDivElement | null = null;
   let timelineWidthPx = 0;
   let timelineResizeObserver: ResizeObserver | null = null;
   let playbackAnimationFrame: number | null = null;
@@ -517,6 +518,38 @@
     draftStartMs = clampClipStartMs(Math.max(0, draftActionStartMs - Math.max(clipStartContextMs, CLIP_MOVE_BUFFER_MS)));
     draftEndMs = clampClipEndMs(draftActionEndMs + Math.max(clipEndContextMs, CLIP_MOVE_BUFFER_MS));
     seekPreview(draftActionStartMs);
+    void scrollMoveEditorRowIntoView({ draftRowId: row.id });
+  }
+
+  async function scrollMoveEditorRowIntoView(target: { draftRowId?: string; clipId?: string }) {
+    await tick();
+    if (!draftMoveRowWindowElement) {
+      return;
+    }
+
+    const selector = target.draftRowId
+      ? `[data-draft-row-id="${CSS.escape(target.draftRowId)}"]`
+      : target.clipId
+        ? `[data-clip-row-id="${CSS.escape(target.clipId)}"]`
+        : '';
+    if (!selector) {
+      return;
+    }
+
+    const rowElement = draftMoveRowWindowElement.querySelector<HTMLElement>(selector);
+    if (!rowElement) {
+      return;
+    }
+
+    const viewportRect = draftMoveRowWindowElement.getBoundingClientRect();
+    const rowRect = rowElement.getBoundingClientRect();
+    const viewportPadding = 6;
+
+    if (rowRect.top < viewportRect.top + viewportPadding) {
+      draftMoveRowWindowElement.scrollTop -= viewportRect.top + viewportPadding - rowRect.top;
+    } else if (rowRect.bottom > viewportRect.bottom - viewportPadding) {
+      draftMoveRowWindowElement.scrollTop += rowRect.bottom - (viewportRect.bottom - viewportPadding);
+    }
   }
 
   function addDraftMove(moveId: string, rowId = activeDraftMoveRowId) {
@@ -878,6 +911,7 @@
       draftEndMs
     ]);
     seekPreview(actionStart);
+    void scrollMoveEditorRowIntoView({ draftRowId: row.id });
   }
 
   function removeSavedClip(clipId: string) {
@@ -2947,11 +2981,17 @@
                       <span></span>
                       <span></span>
                     </div>
-                    <div class="draft-move-row-window">
+                    <div class="draft-move-row-window" bind:this={draftMoveRowWindowElement}>
                       {#each editorMoveRows as item (item.key)}
                         {#if item.kind === 'draft'}
                           {@const row = item.row}
-                          <div class="draft-move-row" class:active={row.id === activeDraftMoveRowId} class:bound={Boolean(row.timingGroupId)}>
+                          <div
+                            class="draft-move-row"
+                            class:active={row.id === activeDraftMoveRowId}
+                            class:bound={Boolean(row.timingGroupId)}
+                            data-draft-row-id={row.id}
+                            data-clip-row-id={row.originalClipId ?? undefined}
+                          >
                             <div class="move-start-display">
                               <strong>{formatTenthSeconds(row.startMs)}s</strong>
                             </div>
@@ -3024,7 +3064,11 @@
                           </div>
                         {:else}
                           {@const clip = item.clip}
-                          <div class="draft-move-row saved-editor-row" class:bound={Boolean(clip.timingGroupId)}>
+                          <div
+                            class="draft-move-row saved-editor-row"
+                            class:bound={Boolean(clip.timingGroupId)}
+                            data-clip-row-id={clip.id}
+                          >
                             <button
                               class="move-start-display saved-editor-start"
                               type="button"
