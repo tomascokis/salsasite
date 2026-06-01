@@ -58,6 +58,7 @@
   $: hasVisibleSelection = showSelected && selectedIds.length > 0;
   $: selectionFull = maxSelected !== null && selectedIds.length >= maxSelected;
   $: inputPlaceholder = hasVisibleSelection ? addPlaceholder : placeholder;
+  $: inputAriaLabel = hasVisibleSelection && addPlaceholder ? addPlaceholder : ariaLabel;
   $: useFloatingDropdown = floatingDropdown || selectedPlacement === 'inside';
 
   $: if (query !== lastQuery) {
@@ -283,7 +284,7 @@
       <input
         value={query}
         placeholder={inputPlaceholder}
-        aria-label={hasVisibleSelection ? addPlaceholder : ariaLabel}
+        aria-label={inputAriaLabel}
         autocomplete="off"
         autocorrect="off"
         spellcheck="false"

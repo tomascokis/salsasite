@@ -847,7 +847,7 @@
                   selectedIds={selectedTopicIds}
                   query={topicQuery}
                   placeholder="Search topics"
-                  addPlaceholder="Change topic"
+                  addPlaceholder=""
                   ariaLabel="Search topics"
                   showSelected={true}
                   selectedPlacement="inside"
@@ -878,7 +878,7 @@
                   selectedIds={selectedFamilyIds}
                   query={familyQuery}
                   placeholder="Search families"
-                  addPlaceholder="Change family"
+                  addPlaceholder=""
                   ariaLabel="Search families"
                   showSelected={true}
                   selectedPlacement="inside"
