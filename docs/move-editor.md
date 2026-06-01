@@ -125,7 +125,7 @@ The move editor saves clip definitions before rendering.
 - Draft and saved move rows must keep their columns aligned at desktop and tablet widths; if the viewport cannot fit the full row, the row area should scroll horizontally or use a deliberate narrow layout rather than allowing header labels and row controls to auto-place unpredictably.
 - In active edit mode, the video/timeline column must either reserve enough width for the fixed editor row grid or stack separately from the metadata panel; timeline and row controls must not render underneath the metadata panel.
 - New move clips must default to key/prime while the target move has fewer than four clips; once the target move has four clips, additional new clips default to non-key/non-prime.
-- Saved clip rows and the active clip toolbar must provide a star toggle for marking that clip as a key video for its move page.
+- Saved clip rows, including the active edited saved row, must provide the star toggle for marking that clip as a key video; the editor must not show a separate top-level toolbar star button.
 - Saved clip rows must provide a visible delete action for removing a move clip.
 - Deleting a move clip from the editor marks it for removal; the deletion is persisted only after saving clip changes.
 - Creating or editing a clip must not turn existing clips into a large alternate representation; new or edited clips should receive only a small unsaved marker until the user saves the clip changes.

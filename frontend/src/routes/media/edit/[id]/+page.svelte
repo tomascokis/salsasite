@@ -3211,17 +3211,6 @@
                   {:else}
                     <button class="timeline-move-action" type="button" on:click={addMoreMoves}>Edit moves</button>
                   {/if}
-                  {#if activeSavedClip}
-                    <button
-                      class="timeline-move-action key-video-star"
-                      type="button"
-                      aria-pressed={activeSavedClip.isKeyVideo}
-                      title={activeSavedClip.isKeyVideo ? 'Remove key video' : 'Make key video'}
-                      on:click={() => toggleClipKeyVideo(activeSavedClip.id)}
-                    >
-                      {activeSavedClip.isKeyVideo ? '★' : '☆'}
-                    </button>
-                  {/if}
                   {#if hasUnsavedClipRowChanges}
                     <button class="timeline-move-action primary" type="button" on:click={() => void saveClipLabelChanges()}>
                       Save clip changes
@@ -3255,6 +3244,7 @@
                         >
                           {#if item.kind === 'draft'}
                             {@const row = item.row}
+                            {@const sourceClip = row.originalClipId ? clipRows.find((clip) => clip.id === row.originalClipId) : null}
                             <div class="move-start-display">
                               <strong>{formatTenthSeconds(row.startMs)}s</strong>
                             </div>
@@ -3319,6 +3309,17 @@
                                 on:remove={() => removeDraftPosition(row.id, 'end')}
                               />
                             </div>
+                            {#if sourceClip}
+                              <button
+                                class="draft-edit-button key-video-star"
+                                type="button"
+                                aria-pressed={sourceClip.isKeyVideo}
+                                title={sourceClip.isKeyVideo ? 'Remove key video' : 'Make key video'}
+                                on:click={() => toggleClipKeyVideo(sourceClip.id)}
+                              >
+                                {sourceClip.isKeyVideo ? '★' : '☆'}
+                              </button>
+                            {/if}
                             {#if row.id === activeDraftMoveRowId}
                               <button class="draft-edit-button active" type="button" disabled aria-pressed="true">Editing</button>
                             {:else}

@@ -167,6 +167,7 @@ Uploading stores the original file in `video-sources/` and creates a `source` as
 - Modern move metadata inherited from parent media should update on move pages automatically when a ready clip is saved or rendered.
 - Derived clips may persist a key-video flag that promotes them into the move page's limited main tab set when a move has many videos.
 - New derived clips default to key videos for a move until that move has four clips; later clips default to non-key unless promoted manually.
+- Source-video clip editor key-video star controls must live on the move rows, including the active edited saved row, and must not appear as a separate top-level timeline toolbar button.
 - Low-res and padded files generated for a derived clip are playback variants of that clip; they must not be bootstrapped as separate standalone move-page videos.
 - Legacy direct video links may be replaced only where an explicit migration workflow allows it.
 
