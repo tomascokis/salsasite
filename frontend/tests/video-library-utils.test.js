@@ -11,7 +11,8 @@ import {
   normalizeTags,
   rekeyClipMoveAssociations,
   sourceSuggestions,
-  uploadMonthKey
+  uploadMonthKey,
+  visibleMoveRowKeys
 } from '../src/lib/video-library-utils.js';
 import { draftMoveIdFromName, generatedMoveIdStem } from '../src/lib/move-id-utils.js';
 
@@ -92,6 +93,58 @@ test('new clips default to key videos only for the first four clips per move', (
   ], 'source-b');
 
   assert.deepEqual(next.map((clip) => clip.isKeyVideo), [true, true, false, false, false]);
+});
+
+test('visible move row keys include active row plus three closest rows', () => {
+  const rows = [
+    { key: 'a', startMs: 0, endMs: 1000 },
+    { key: 'b', startMs: 2000, endMs: 3000 },
+    { key: 'c', startMs: 4000, endMs: 5000 },
+    { key: 'd', startMs: 6000, endMs: 7000 },
+    { key: 'e', startMs: 8000, endMs: 9000 }
+  ];
+
+  assert.deepEqual(visibleMoveRowKeys(rows, 4500, 'e'), ['b', 'c', 'd', 'e']);
+});
+
+test('visible move row keys preserve source row order after choosing nearest rows', () => {
+  const rows = [
+    { key: 'early', startMs: 0, endMs: 1000 },
+    { key: 'active', startMs: 10000, endMs: 11000 },
+    { key: 'near-before', startMs: 3000, endMs: 3500 },
+    { key: 'near-current', startMs: 4000, endMs: 5000 },
+    { key: 'near-after', startMs: 5500, endMs: 6000 }
+  ];
+
+  assert.deepEqual(visibleMoveRowKeys(rows, 4500, 'active'), [
+    'active',
+    'near-before',
+    'near-current',
+    'near-after'
+  ]);
+});
+
+test('visible move row keys handle no active row', () => {
+  const rows = [
+    { key: 'a', startMs: 0, endMs: 1000 },
+    { key: 'b', startMs: 2000, endMs: 3000 },
+    { key: 'c', startMs: 4000, endMs: 5000 },
+    { key: 'd', startMs: 6000, endMs: 7000 },
+    { key: 'e', startMs: 8000, endMs: 9000 }
+  ];
+
+  assert.deepEqual(visibleMoveRowKeys(rows, 4500, null), ['b', 'c', 'd']);
+});
+
+test('visible move row keys return all rows when there are four or fewer', () => {
+  const rows = [
+    { key: 'a', startMs: 0, endMs: 1000 },
+    { key: 'b', startMs: 2000, endMs: 3000 },
+    { key: 'c', startMs: 4000, endMs: 5000 },
+    { key: 'd', startMs: 6000, endMs: 7000 }
+  ];
+
+  assert.deepEqual(visibleMoveRowKeys(rows, 4500, null), ['a', 'b', 'c', 'd']);
 });
 
 test('move suggestions match ids, slugs, and names while excluding selected moves', () => {

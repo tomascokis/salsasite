@@ -206,6 +206,7 @@ Current constraints:
 - Timeline playhead handles must exactly fill the vertical gap between the playback track and lower clip lane, using the measured lane geometry.
 - Saved and secondary clip ranges must render on a lower lane below the playhead handle so they do not overlap the playback track marker, including in expanded edit mode.
 - Timeline and edit-row animations must be smooth, restrained, and visibly paced rather than snappy; direct marker/playhead dragging must remain immediate without trailing transitions, and reduced-motion preferences must disable nonessential motion.
+- Playback-nearest edit-row updates must settle briefly before changing the visible row window, so ordinary playback does not constantly reshuffle rows; when the settled window changes, rows should slide smoothly rather than jump.
 - When a saved green move range is opened for editing, it should lift from the lower lane into the active timeline lane while turning orange; the clip padding range and trim/move markers must fade in only after that lift completes.
 - When dragging a move start or move end marker, crossing another move boundary or landing within a small screen-precision tolerance of it must snap to that boundary once for that drag. After that first snap, moving away during the same drag must not keep snapping.
 - One or more unsaved draft move rows must not be lost by clicking away, switching clips or sources, exiting the draft editor, or browser/page navigation without an explicit discard confirmation.

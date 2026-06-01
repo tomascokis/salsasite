@@ -2,7 +2,7 @@
   import { browser } from '$app/environment';
   import { beforeNavigate } from '$app/navigation';
   import { flip } from 'svelte/animate';
-  import { cubicInOut } from 'svelte/easing';
+  import { cubicInOut, cubicOut } from 'svelte/easing';
   import { onDestroy, onMount, tick } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import ContentBadge from '$lib/components/ContentBadge.svelte';
@@ -15,6 +15,7 @@
     saveVideoAudioPreferenceFromElement
   } from '$lib/video-audio-preference';
   import { snapMoveBoundaryForDrag } from '$lib/timeline-snapping.js';
+  import { visibleMoveRowKeys } from '$lib/video-library-utils.js';
   import type {
     ClipCountMarker,
     ClipCropRect,
@@ -88,6 +89,10 @@
   const MEDIA_MOTION_SHORT_MS = 320;
   const MEDIA_MOTION_MEDIUM_MS = 700;
   const MEDIA_MOTION_REVEAL_DELAY_MS = 120;
+  const ROW_WINDOW_SETTLE_MS = 450;
+  const ROW_MOVE_MS = 850;
+  const ROW_ENTER_MS = 260;
+  const ROW_EXIT_MS = 180;
   const COUNT_PRESET_SEQUENCES: Record<CountTimingPreset, string[]> = {
     'on2-default': ['6', '7', '1', '2', '3', '5'],
     'on2-all': ['6', '7', '1', '2', '3', '4', '5', '6', '7', '8'],
@@ -190,6 +195,7 @@
   let playbackAnimationFrame: number | null = null;
   let timelinePromotionFrame: number | null = null;
   let timelinePromotionTimer: ReturnType<typeof setTimeout> | null = null;
+  let rowWindowSettleTimer: ReturnType<typeof setTimeout> | null = null;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
   let syncingAssetKey: string | null = null;
   let syncedMediaPath: string | null = null;
@@ -200,6 +206,8 @@
   let availableMoves: MoveOption[] = data.moves;
   let playbackMoveClips: ClipWithUi[] = [];
   let editorMoveRows: EditorMoveRow[] = [];
+  let targetEditorMoveRows: EditorMoveRow[] = [];
+  let renderedEditorMoveRows: EditorMoveRow[] = [];
   let visibleEditorMoveRows: EditorMoveRow[] = [];
   let visibleEditorSavedTimelineClips: ClipWithUi[] = [];
   let visibleEditorDraftMoveRows: DraftMoveRow[] = [];
@@ -213,11 +221,20 @@
   let timelinePromotingDraftRowId: string | null = null;
   let timelinePromotionAtSavedLane = false;
   let timelineEditorChromeVisible = true;
+  let lastRowWindowImmediateSignature = '';
+  let lastRowWindowPendingKeySignature = '';
   let dancerOptions = data.dancerOptions.map((dancer) => ({ id: dancer, label: dancer }));
   let positionPickerOptions = data.positionOptions.map((position) => ({ id: position.id, label: position.label }));
 
   let moveNameById = new Map<string, string>();
   $: moveNameById = new Map(availableMoves.map((move) => [move.id, move.name ?? move.id]));
+  $: rowWindowImmediateSignature = editorRowWindowImmediateSignature(
+    editorMoveRows,
+    isDraftingMove,
+    activeDraftMoveRowId,
+    activeClipId,
+    prefersReducedMotion
+  );
 
   $: selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? null;
 
@@ -238,13 +255,15 @@
       ? clipRows.filter((clip) => !activeDraftOriginalClipIds.has(clip.id))
       : clipRows;
   $: editorMoveRows = editorRowsForDisplay(clipRows, draftMoveRows, isDraftingMove);
-  $: visibleEditorMoveRows = visibleEditorRowsForDisplay(
+  $: targetEditorMoveRows = visibleEditorRowsForDisplay(
     editorMoveRows,
     isDraftingMove,
     playerCurrentMs,
     activeDraftMoveRowId,
     activeClipId
   );
+  $: syncRenderedEditorMoveRows(targetEditorMoveRows, rowWindowImmediateSignature);
+  $: visibleEditorMoveRows = renderedEditorMoveRows;
   $: visibleEditorSavedTimelineClips = visibleEditorMoveRows
     .filter((item): item is { kind: 'saved'; key: string; clip: ClipWithUi } => item.kind === 'saved')
     .map((item) => item.clip);
@@ -336,6 +355,67 @@
 
   function moveRangeIntroDuration(row: DraftMoveRow) {
     return row.id === timelinePromotingDraftRowId ? 0 : motionDuration(MEDIA_MOTION_SHORT_MS);
+  }
+
+  function clearRowWindowSettleTimer() {
+    if (rowWindowSettleTimer !== null) {
+      clearTimeout(rowWindowSettleTimer);
+    }
+    rowWindowSettleTimer = null;
+  }
+
+  function editorRowKeySignature(rows: EditorMoveRow[]) {
+    return rows.map((row) => row.key).join('|');
+  }
+
+  function editorRowWindowImmediateSignature(
+    rows: EditorMoveRow[],
+    editing: boolean,
+    activeDraftRowId: string | null,
+    activeSavedClipId: string | null,
+    reducedMotion: boolean
+  ) {
+    return [
+      editing ? 'editing' : 'viewing',
+      activeDraftRowId ?? '',
+      activeSavedClipId ?? '',
+      reducedMotion ? 'reduce' : 'motion',
+      rows.map((row) => `${row.key}:${editorRowStartMs(row)}:${editorRowEndMs(row)}`).join('|')
+    ].join('::');
+  }
+
+  function commitRenderedEditorMoveRows(rows: EditorMoveRow[]) {
+    clearRowWindowSettleTimer();
+    renderedEditorMoveRows = rows;
+    lastRowWindowPendingKeySignature = editorRowKeySignature(rows);
+  }
+
+  function syncRenderedEditorMoveRows(rows: EditorMoveRow[], immediateSignature: string) {
+    const nextKeySignature = editorRowKeySignature(rows);
+    const renderedKeySignature = editorRowKeySignature(renderedEditorMoveRows);
+    const shouldCommitImmediately =
+      prefersReducedMotion ||
+      !browser ||
+      renderedEditorMoveRows.length === 0 ||
+      immediateSignature !== lastRowWindowImmediateSignature;
+
+    if (shouldCommitImmediately || nextKeySignature === renderedKeySignature) {
+      lastRowWindowImmediateSignature = immediateSignature;
+      commitRenderedEditorMoveRows(rows);
+      return;
+    }
+
+    lastRowWindowImmediateSignature = immediateSignature;
+    if (nextKeySignature === lastRowWindowPendingKeySignature && rowWindowSettleTimer !== null) {
+      return;
+    }
+
+    clearRowWindowSettleTimer();
+    lastRowWindowPendingKeySignature = nextKeySignature;
+    rowWindowSettleTimer = setTimeout(() => {
+      rowWindowSettleTimer = null;
+      renderedEditorMoveRows = rows;
+    }, ROW_WINDOW_SETTLE_MS);
   }
   $: clipChangeStates = new Map(
     selectedAsset
@@ -868,24 +948,17 @@
     }
 
     const activeRow = rows.find((row) => editorRowIsActive(row, activeDraftRowId, activeSavedClipId)) ?? null;
-    const activeKey = activeRow?.key ?? null;
-    const closestRows = rows
-      .filter((row) => row.key !== activeKey)
-      .map((row) => ({
-        row,
-        distanceMs: editorRowDistanceFromMs(row, currentMs),
-        startMs: editorRowStartMs(row)
-      }))
-      .sort(
-        (left, right) =>
-          left.distanceMs - right.distanceMs || left.startMs - right.startMs || left.row.key.localeCompare(right.row.key)
+    const visibleKeys = new Set(
+      visibleMoveRowKeys(
+        rows.map((row) => ({
+          key: row.key,
+          startMs: editorRowStartMs(row),
+          endMs: editorRowEndMs(row)
+        })),
+        currentMs,
+        activeRow?.key ?? null
       )
-      .slice(0, 3)
-      .map((entry) => entry.row);
-    const visibleKeys = new Set<string>(closestRows.map((row) => row.key));
-    if (activeKey) {
-      visibleKeys.add(activeKey);
-    }
+    );
 
     return rows.filter((row) => visibleKeys.has(row.key));
   }
@@ -904,16 +977,6 @@
 
   function editorRowEndMs(row: EditorMoveRow) {
     return row.kind === 'draft' ? row.row.endMs : clipActionEndMs(row.clip);
-  }
-
-  function editorRowDistanceFromMs(row: EditorMoveRow, milliseconds: number) {
-    const startMs = editorRowStartMs(row);
-    const endMs = editorRowEndMs(row);
-    if (milliseconds >= startMs && milliseconds <= endMs) {
-      return 0;
-    }
-
-    return Math.min(Math.abs(milliseconds - startMs), Math.abs(milliseconds - endMs));
   }
 
   function lastClipBefore(clips: ClipWithUi[], milliseconds: number) {
@@ -2665,6 +2728,7 @@
   onDestroy(() => {
     timelineResizeObserver?.disconnect();
     clearTimelinePromotionTimers();
+    clearRowWindowSettleTimer();
     stopPolling();
     stopPlaybackAnimation();
   });
@@ -3185,9 +3249,9 @@
                           class:saved-editor-row={item.kind === 'saved'}
                           data-draft-row-id={item.kind === 'draft' ? item.row.id : undefined}
                           data-clip-row-id={item.kind === 'draft' ? item.row.originalClipId ?? undefined : item.clip.id}
-                          animate:flip={{ duration: motionDuration(MEDIA_MOTION_MEDIUM_MS), easing: cubicInOut }}
-                          in:fly={{ y: 4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
-                          out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                          animate:flip={{ duration: motionDuration(ROW_MOVE_MS), easing: cubicOut }}
+                          in:fade={{ duration: motionDuration(ROW_ENTER_MS) }}
+                          out:fade={{ duration: motionDuration(ROW_EXIT_MS) }}
                         >
                           {#if item.kind === 'draft'}
                             {@const row = item.row}

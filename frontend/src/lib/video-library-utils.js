@@ -63,6 +63,33 @@ export function sourceSuggestions(assets) {
   };
 }
 
+export function visibleMoveRowKeys(rows = [], currentMs = 0, activeKey = null) {
+  if (rows.length <= 4) {
+    return rows.map((row) => row.key);
+  }
+
+  const activeRow = activeKey ? rows.find((row) => row.key === activeKey) : null;
+  const closestRows = rows
+    .filter((row) => row.key !== activeRow?.key)
+    .map((row) => ({
+      row,
+      distanceMs: moveRowDistanceFromMs(row, currentMs),
+      startMs: row.startMs
+    }))
+    .sort(
+      (left, right) =>
+        left.distanceMs - right.distanceMs || left.startMs - right.startMs || left.row.key.localeCompare(right.row.key)
+    )
+    .slice(0, 3)
+    .map((entry) => entry.row);
+  const visibleKeys = new Set(closestRows.map((row) => row.key));
+  if (activeRow) {
+    visibleKeys.add(activeRow.key);
+  }
+
+  return rows.filter((row) => visibleKeys.has(row.key)).map((row) => row.key);
+}
+
 export function positionSlug(value) {
   return String(value ?? '')
     .trim()
@@ -132,6 +159,14 @@ export function applyDefaultKeyVideoFlags(existingClips = [], nextClips = [], so
       isKeyVideo
     };
   });
+}
+
+function moveRowDistanceFromMs(row, milliseconds) {
+  if (milliseconds >= row.startMs && milliseconds <= row.endMs) {
+    return 0;
+  }
+
+  return Math.min(Math.abs(milliseconds - row.startMs), Math.abs(milliseconds - row.endMs));
 }
 
 function splitPositionText(value) {
