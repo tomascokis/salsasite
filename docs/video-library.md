@@ -195,6 +195,7 @@ Current constraints:
 - If the move starts near `0.00s`, the left clip marker clamps to `0.00s`.
 - If the move ends near the video end, the right clip marker clamps to the video duration.
 - Draft move editor rows must keep the Start time, Moves picker content, and Edit control in separate aligned columns; saved clip rows and selected move chips must not inherit generic button chrome that creates nested boxes or visual overlap.
+- In edit mode, the move clip row list must be a fixed six-row scroll window so the source video and timeline stay aligned with a stable editor height even when there are more clips.
 - Timeline move ranges that are currently open for editing must remain orange, while move ranges that are not currently open for editing must appear green.
 - Timeline ranges must not show small circular changed or unsaved badges; unsaved state belongs in the Save action and status text instead.
 - Timeline playhead handles must render as complete circles without clipping in both compact playback mode and expanded draft-editing mode.

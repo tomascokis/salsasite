@@ -2947,141 +2947,143 @@
                       <span></span>
                       <span></span>
                     </div>
-                    {#each editorMoveRows as item (item.key)}
-                      {#if item.kind === 'draft'}
-                        {@const row = item.row}
-                        <div class="draft-move-row" class:active={row.id === activeDraftMoveRowId} class:bound={Boolean(row.timingGroupId)}>
-                          <div class="move-start-display">
-                            <strong>{formatTenthSeconds(row.startMs)}s</strong>
+                    <div class="draft-move-row-window">
+                      {#each editorMoveRows as item (item.key)}
+                        {#if item.kind === 'draft'}
+                          {@const row = item.row}
+                          <div class="draft-move-row" class:active={row.id === activeDraftMoveRowId} class:bound={Boolean(row.timingGroupId)}>
+                            <div class="move-start-display">
+                              <strong>{formatTenthSeconds(row.startMs)}s</strong>
+                            </div>
+                            <div class="move-link-field">
+                              <MovePicker
+                                moves={availableMoves}
+                                selectedIds={row.moveIds}
+                                excludedIds={selectedDraftMoveIds}
+                                query={row.query}
+                                limit={MOVE_SUGGESTION_LIMIT}
+                                selectedPlacement="inside"
+                                allowCreate={true}
+                                maxSelected={1}
+                                on:focus={() => selectDraftMoveRow(row.id)}
+                                on:query={(event) => handleDraftMoveQueryInput(row.id, event.detail.query)}
+                                on:create={(event) => createDraftMoveFromQuery(row.id, event.detail.query)}
+                                on:select={(event) => addDraftMove(event.detail.moveId, row.id)}
+                                on:remove={(event) => removeDraftMove(row.id, event.detail.moveId)}
+                              />
+                            </div>
+                            <label class="draft-descriptor-field">
+                              <span class="sr-only">Extra label</span>
+                              <input
+                                value={row.descriptorLabel}
+                                aria-label="Extra move label"
+                                placeholder="Extra label"
+                                on:focus={() => selectDraftMoveRow(row.id)}
+                                on:input={(event) => updateDraftDescriptor(row.id, event.currentTarget.value)}
+                              />
+                            </label>
+                            <div class="draft-position-field">
+                              <SearchablePicker
+                                options={positionPickerOptions}
+                                selectedIds={row.startPositionId ? [row.startPositionId] : []}
+                                query={row.startPositionQuery}
+                                limit={MOVE_SUGGESTION_LIMIT}
+                                placeholder="Start"
+                                addPlaceholder="Start"
+                                ariaLabel="Start position"
+                                selectedPlacement="inside"
+                                floatingDropdown={true}
+                                on:focus={() => selectDraftMoveRow(row.id)}
+                                on:query={(event) => updateDraftPositionQuery(row.id, 'start', event.detail.query)}
+                                on:select={(event) => selectDraftPosition(row.id, 'start', event.detail.id)}
+                                on:remove={() => removeDraftPosition(row.id, 'start')}
+                              />
+                            </div>
+                            <div class="draft-position-field">
+                              <SearchablePicker
+                                options={positionPickerOptions}
+                                selectedIds={row.endPositionId ? [row.endPositionId] : []}
+                                query={row.endPositionQuery}
+                                limit={MOVE_SUGGESTION_LIMIT}
+                                placeholder="End"
+                                addPlaceholder="End"
+                                ariaLabel="End position"
+                                selectedPlacement="inside"
+                                floatingDropdown={true}
+                                on:focus={() => selectDraftMoveRow(row.id)}
+                                on:query={(event) => updateDraftPositionQuery(row.id, 'end', event.detail.query)}
+                                on:select={(event) => selectDraftPosition(row.id, 'end', event.detail.id)}
+                                on:remove={() => removeDraftPosition(row.id, 'end')}
+                              />
+                            </div>
+                            {#if row.id === activeDraftMoveRowId}
+                              <button class="draft-edit-button active" type="button" disabled aria-pressed="true">Editing</button>
+                            {:else}
+                              <button class="draft-edit-button" type="button" on:click={() => selectDraftMoveRow(row.id)}>Edit</button>
+                            {/if}
                           </div>
-                          <div class="move-link-field">
-                            <MovePicker
-                              moves={availableMoves}
-                              selectedIds={row.moveIds}
-                              excludedIds={selectedDraftMoveIds}
-                              query={row.query}
-                              limit={MOVE_SUGGESTION_LIMIT}
-                              selectedPlacement="inside"
-                              allowCreate={true}
-                              maxSelected={1}
-                              on:focus={() => selectDraftMoveRow(row.id)}
-                              on:query={(event) => handleDraftMoveQueryInput(row.id, event.detail.query)}
-                              on:create={(event) => createDraftMoveFromQuery(row.id, event.detail.query)}
-                              on:select={(event) => addDraftMove(event.detail.moveId, row.id)}
-                              on:remove={(event) => removeDraftMove(row.id, event.detail.moveId)}
-                            />
+                        {:else}
+                          {@const clip = item.clip}
+                          <div class="draft-move-row saved-editor-row" class:bound={Boolean(clip.timingGroupId)}>
+                            <button
+                              class="move-start-display saved-editor-start"
+                              type="button"
+                              on:click={() => openSavedClipEditor(clip)}
+                            >
+                              <strong>{formatTenthSeconds(clipActionStartMs(clip))}s</strong>
+                            </button>
+                            <button
+                              class="move-link-field saved-editor-move"
+                              type="button"
+                              on:click={() => openSavedClipEditor(clip)}
+                            >
+                              <span class="move-chip move-picker-inline-chip saved-editor-chip">
+                                {clip.moveDisplayId ?? clip.moveId} · {moveNameById.get(clip.moveId) ?? clip.moveDisplayId ?? clip.moveId}
+                              </span>
+                            </button>
+                            <button
+                              class="saved-editor-cell"
+                              class:empty={!clip.descriptorLabel}
+                              type="button"
+                              on:click={() => openSavedClipEditor(clip)}
+                            >
+                              {clip.descriptorLabel || '—'}
+                            </button>
+                            <button
+                              class="saved-editor-cell"
+                              class:empty={!clip.startPositionId}
+                              type="button"
+                              on:click={() => openSavedClipEditor(clip)}
+                            >
+                              {positionLabel(clip.startPositionId) || '—'}
+                            </button>
+                            <button
+                              class="saved-editor-cell"
+                              class:empty={!clip.endPositionId}
+                              type="button"
+                              on:click={() => openSavedClipEditor(clip)}
+                            >
+                              {positionLabel(clip.endPositionId) || '—'}
+                            </button>
+                            <button
+                              class="draft-edit-button key-video-star"
+                              type="button"
+                              aria-pressed={clip.isKeyVideo}
+                              title={clip.isKeyVideo ? 'Remove key video' : 'Make key video'}
+                              on:click={() => toggleClipKeyVideo(clip.id)}
+                            >
+                              {clip.isKeyVideo ? '★' : '☆'}
+                            </button>
+                            <button class="draft-edit-button" type="button" on:click={() => openSavedClipEditor(clip)}>
+                              Edit
+                            </button>
+                            <button class="draft-edit-button danger" type="button" on:click={() => removeSavedClip(clip.id)}>
+                              Delete
+                            </button>
                           </div>
-                          <label class="draft-descriptor-field">
-                            <span class="sr-only">Extra label</span>
-                            <input
-                              value={row.descriptorLabel}
-                              aria-label="Extra move label"
-                              placeholder="Extra label"
-                              on:focus={() => selectDraftMoveRow(row.id)}
-                              on:input={(event) => updateDraftDescriptor(row.id, event.currentTarget.value)}
-                            />
-                          </label>
-                          <div class="draft-position-field">
-                            <SearchablePicker
-                              options={positionPickerOptions}
-                              selectedIds={row.startPositionId ? [row.startPositionId] : []}
-                              query={row.startPositionQuery}
-                              limit={MOVE_SUGGESTION_LIMIT}
-                              placeholder="Start"
-                              addPlaceholder="Start"
-                              ariaLabel="Start position"
-                              selectedPlacement="inside"
-                              floatingDropdown={true}
-                              on:focus={() => selectDraftMoveRow(row.id)}
-                              on:query={(event) => updateDraftPositionQuery(row.id, 'start', event.detail.query)}
-                              on:select={(event) => selectDraftPosition(row.id, 'start', event.detail.id)}
-                              on:remove={() => removeDraftPosition(row.id, 'start')}
-                            />
-                          </div>
-                          <div class="draft-position-field">
-                            <SearchablePicker
-                              options={positionPickerOptions}
-                              selectedIds={row.endPositionId ? [row.endPositionId] : []}
-                              query={row.endPositionQuery}
-                              limit={MOVE_SUGGESTION_LIMIT}
-                              placeholder="End"
-                              addPlaceholder="End"
-                              ariaLabel="End position"
-                              selectedPlacement="inside"
-                              floatingDropdown={true}
-                              on:focus={() => selectDraftMoveRow(row.id)}
-                              on:query={(event) => updateDraftPositionQuery(row.id, 'end', event.detail.query)}
-                              on:select={(event) => selectDraftPosition(row.id, 'end', event.detail.id)}
-                              on:remove={() => removeDraftPosition(row.id, 'end')}
-                            />
-                          </div>
-                          {#if row.id === activeDraftMoveRowId}
-                            <button class="draft-edit-button active" type="button" disabled aria-pressed="true">Editing</button>
-                          {:else}
-                            <button class="draft-edit-button" type="button" on:click={() => selectDraftMoveRow(row.id)}>Edit</button>
-                          {/if}
-                        </div>
-                      {:else}
-                        {@const clip = item.clip}
-                        <div class="draft-move-row saved-editor-row" class:bound={Boolean(clip.timingGroupId)}>
-                          <button
-                            class="move-start-display saved-editor-start"
-                            type="button"
-                            on:click={() => openSavedClipEditor(clip)}
-                          >
-                            <strong>{formatTenthSeconds(clipActionStartMs(clip))}s</strong>
-                          </button>
-                          <button
-                            class="move-link-field saved-editor-move"
-                            type="button"
-                            on:click={() => openSavedClipEditor(clip)}
-                          >
-                            <span class="move-chip move-picker-inline-chip saved-editor-chip">
-                              {clip.moveDisplayId ?? clip.moveId} · {moveNameById.get(clip.moveId) ?? clip.moveDisplayId ?? clip.moveId}
-                            </span>
-                          </button>
-                          <button
-                            class="saved-editor-cell"
-                            class:empty={!clip.descriptorLabel}
-                            type="button"
-                            on:click={() => openSavedClipEditor(clip)}
-                          >
-                            {clip.descriptorLabel || '—'}
-                          </button>
-                          <button
-                            class="saved-editor-cell"
-                            class:empty={!clip.startPositionId}
-                            type="button"
-                            on:click={() => openSavedClipEditor(clip)}
-                          >
-                            {positionLabel(clip.startPositionId) || '—'}
-                          </button>
-                          <button
-                            class="saved-editor-cell"
-                            class:empty={!clip.endPositionId}
-                            type="button"
-                            on:click={() => openSavedClipEditor(clip)}
-                          >
-                            {positionLabel(clip.endPositionId) || '—'}
-                          </button>
-                          <button
-                            class="draft-edit-button key-video-star"
-                            type="button"
-                            aria-pressed={clip.isKeyVideo}
-                            title={clip.isKeyVideo ? 'Remove key video' : 'Make key video'}
-                            on:click={() => toggleClipKeyVideo(clip.id)}
-                          >
-                            {clip.isKeyVideo ? '★' : '☆'}
-                          </button>
-                          <button class="draft-edit-button" type="button" on:click={() => openSavedClipEditor(clip)}>
-                            Edit
-                          </button>
-                          <button class="draft-edit-button danger" type="button" on:click={() => removeSavedClip(clip.id)}>
-                            Delete
-                          </button>
-                        </div>
-                      {/if}
-                    {/each}
+                        {/if}
+                      {/each}
+                    </div>
                   </div>
                 {/if}
                 {#if renderStatus}
