@@ -90,12 +90,81 @@ export function visibleMoveRowKeys(rows = [], currentMs = 0, activeKey = null) {
   return rows.filter((row) => visibleKeys.has(row.key)).map((row) => row.key);
 }
 
-export function generatedDerivedClipFileMatches(filePath = '', clipIds = []) {
-  const filename = String(filePath).split(/[\\/]/).pop() ?? '';
-  return clipIds
-    .map((clipId) => String(clipId ?? '').slice(0, 8))
+const GENERATED_MOVE_VIDEO_PREFIX = 'video-moves/';
+const GENERATED_CLIP_FILENAME_PATTERN =
+  /^([A-Za-z0-9][A-Za-z0-9:/_-]*)\s+(.+)\s+([0-9a-f]{8})(?:\s+draft\s+([a-z0-9]+))?(?:\s+(padded low|low))?\.mp4$/i;
+
+function generatedClipFilenamePart(value) {
+  return String(value ?? '')
+    .trim()
+    .replace(/[\/\\?%*:|"<>]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function generatedDerivedClipFileInfo(filePath = '') {
+  const normalizedPath = String(filePath).replace(/\\/g, '/');
+  if (!normalizedPath.startsWith(GENERATED_MOVE_VIDEO_PREFIX)) {
+    return null;
+  }
+
+  const filename = normalizedPath.slice(GENERATED_MOVE_VIDEO_PREFIX.length);
+  if (filename.includes('/')) {
+    return null;
+  }
+
+  const match = filename.match(GENERATED_CLIP_FILENAME_PATTERN);
+  if (!match) {
+    return null;
+  }
+
+  const variantLabel = match[5]?.toLocaleLowerCase();
+  const variant = variantLabel === 'padded low' ? 'padded-low' : variantLabel === 'low' ? 'low' : 'full';
+  return {
+    moveDisplayId: match[1],
+    sourceDisplayName: match[2],
+    clipToken: match[3].toLocaleLowerCase(),
+    draftId: match[4] ?? null,
+    variant
+  };
+}
+
+export function generatedDerivedClipFileMatches(filePath = '', clips = []) {
+  const info = generatedDerivedClipFileInfo(filePath);
+  if (!info) {
+    return false;
+  }
+
+  return clips.some((clip) => {
+    const clipId = typeof clip === 'string' ? clip : clip?.id;
+    const clipToken = String(clipId ?? '').slice(0, 8).toLocaleLowerCase();
+    if (!clipToken || clipToken !== info.clipToken) {
+      return false;
+    }
+
+    if (typeof clip === 'string') {
+      return true;
+    }
+
+    const moveDisplayId = String(clip?.moveDisplayId ?? clip?.moveId ?? '').trim();
+    if (moveDisplayId && moveDisplayId !== info.moveDisplayId) {
+      return false;
+    }
+
+    const sourceDisplayName = generatedClipFilenamePart(clip?.sourceDisplayName);
+    if (sourceDisplayName && sourceDisplayName !== info.sourceDisplayName) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+export function obsoleteGeneratedClipFilePaths(previousPaths = [], currentPaths = []) {
+  const current = new Set(currentPaths.filter(Boolean).map((filePath) => String(filePath).replace(/\\/g, '/')));
+  return previousPaths
     .filter(Boolean)
-    .some((token) => filename.includes(token));
+    .filter((filePath) => !current.has(String(filePath).replace(/\\/g, '/')));
 }
 
 export function positionSlug(value) {

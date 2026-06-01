@@ -7,9 +7,11 @@ import {
   moveSuggestions,
   derivePositionOptions,
   applyDefaultKeyVideoFlags,
+  generatedDerivedClipFileInfo,
   normalizeOptionalText,
   normalizeTags,
   generatedDerivedClipFileMatches,
+  obsoleteGeneratedClipFilePaths,
   rekeyClipMoveAssociations,
   sourceSuggestions,
   uploadMonthKey,
@@ -148,18 +150,89 @@ test('visible move row keys return all rows when there are four or fewer', () =>
   assert.deepEqual(visibleMoveRowKeys(rows, 4500, null), ['a', 'b', 'c', 'd']);
 });
 
-test('generated derived clip files are recognized from clip id tokens', () => {
-  const clipIds = ['7fa2dc2e-2c05-48e7-b405-a3636e307f82', 'bd9405af-c465-452c-ad8b-050d3822b0aa'];
+test('generated derived clip files are recognized from exact generated filenames', () => {
+  const clips = [
+    {
+      id: '7fa2dc2e-2c05-48e7-b405-a3636e307f82',
+      moveDisplayId: 'SPR00001',
+      sourceDisplayName: 'Fadi & Bersy'
+    },
+    {
+      id: 'bd9405af-c465-452c-ad8b-050d3822b0aa',
+      moveDisplayId: 'RT000001',
+      sourceDisplayName: 'Demo Source'
+    }
+  ];
 
   assert.equal(
-    generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e draft abc123.mp4', clipIds),
+    generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e.mp4', clips),
     true
   );
   assert.equal(
-    generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e padded low.mp4', clipIds),
+    generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e draft abc123.mp4', clips),
     true
   );
-  assert.equal(generatedDerivedClipFileMatches('video-moves/SPR00001 Spiral legacy [on1, music].mov', clipIds), false);
+  assert.equal(generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e low.mp4', clips), true);
+  assert.equal(
+    generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e draft abc123 padded low.mp4', clips),
+    true
+  );
+});
+
+test('generated derived clip matching rejects legacy or unrelated token filenames', () => {
+  const clips = [
+    {
+      id: '7fa2dc2e-2c05-48e7-b405-a3636e307f82',
+      moveDisplayId: 'SPR00001',
+      sourceDisplayName: 'Fadi & Bersy'
+    }
+  ];
+
+  assert.equal(generatedDerivedClipFileMatches('video-moves/SPR00001 Spiral legacy 7fa2dc2e [on1, music].mp4', clips), false);
+  assert.equal(generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e.mov', clips), false);
+  assert.equal(generatedDerivedClipFileMatches('video-sources/SPR00001 Fadi & Bersy 7fa2dc2e.mp4', clips), false);
+  assert.equal(generatedDerivedClipFileMatches('video-moves/SPR00001 Other Source 7fa2dc2e.mp4', clips), false);
+});
+
+test('generated derived clip info recognizes old orphan low-res variants without a clip record', () => {
+  assert.deepEqual(
+    generatedDerivedClipFileInfo('video-moves/FRG00001 Alicia and Timothe at Budapest Live 2 Mambo 8c5042c5 low.mp4'),
+    {
+      moveDisplayId: 'FRG00001',
+      sourceDisplayName: 'Alicia and Timothe at Budapest Live 2 Mambo',
+      clipToken: '8c5042c5',
+      draftId: null,
+      variant: 'low'
+    }
+  );
+  assert.equal(
+    generatedDerivedClipFileInfo(
+      'video-moves/FRG00001 Alicia and Timothe at Budapest Live 2 Mambo 8c5042c5 padded low.mp4'
+    )?.variant,
+    'padded-low'
+  );
+});
+
+test('obsolete generated clip cleanup preserves current render outputs', () => {
+  const currentLow = 'video-moves/SPR00001 Fadi & Bersy 7fa2dc2e low.mp4';
+  const currentPaddedLow = 'video-moves/SPR00001 Fadi & Bersy 7fa2dc2e padded low.mp4';
+  const oldDraft = 'video-moves/SPR00001 Fadi & Bersy 7fa2dc2e draft old.mp4';
+
+  assert.deepEqual(
+    obsoleteGeneratedClipFilePaths(
+      [
+        currentLow,
+        currentPaddedLow,
+        oldDraft
+      ],
+      [
+        'video-moves/SPR00001 Fadi & Bersy 7fa2dc2e.mp4',
+        currentLow,
+        currentPaddedLow
+      ]
+    ),
+    [oldDraft]
+  );
 });
 
 test('move suggestions match ids, slugs, and names while excluding selected moves', () => {

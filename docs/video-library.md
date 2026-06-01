@@ -170,6 +170,7 @@ Uploading stores the original file in `video-sources/` and creates a `source` as
 - Source-video clip editor key-video star controls must live on the move rows, including the active edited saved row, and must not appear as a separate top-level timeline toolbar button.
 - Low-res and padded files generated for a derived clip are playback variants of that clip; they must not be bootstrapped as separate standalone move-page videos.
 - Re-rendering or changing a derived clip must replace the previously published/generated clip assets and links instead of accumulating duplicate move-page videos.
+- Generated clip cleanup must prove app ownership from the generated filename shape and current source/clip metadata where available; token-only filename matching is not sufficient for deleting media.
 - Move pages must default to the full-quality rendered clip; low-res variants are optional alternates only, and the full rendered clip must preserve source quality as much as practical.
 - Move-page tab metadata for derived clips must come from the source media metadata, not fallback `Other / Other / Class` bootstrap defaults.
 - Legacy direct video links may be replaced only where an explicit migration workflow allows it.

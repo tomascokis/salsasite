@@ -37,7 +37,9 @@ import {
   normalizeDateString,
   normalizeOptionalText,
   applyDefaultKeyVideoFlags,
+  generatedDerivedClipFileInfo,
   generatedDerivedClipFileMatches,
+  obsoleteGeneratedClipFilePaths,
   rekeyClipMoveAssociations,
   normalizeTags,
   sourceSuggestions,
@@ -577,10 +579,38 @@ function derivedClipOutputAssetIds(library: VideoLibrary) {
   );
 }
 
+function generatedClipOwnershipEntries(library: VideoLibrary) {
+  return library.derivedClips.map((clip) => {
+    const sourceAsset = library.videoAssets.find((asset) => asset.id === clip.sourceAssetId && asset.kind === 'source');
+    return {
+      id: clip.id,
+      moveId: clip.moveId,
+      moveDisplayId: clip.moveDisplayId ?? clip.moveId,
+      sourceDisplayName: sourceAsset?.displayName ?? ''
+    };
+  });
+}
+
 function isGeneratedDerivedClipPath(library: VideoLibrary, filePath: string) {
   return generatedDerivedClipFileMatches(
     normalizeManagedVideoPath(filePath),
-    library.derivedClips.map((clip) => clip.id)
+    generatedClipOwnershipEntries(library)
+  );
+}
+
+function isGeneratedDerivedClipVariantPath(filePath: string) {
+  const info = generatedDerivedClipFileInfo(normalizeManagedVideoPath(filePath));
+  return info?.variant === 'low' || info?.variant === 'padded-low';
+}
+
+function isGeneratedDerivedClipPathFromKnownSource(library: VideoLibrary, filePath: string) {
+  const info = generatedDerivedClipFileInfo(normalizeManagedVideoPath(filePath));
+  if (!info) {
+    return false;
+  }
+
+  return library.videoAssets.some(
+    (asset) => asset.kind === 'source' && sanitizeFilenamePart(asset.displayName) === info.sourceDisplayName
   );
 }
 
@@ -588,17 +618,38 @@ async function bootstrapLegacyMoveAssets(library: VideoLibrary, moves: MoveRecor
   const moveIds = new Set(moves.map((move) => move.id.toUpperCase()));
   const variantPaths = derivedClipVariantPaths(library);
   const outputAssetIds = derivedClipOutputAssetIds(library);
+  const linkedAssetIds = new Set(library.moveVideoLinks.map((link) => link.assetId));
   const variantAssetIds = new Set(
     library.videoAssets
       .filter((asset) => asset.kind === 'move' && variantPaths.has(normalizeManagedVideoPath(asset.filePath)))
       .map((asset) => asset.id)
   );
   const staleGeneratedAssets = library.videoAssets.filter(
-    (asset) =>
-      asset.kind === 'move' &&
-      isGeneratedDerivedClipPath(library, asset.filePath) &&
-      !outputAssetIds.has(asset.id) &&
-      !variantPaths.has(normalizeManagedVideoPath(asset.filePath))
+    (asset) => {
+      if (asset.kind !== 'move' || outputAssetIds.has(asset.id)) {
+        return false;
+      }
+
+      const normalizedPath = normalizeManagedVideoPath(asset.filePath);
+      if (variantPaths.has(normalizedPath)) {
+        return false;
+      }
+
+      const info = generatedDerivedClipFileInfo(normalizedPath);
+      if (!info) {
+        return false;
+      }
+
+      if (info.variant === 'low' || info.variant === 'padded-low') {
+        return true;
+      }
+
+      return (
+        linkedAssetIds.has(asset.id) &&
+        (isGeneratedDerivedClipPath(library, normalizedPath) ||
+          isGeneratedDerivedClipPathFromKnownSource(library, normalizedPath))
+      );
+    }
   );
   const staleGeneratedAssetIds = new Set(staleGeneratedAssets.map((asset) => asset.id));
   const assetIdsToUnlink = new Set([...variantAssetIds, ...staleGeneratedAssetIds]);
@@ -614,7 +665,11 @@ async function bootstrapLegacyMoveAssets(library: VideoLibrary, moves: MoveRecor
 
   for (const file of files) {
     const normalizedPath = normalizeManagedVideoPath(file.relativePath);
-    if (variantPaths.has(normalizedPath) || isGeneratedDerivedClipPath(library, normalizedPath)) {
+    if (
+      variantPaths.has(normalizedPath) ||
+      isGeneratedDerivedClipPath(library, normalizedPath) ||
+      isGeneratedDerivedClipVariantPath(normalizedPath)
+    ) {
       continue;
     }
 
@@ -1618,6 +1673,7 @@ async function renderClip(clipId: string) {
   await renderVideoSegment(inputAbsolutePath, lowResOutputAbsolutePath, actionStartMs, actionDurationMs, true, clip.cropRect);
 
   const replacedRenderedFilePaths = new Set<string>();
+  const currentRenderedFilePaths = [outputRelativePath, lowResOutputRelativePath, lowResPaddedOutputRelativePath];
   await mutateLibrary((mutableLibrary) => {
     const mutableClip = mutableLibrary.derivedClips.find((entry) => entry.id === clipId);
     const source = mutableLibrary.videoAssets.find((entry) => entry.id === clip?.sourceAssetId);
@@ -1694,7 +1750,11 @@ async function renderClip(clipId: string) {
     sortLibrary(mutableLibrary);
   });
 
-  await Promise.all([...replacedRenderedFilePaths].map((filePath) => deleteManagedVideoFiles(filePath)));
+  await Promise.all(
+    obsoleteGeneratedClipFilePaths([...replacedRenderedFilePaths], currentRenderedFilePaths).map((filePath) =>
+      deleteManagedVideoFiles(filePath)
+    )
+  );
   void queuePosterGeneration(outputRelativePath);
 }
 
