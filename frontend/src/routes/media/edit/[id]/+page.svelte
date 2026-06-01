@@ -2847,6 +2847,7 @@
                       type="button"
                       class="clip-timeline-selection saved-move-range"
                       class:active={activeClipId === clip.id}
+                      class:current={currentPlaybackMove?.id === clip.id}
                       style={savedClipRangeStyle(clip, timelineScaleKey)}
                       aria-label={`${clipDisplayName(clip)} ${clipChangeLabel(clipChangeStates.get(clip.id)).toLowerCase()} clip`}
                       title={`${clipDisplayName(clip)} · ${clipChangeLabel(clipChangeStates.get(clip.id))}`}

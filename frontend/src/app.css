@@ -3578,6 +3578,15 @@ select {
     0 6px 14px rgba(34, 197, 94, 0.18);
 }
 
+.clip-timeline-selection.saved-move-range.current {
+  background: linear-gradient(90deg, #7ee68f 0%, #43d46e 100%);
+  opacity: 1;
+  box-shadow:
+    0 0 0 1px rgba(214, 255, 224, 0.48),
+    0 0 14px rgba(126, 230, 143, 0.28),
+    0 7px 16px rgba(67, 212, 110, 0.24);
+}
+
 .clip-timeline-selection.saved-move-range:hover,
 .clip-timeline-selection.saved-move-range:focus-visible,
 .clip-timeline-selection.saved-move-range.active {

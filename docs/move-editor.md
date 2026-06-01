@@ -107,6 +107,7 @@ The move editor saves clip definitions before rendering.
 - Rendering and publishing behavior can still depend on later completion of the draft move workflow, but the editor must not block clip definition work just because a move is still a draft.
 - Saved clips must remain visible in the timeline after they are created, in the same lower timeline lane where move ranges appear during editing.
 - Saved clip ranges and other compact lower-lane move ranges must sit below the playhead handle instead of overlapping the playback track or playhead marker, in both playback and edit modes.
+- The saved clip range containing the current playback position must use a lighter green than other saved clip ranges.
 - The playhead handle circle must exactly fill the vertical space between the playback track bottom and the lower clip lane top, based on measured track and lane geometry rather than a guessed size.
 - Outside active move editing, saved clips must be positioned against the full source-video timeline, not a stale edit zoom or clip viewport.
 - Entering move-editing mode from a source video must not create a new blank row or preselect an existing saved clip. It should open the editor surface with saved clips visible and wait for the user to explicitly click `Add move` or select a saved clip row/timeline range.
