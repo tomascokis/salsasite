@@ -6106,12 +6106,12 @@ select {
   }
 
   .timeline-now-playing {
-    grid-template-columns: minmax(0, 1fr);
-    width: min(100%, 18rem);
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.3fr) minmax(0, 0.82fr);
+    width: min(100%, 24rem);
   }
 
   .timeline-context-slot {
-    display: contents;
+    display: grid;
   }
 
   .timeline-context-box,

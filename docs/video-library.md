@@ -220,7 +220,7 @@ Playback behavior:
 - When a clip enters draft editing, loop playback and the loop's `With padding` mode must both start enabled by default.
 - In draft editing, the plain loop mode must cover only the move range, while `With padding` must extend that loop to the clip's head and tail padding.
 - In playback mode, when a source video has saved move clips, a compact centered boxed move-context strip must appear above the timeline without visible labels: the center current-move box is always visible and shows `—` when the playhead is not within a move range, while previous/next boxes appear only when that move ended or starts within 2.5 seconds of the playhead.
-- The playback move-context strip must reserve stable left, center, and right slots so the current-move box remains centered even when only previous or next is visible.
+- The playback move-context strip must reserve stable left, center, and right slots at every viewport width so context boxes never stack vertically and the current-move box remains centered even when only previous or next is visible.
 - Previous and next move boxes in the playback move-context strip must be visibly shorter than the center current-move box.
 - The source-video playback controls must stay compact but visually polished, with clear icon affordances and a refined volume treatment.
 - The source-video playback controls and move-context boxes must stay vertically compact so they do not consume unnecessary timeline height.
