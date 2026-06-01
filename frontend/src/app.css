@@ -4908,6 +4908,17 @@ select {
   font-weight: 700;
 }
 
+.media-properties-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+
+.media-properties-actions .move-backlink {
+  white-space: nowrap;
+}
+
 .media-properties-card .property-list {
   grid-template-columns: minmax(76px, 96px) minmax(0, 1fr);
 }

@@ -2522,10 +2522,6 @@
 
 <div class="stack upload-page media-page media-editor-page">
   <section class="panel upload-shell">
-    <div class="panel-header upload-header">
-      <a class="pill move-backlink" href="/media">Back to media</a>
-    </div>
-
     <div class="upload-grid">
       <div class="upload-column">
         <div
@@ -3143,7 +3139,10 @@
                   <div class="media-properties-title">
                     <h3>{selectedAsset.displayName}</h3>
                   </div>
-                  <button class="icon-button property-edit-button" type="button" aria-label="Edit properties" title="Edit properties" on:click={() => (isEditingMetadata = !isEditingMetadata)}>✎</button>
+                  <div class="media-properties-actions">
+                    <a class="pill move-backlink" href="/media">Back to media</a>
+                    <button class="icon-button property-edit-button" type="button" aria-label="Edit properties" title="Edit properties" on:click={() => (isEditingMetadata = !isEditingMetadata)}>✎</button>
+                  </div>
                 </div>
               </div>
               {#if isEditingMetadata}

@@ -45,6 +45,7 @@ Entering move-editing mode should preserve the user's spatial context while enab
 - Edit mode must not expand the player, collapse side panels, or change the media editor grid just to provide more video room.
 - The media editor source video player should use a compact height cap that is 15% shorter than the previous `min(56vh, 560px)` cap.
 - Edit mode must keep the timeline and clip controls visible without the video dominating the viewport.
+- The `Back to media` navigation must not occupy its own vertical row above the editor; it should live inside existing chrome or otherwise avoid increasing the video/timeline stack height.
 - The side metadata card must remain fully inside the viewport; its rounded corners and edit control must not be clipped by horizontal overflow.
 - The layout must remain usable on mobile; the video/editor must not overflow horizontally or push controls off-screen.
 - Mobile layout should prefer a single-column editor with compact controls.
