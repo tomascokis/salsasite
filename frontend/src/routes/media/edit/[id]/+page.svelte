@@ -1,7 +1,10 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { beforeNavigate } from '$app/navigation';
-  import { onDestroy, tick } from 'svelte';
+  import { flip } from 'svelte/animate';
+  import { cubicOut } from 'svelte/easing';
+  import { onDestroy, onMount, tick } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
   import ContentBadge from '$lib/components/ContentBadge.svelte';
   import MovePicker from '$lib/components/MovePicker.svelte';
   import SearchablePicker from '$lib/components/SearchablePicker.svelte';
@@ -82,6 +85,8 @@
   const DEFAULT_CLIP_TAIL_PADDING_MS = Math.round(DEFAULT_MOVE_DURATION_MS / 2);
   const MOVE_BOUNDARY_SNAP_TOLERANCE_PX = 8;
   const PLAYBACK_CONTEXT_WINDOW_MS = 2500;
+  const MEDIA_MOTION_SHORT_MS = 140;
+  const MEDIA_MOTION_MEDIUM_MS = 220;
   const COUNT_PRESET_SEQUENCES: Record<CountTimingPreset, string[]> = {
     'on2-default': ['6', '7', '1', '2', '3', '5'],
     'on2-all': ['6', '7', '1', '2', '3', '4', '5', '6', '7', '8'],
@@ -201,6 +206,7 @@
   let visiblePreviousPlaybackMove: ClipWithUi | null = null;
   let visibleNextPlaybackMove: ClipWithUi | null = null;
   let showPlaybackMoveContext = false;
+  let prefersReducedMotion = false;
   let dancerOptions = data.dancerOptions.map((dancer) => ({ id: dancer, label: dancer }));
   let positionPickerOptions = data.positionOptions.map((position) => ({ id: position.id, label: position.label }));
 
@@ -259,6 +265,10 @@
       : null;
   $: showPlaybackMoveContext = Boolean(currentPlaybackMove || visiblePreviousPlaybackMove || visibleNextPlaybackMove);
   $: timelineScaleKey = `${isDraftingMove ? 'editing' : 'full'}:${playerDurationMs}:${timelineViewportStartMs}:${timelineViewportEndMs}`;
+
+  function motionDuration(milliseconds: number) {
+    return prefersReducedMotion ? 0 : milliseconds;
+  }
   $: clipChangeStates = new Map(
     selectedAsset
       ? clipRows
@@ -535,6 +545,22 @@
     draftEndMs = clampClipEndMs(draftActionEndMs + Math.max(clipEndContextMs, CLIP_MOVE_BUFFER_MS));
     seekPreview(draftActionStartMs);
     void scrollMoveEditorRowIntoView({ draftRowId: row.id });
+  }
+
+  function editorMoveRowActive(item: EditorMoveRow) {
+    return item.kind === 'draft' && item.row.id === activeDraftMoveRowId;
+  }
+
+  function editorMoveRowBound(item: EditorMoveRow) {
+    return item.kind === 'draft' ? Boolean(item.row.timingGroupId) : Boolean(item.clip.timingGroupId);
+  }
+
+  function editorMoveRowDraftId(item: EditorMoveRow) {
+    return item.kind === 'draft' ? item.row.id : undefined;
+  }
+
+  function editorMoveRowClipId(item: EditorMoveRow) {
+    return item.kind === 'draft' ? item.row.originalClipId ?? undefined : item.clip.id;
   }
 
   async function scrollMoveEditorRowIntoView(target: { draftRowId?: string; clipId?: string }) {
@@ -2584,6 +2610,21 @@
     stopPolling();
     stopPlaybackAnimation();
   });
+
+  onMount(() => {
+    if (!browser) {
+      return;
+    }
+
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const syncReducedMotion = () => {
+      prefersReducedMotion = reducedMotionQuery.matches;
+    };
+
+    syncReducedMotion();
+    reducedMotionQuery.addEventListener('change', syncReducedMotion);
+    return () => reducedMotionQuery.removeEventListener('change', syncReducedMotion);
+  });
 </script>
 
 <svelte:head>
@@ -2754,7 +2795,7 @@
                 </div>
               </div>
 
-              <div class:expanded={isDraftingMove} class="timeline-card">
+              <div class:expanded={isDraftingMove} class:dragging={Boolean(timelineDragTarget)} class="timeline-card">
                 <div class="timeline-meta">
                   {#if activeDraftMoveRow}
                     <span><strong>Clip</strong> {formatSeconds(draftStartMs)}s - {formatSeconds(draftEndMs)}s</span>
@@ -2868,17 +2909,32 @@
                   <div class="timeline-now-playing" aria-label="Current move context">
                     <div class="timeline-context-slot timeline-context-slot-previous">
                       {#if visiblePreviousPlaybackMove}
-                        <div class="timeline-context-box timeline-context-side timeline-context-previous">
+                        <div
+                          class="timeline-context-box timeline-context-side timeline-context-previous"
+                          in:fly={{ x: -6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                          out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                        >
                           <strong>{playbackMoveName(visiblePreviousPlaybackMove)}</strong>
                         </div>
                       {/if}
                     </div>
                     <div class="timeline-context-box timeline-context-current" class:empty={!currentPlaybackMove}>
-                      <strong>{currentPlaybackMove ? playbackMoveName(currentPlaybackMove) : '—'}</strong>
+                      {#key currentPlaybackMove?.id ?? 'empty'}
+                        <strong
+                          in:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                          out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                        >
+                          {currentPlaybackMove ? playbackMoveName(currentPlaybackMove) : '—'}
+                        </strong>
+                      {/key}
                     </div>
                     <div class="timeline-context-slot timeline-context-slot-next">
                       {#if visibleNextPlaybackMove}
-                        <div class="timeline-context-box timeline-context-side timeline-context-next">
+                        <div
+                          class="timeline-context-box timeline-context-side timeline-context-next"
+                          in:fly={{ x: 6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                          out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                        >
                           <strong>{playbackMoveName(visibleNextPlaybackMove)}</strong>
                         </div>
                       {/if}
@@ -2917,6 +2973,8 @@
                       class:active={activeClipId === clip.id}
                       class:current={currentPlaybackMove?.id === clip.id}
                       style={savedClipRangeStyle(clip, timelineScaleKey)}
+                      in:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                      out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
                       aria-label={`${clipDisplayName(clip)} ${clipChangeLabel(clipChangeStates.get(clip.id)).toLowerCase()} clip`}
                       title={`${clipDisplayName(clip)} · ${clipChangeLabel(clipChangeStates.get(clip.id))}`}
                       on:pointerdown={(event) => event.stopPropagation()}
@@ -2937,6 +2995,8 @@
                         class:active={row.id === activeDraftMoveRowId}
                         class:secondary={row.id !== activeDraftMoveRowId}
                         style={draftMoveRangeStyle(row, timelineScaleKey)}
+                        in:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                        out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
                         on:dblclick={(event) => editDraftMoveRowFromTimeline(event, row.id)}
                       ></div>
                     {/each}
@@ -3052,15 +3112,19 @@
                     </div>
                     <div class="draft-move-row-window" bind:this={draftMoveRowWindowElement}>
                       {#each visibleEditorMoveRows as item (item.key)}
-                        {#if item.kind === 'draft'}
-                          {@const row = item.row}
-                          <div
-                            class="draft-move-row"
-                            class:active={row.id === activeDraftMoveRowId}
-                            class:bound={Boolean(row.timingGroupId)}
-                            data-draft-row-id={row.id}
-                            data-clip-row-id={row.originalClipId ?? undefined}
-                          >
+                        <div
+                          class="draft-move-row"
+                          class:active={editorMoveRowActive(item)}
+                          class:bound={editorMoveRowBound(item)}
+                          class:saved-editor-row={item.kind === 'saved'}
+                          data-draft-row-id={editorMoveRowDraftId(item)}
+                          data-clip-row-id={editorMoveRowClipId(item)}
+                          animate:flip={{ duration: motionDuration(MEDIA_MOTION_MEDIUM_MS), easing: cubicOut }}
+                          in:fly={{ y: 4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                          out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                        >
+                          {#if item.kind === 'draft'}
+                            {@const row = item.row}
                             <div class="move-start-display">
                               <strong>{formatTenthSeconds(row.startMs)}s</strong>
                             </div>
@@ -3130,14 +3194,8 @@
                             {:else}
                               <button class="draft-edit-button" type="button" on:click={() => selectDraftMoveRow(row.id)}>Edit</button>
                             {/if}
-                          </div>
-                        {:else}
-                          {@const clip = item.clip}
-                          <div
-                            class="draft-move-row saved-editor-row"
-                            class:bound={Boolean(clip.timingGroupId)}
-                            data-clip-row-id={clip.id}
-                          >
+                          {:else}
+                            {@const clip = item.clip}
                             <button
                               class="move-start-display saved-editor-start"
                               type="button"
@@ -3193,8 +3251,8 @@
                             <button class="draft-edit-button danger" type="button" on:click={() => removeSavedClip(clip.id)}>
                               Delete
                             </button>
-                          </div>
-                        {/if}
+                          {/if}
+                        </div>
                       {/each}
                     </div>
                   </div>

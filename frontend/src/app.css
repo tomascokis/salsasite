@@ -3242,7 +3242,10 @@ select {
 }
 
 .timeline-card {
-  --timeline-transition: 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  --media-editor-motion-short: 140ms;
+  --media-editor-motion-medium: 220ms;
+  --media-editor-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --timeline-transition: var(--media-editor-motion-medium) var(--media-editor-motion-ease);
   --timeline-height: 54px;
   --timeline-track-top: 8px;
   --timeline-track-height: 14px;
@@ -3270,6 +3273,10 @@ select {
   transition:
     gap var(--timeline-transition),
     padding-bottom var(--timeline-transition);
+}
+
+.timeline-card.dragging {
+  --timeline-transition: 0ms linear;
 }
 
 .timeline-card.expanded {
@@ -3369,6 +3376,11 @@ select {
   background: rgba(255, 255, 255, 0.055);
   padding: 0.34rem 0.5rem;
   color: #dbe8f5;
+  transition:
+    border-color var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    background var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    box-shadow var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    opacity var(--media-editor-motion-short) var(--media-editor-motion-ease);
 }
 
 .timeline-context-side {
@@ -3435,6 +3447,11 @@ select {
   min-width: 0.42rem;
   border-radius: 999px;
   background: rgba(159, 178, 197, 0.5);
+  transition:
+    left var(--timeline-transition),
+    width var(--timeline-transition),
+    background var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    box-shadow var(--media-editor-motion-short) var(--media-editor-motion-ease);
 }
 
 .timeline-overview.zoomed .timeline-overview-track {
@@ -3500,10 +3517,13 @@ select {
   top: var(--timeline-clip-top);
   height: var(--timeline-track-height);
   border-radius: 999px;
-  will-change: top, height, opacity, transform;
+  will-change: left, width, top, height, opacity;
   transition:
+    left var(--timeline-transition),
+    width var(--timeline-transition),
     top var(--timeline-transition),
     height var(--timeline-transition),
+    background var(--media-editor-motion-short) var(--media-editor-motion-ease),
     opacity var(--timeline-transition),
     filter var(--timeline-transition),
     box-shadow var(--timeline-transition);
@@ -3534,7 +3554,6 @@ select {
   height: 14px;
   background: linear-gradient(90deg, #ffd166 0%, #f59e0b 100%);
   opacity: 1;
-  animation: activeMoveRise 240ms ease-out 180ms both;
   box-shadow:
     0 0 0 1px rgba(255, 231, 171, 0.38),
     0 8px 18px rgba(245, 158, 11, 0.22);
@@ -3546,7 +3565,6 @@ select {
   height: 10px;
   background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
   opacity: 0.78;
-  animation: secondaryMoveDrop 180ms ease-out;
   box-shadow:
     0 0 0 1px rgba(187, 247, 208, 0.25),
     0 6px 14px rgba(34, 197, 94, 0.18);
@@ -3586,28 +3604,6 @@ select {
     0 0 0 2px rgba(255, 255, 255, 0.72),
     0 0 0 4px rgba(34, 197, 94, 0.28),
     0 8px 18px rgba(34, 197, 94, 0.24);
-}
-
-@keyframes activeMoveRise {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scaleY(0.78);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scaleY(1);
-  }
-}
-
-@keyframes secondaryMoveDrop {
-  from {
-    opacity: 1;
-    transform: translateY(-7px) scaleY(1.2);
-  }
-  to {
-    opacity: 0.78;
-    transform: translateY(0) scaleY(1);
-  }
 }
 
 .clip-timeline-playhead {
@@ -3683,6 +3679,10 @@ select {
   --marker-fill: #6db4ff;
   -webkit-appearance: none;
   appearance: none;
+  will-change: left, top;
+  transition:
+    left var(--timeline-transition),
+    top var(--timeline-transition);
 }
 
 .clip-timeline-marker-head {
@@ -3737,6 +3737,28 @@ select {
 
 .clip-timeline-marker:active {
   cursor: grabbing;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline-card {
+    --media-editor-motion-short: 0ms;
+    --media-editor-motion-medium: 0ms;
+    --timeline-transition: 0ms linear;
+  }
+
+  .timeline-context-box,
+  .timeline-overview-window,
+  .clip-timeline,
+  .clip-timeline::before,
+  .clip-timeline::after,
+  .clip-timeline-selection,
+  .clip-timeline-playhead,
+  .clip-timeline-playhead-handle,
+  .clip-timeline-marker,
+  .draft-move-row {
+    animation: none !important;
+    transition-duration: 0ms !important;
+  }
 }
 
 .timeline-move-actions {
@@ -3816,6 +3838,10 @@ select {
   min-height: var(--clip-editor-row-height);
   --clip-row-font-size: 0.8rem;
   --clip-row-secondary-font-size: 0.72rem;
+  transition:
+    background var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    box-shadow var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    opacity var(--media-editor-motion-short) var(--media-editor-motion-ease);
 }
 
 .draft-move-row-window {
