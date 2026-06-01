@@ -3836,8 +3836,8 @@ select {
   --clip-editor-visible-rows: 5;
   --clip-editor-row-height: 2.2rem;
   --clip-editor-row-gap: 0.42rem;
-  --clip-editor-row-min-width: 880px;
-  --clip-editor-grid-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px 62px 62px;
+  --clip-editor-row-min-width: 854px;
+  --clip-editor-grid-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 2.2rem 62px 62px;
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--clip-editor-row-gap);
@@ -4484,6 +4484,13 @@ select {
 .key-video-toggle {
   border-color: rgba(255, 215, 102, 0.42);
   color: #ffe2a4;
+}
+
+.draft-edit-button.key-video-star {
+  width: 2.2rem;
+  min-width: 2.2rem;
+  padding-right: 0;
+  padding-left: 0;
 }
 
 .draft-edit-button.key-video-star[aria-pressed='true'],
