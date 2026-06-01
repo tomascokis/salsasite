@@ -9,6 +9,7 @@ import {
   applyDefaultKeyVideoFlags,
   normalizeOptionalText,
   normalizeTags,
+  generatedDerivedClipFileMatches,
   rekeyClipMoveAssociations,
   sourceSuggestions,
   uploadMonthKey,
@@ -145,6 +146,20 @@ test('visible move row keys return all rows when there are four or fewer', () =>
   ];
 
   assert.deepEqual(visibleMoveRowKeys(rows, 4500, null), ['a', 'b', 'c', 'd']);
+});
+
+test('generated derived clip files are recognized from clip id tokens', () => {
+  const clipIds = ['7fa2dc2e-2c05-48e7-b405-a3636e307f82', 'bd9405af-c465-452c-ad8b-050d3822b0aa'];
+
+  assert.equal(
+    generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e draft abc123.mp4', clipIds),
+    true
+  );
+  assert.equal(
+    generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e padded low.mp4', clipIds),
+    true
+  );
+  assert.equal(generatedDerivedClipFileMatches('video-moves/SPR00001 Spiral legacy [on1, music].mov', clipIds), false);
 });
 
 test('move suggestions match ids, slugs, and names while excluding selected moves', () => {

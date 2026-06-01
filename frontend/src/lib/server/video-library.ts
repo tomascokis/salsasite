@@ -37,6 +37,7 @@ import {
   normalizeDateString,
   normalizeOptionalText,
   applyDefaultKeyVideoFlags,
+  generatedDerivedClipFileMatches,
   rekeyClipMoveAssociations,
   normalizeTags,
   sourceSuggestions,
@@ -51,6 +52,8 @@ const LIBRARY_FILENAME = 'video-library.json';
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.m4v', '.mov']);
 const POSTER_EXTENSIONS = ['.jpg', '.jpeg', '.webp', '.png', '.avif'];
 const CLIP_OUTPUT_EXTENSION = '.mp4';
+const FULL_QUALITY_CRF = '18';
+const LOW_QUALITY_CRF = '29';
 const renderJobs = new Map<string, Promise<void>>();
 
 let libraryCache:
@@ -531,22 +534,87 @@ function derivedClipVariantPaths(library: VideoLibrary) {
   return paths;
 }
 
+async function pruneMissingDerivedVariantPaths(library: VideoLibrary) {
+  let changed = false;
+  const variantKeys = [
+    'lowResOutputFilePath',
+    'lowResPaddedOutputFilePath',
+    'publishedLowResFilePath',
+    'publishedLowResPaddedFilePath'
+  ] as const;
+
+  for (const clip of library.derivedClips) {
+    for (const key of variantKeys) {
+      const filePath = clip[key];
+      if (!filePath) {
+        continue;
+      }
+
+      if (!(await managedVideoFileExists(filePath))) {
+        clip[key] = null;
+        changed = true;
+      }
+    }
+  }
+
+  return changed;
+}
+
+async function managedVideoFileExists(filePath: string) {
+  try {
+    await fs.access(resolveManagedVideoAbsolutePath(filePath));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function derivedClipOutputAssetIds(library: VideoLibrary) {
+  return new Set(
+    library.derivedClips
+      .flatMap((clip) => [clip.outputAssetId, clip.publishedAssetId])
+      .filter((id): id is string => Boolean(id))
+  );
+}
+
+function isGeneratedDerivedClipPath(library: VideoLibrary, filePath: string) {
+  return generatedDerivedClipFileMatches(
+    normalizeManagedVideoPath(filePath),
+    library.derivedClips.map((clip) => clip.id)
+  );
+}
+
 async function bootstrapLegacyMoveAssets(library: VideoLibrary, moves: MoveRecord[]) {
   const moveIds = new Set(moves.map((move) => move.id.toUpperCase()));
   const variantPaths = derivedClipVariantPaths(library);
+  const outputAssetIds = derivedClipOutputAssetIds(library);
   const variantAssetIds = new Set(
     library.videoAssets
       .filter((asset) => asset.kind === 'move' && variantPaths.has(normalizeManagedVideoPath(asset.filePath)))
       .map((asset) => asset.id)
   );
+  const staleGeneratedAssets = library.videoAssets.filter(
+    (asset) =>
+      asset.kind === 'move' &&
+      isGeneratedDerivedClipPath(library, asset.filePath) &&
+      !outputAssetIds.has(asset.id) &&
+      !variantPaths.has(normalizeManagedVideoPath(asset.filePath))
+  );
+  const staleGeneratedAssetIds = new Set(staleGeneratedAssets.map((asset) => asset.id));
+  const assetIdsToUnlink = new Set([...variantAssetIds, ...staleGeneratedAssetIds]);
   const linkCountBeforeVariantCleanup = library.moveVideoLinks.length;
-  library.moveVideoLinks = library.moveVideoLinks.filter((link) => !variantAssetIds.has(link.assetId));
+  library.moveVideoLinks = library.moveVideoLinks.filter((link) => !assetIdsToUnlink.has(link.assetId));
+  library.videoAssets = library.videoAssets.filter((asset) => !staleGeneratedAssetIds.has(asset.id));
   const files = await walkVideoFiles(resolveMediaRoot(), MOVE_VIDEO_PREFIX);
-  let changed = library.moveVideoLinks.length !== linkCountBeforeVariantCleanup;
+  let changed =
+    library.moveVideoLinks.length !== linkCountBeforeVariantCleanup ||
+    staleGeneratedAssets.length > 0;
+
+  await Promise.all(staleGeneratedAssets.map((asset) => deleteManagedVideoFiles(asset.filePath)));
 
   for (const file of files) {
     const normalizedPath = normalizeManagedVideoPath(file.relativePath);
-    if (variantPaths.has(normalizedPath)) {
+    if (variantPaths.has(normalizedPath) || isGeneratedDerivedClipPath(library, normalizedPath)) {
       continue;
     }
 
@@ -592,7 +660,8 @@ export async function getVideoLibrary(moves?: MoveRecord[]) {
   const library = await readLibraryFromDisk();
 
   if (moves) {
-    let changed = await bootstrapLegacyMoveAssets(library, moves);
+    let changed = await pruneMissingDerivedVariantPaths(library);
+    changed = (await bootstrapLegacyMoveAssets(library, moves)) || changed;
     changed = (await relinkOrphanedGeneratedDraftMoveIds(library, moves)) || changed;
     if (changed) {
       await writeLibraryToDisk(library);
@@ -1466,9 +1535,9 @@ async function renderVideoSegment(
     '-c:v',
     'libx264',
     '-preset',
-    'veryfast',
+    lowRes ? 'veryfast' : 'medium',
     '-crf',
-    lowRes ? '29' : '23'
+    lowRes ? LOW_QUALITY_CRF : FULL_QUALITY_CRF
   ];
 
   const filters = videoFilterArgs(cropRect, lowRes);
@@ -1548,6 +1617,7 @@ async function renderClip(clipId: string) {
   await renderVideoSegment(inputAbsolutePath, lowResPaddedOutputAbsolutePath, clip.startMs, durationMs, true, clip.cropRect);
   await renderVideoSegment(inputAbsolutePath, lowResOutputAbsolutePath, actionStartMs, actionDurationMs, true, clip.cropRect);
 
+  const replacedRenderedFilePaths = new Set<string>();
   await mutateLibrary((mutableLibrary) => {
     const mutableClip = mutableLibrary.derivedClips.find((entry) => entry.id === clipId);
     const source = mutableLibrary.videoAssets.find((entry) => entry.id === clip?.sourceAssetId);
@@ -1555,6 +1625,15 @@ async function renderClip(clipId: string) {
       return;
     }
 
+    const previousAssetIds = new Set(
+      [mutableClip.outputAssetId, mutableClip.publishedAssetId].filter((id): id is string => Boolean(id))
+    );
+    const previousVariantPaths = [
+      mutableClip.lowResOutputFilePath,
+      mutableClip.lowResPaddedOutputFilePath,
+      mutableClip.publishedLowResFilePath,
+      mutableClip.publishedLowResPaddedFilePath
+    ].filter((filePath): filePath is string => Boolean(filePath));
     let outputAsset =
       mutableClip.outputAssetId && mutableClip.outputAssetId !== mutableClip.publishedAssetId
       ? mutableLibrary.videoAssets.find((entry) => entry.id === mutableClip.outputAssetId) ?? null
@@ -1604,9 +1683,18 @@ async function renderClip(clipId: string) {
     mutableClip.lowResPaddedOutputFilePath = lowResPaddedOutputRelativePath;
     mutableClip.updatedAt = publishedAt;
     publishClipToMove(mutableLibrary, mutableClip, publishedAt);
+    previousAssetIds.delete(outputAsset.id);
+    const replacedAssetIds = previousAssetIds;
+    mutableLibrary.videoAssets
+      .filter((asset) => replacedAssetIds.has(asset.id))
+      .forEach((asset) => replacedRenderedFilePaths.add(asset.filePath));
+    previousVariantPaths.forEach((filePath) => replacedRenderedFilePaths.add(filePath));
+    mutableLibrary.moveVideoLinks = mutableLibrary.moveVideoLinks.filter((link) => !replacedAssetIds.has(link.assetId));
+    mutableLibrary.videoAssets = mutableLibrary.videoAssets.filter((asset) => !replacedAssetIds.has(asset.id));
     sortLibrary(mutableLibrary);
   });
 
+  await Promise.all([...replacedRenderedFilePaths].map((filePath) => deleteManagedVideoFiles(filePath)));
   void queuePosterGeneration(outputRelativePath);
 }
 

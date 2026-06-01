@@ -13,6 +13,8 @@ Shared controls on move pages and move editing surfaces must follow `docs/shared
 - The relationship diagram is the primary way to understand a move's parents, children, and related moves.
 - Parent, child, and related relationships must be visually distinguishable in the diagram.
 - If a move video came from an editable media clip, the move page must provide a way to go back to that clip editor.
+- Move pages must show rendered media clips once per published clip; stale generated files and low-res variants must not appear as separate top-level videos.
+- Move-page rendered clip tabs must show the source media timing/type/environment metadata rather than fallback `Other / Other / Class` bootstrap defaults.
 - When a move has more than four linked videos, the move page must keep at most four videos in the main tab strip.
 - When a move has more than four linked videos and no videos have been explicitly promoted, the first four videos in the existing move-video order are the default key videos.
 - Additional non-key videos must remain accessible from the move page through a compact dropdown control instead of expanding the main tab strip.

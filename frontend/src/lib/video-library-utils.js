@@ -90,6 +90,14 @@ export function visibleMoveRowKeys(rows = [], currentMs = 0, activeKey = null) {
   return rows.filter((row) => visibleKeys.has(row.key)).map((row) => row.key);
 }
 
+export function generatedDerivedClipFileMatches(filePath = '', clipIds = []) {
+  const filename = String(filePath).split(/[\\/]/).pop() ?? '';
+  return clipIds
+    .map((clipId) => String(clipId ?? '').slice(0, 8))
+    .filter(Boolean)
+    .some((token) => filename.includes(token));
+}
+
 export function positionSlug(value) {
   return String(value ?? '')
     .trim()
