@@ -3253,10 +3253,11 @@ select {
 
 .timeline-card {
   --timeline-transition: 220ms cubic-bezier(0.22, 1, 0.36, 1);
-  --timeline-height: 40px;
+  --timeline-height: 54px;
   --timeline-track-top: 8px;
   --timeline-clip-top: 8px;
   --timeline-move-top: 6px;
+  --timeline-lower-lane-offset: 34px;
   --timeline-playhead-top: 2px;
   --timeline-playhead-bottom: 8px;
   --timeline-handle-top: 20px;
@@ -3279,10 +3280,11 @@ select {
 }
 
 .timeline-card.expanded {
-  --timeline-height: 80px;
+  --timeline-height: 96px;
   --timeline-track-top: 35px;
   --timeline-clip-top: 35px;
   --timeline-move-top: 33px;
+  --timeline-lower-lane-offset: 40px;
   --timeline-playhead-top: 6px;
   --timeline-playhead-bottom: 8px;
   --timeline-handle-top: 45px;
@@ -3548,7 +3550,7 @@ select {
 }
 
 .clip-timeline-selection.move-range.secondary {
-  top: calc(var(--timeline-clip-top) + 20px);
+  top: calc(var(--timeline-clip-top) + var(--timeline-lower-lane-offset));
   z-index: 1;
   height: 10px;
   background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
@@ -3560,7 +3562,7 @@ select {
 }
 
 .clip-timeline-selection.saved-move-range {
-  top: calc(var(--timeline-clip-top) + 20px);
+  top: calc(var(--timeline-clip-top) + var(--timeline-lower-lane-offset));
   z-index: 1;
   height: 10px;
   padding: 0;

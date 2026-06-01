@@ -198,6 +198,7 @@ Current constraints:
 - Timeline move ranges that are currently open for editing must remain orange, while move ranges that are not currently open for editing must appear green.
 - Timeline ranges must not show small circular changed or unsaved badges; unsaved state belongs in the Save action and status text instead.
 - Timeline playhead handles must render as complete circles without clipping in both compact playback mode and expanded draft-editing mode.
+- Saved and secondary clip ranges must render on a lower lane below the playhead handle so they do not overlap the playback track marker, including in expanded edit mode.
 - When dragging a move start or move end marker, crossing another move boundary or landing within a small screen-precision tolerance of it must snap to that boundary once for that drag. After that first snap, moving away during the same drag must not keep snapping.
 - One or more unsaved draft move rows must not be lost by clicking away, switching clips or sources, exiting the draft editor, or browser/page navigation without an explicit discard confirmation.
 - Background render completion must update render status in place without refreshing or replacing editor state, exiting draft-editing mode, or discarding one or more active draft move rows.
