@@ -899,7 +899,7 @@
 
   function editorRowsForDisplay(clips: ClipWithUi[], rows: DraftMoveRow[], editing: boolean): EditorMoveRow[] {
     if (!editing) {
-      return clips.map((clip) => ({ kind: 'saved', key: `saved-${clip.id}`, clip }));
+      return clips.map((clip) => ({ kind: 'saved', key: savedEditorRowKey(clip.id), clip }));
     }
 
     const draftByOriginalClipId = new Map<string, DraftMoveRow>();
@@ -915,8 +915,8 @@
     const result: EditorMoveRow[] = clips.map((clip) => {
       const draftRow = draftByOriginalClipId.get(clip.id);
       return draftRow
-        ? { kind: 'draft', key: `draft-${draftRow.id}`, row: draftRow }
-        : { kind: 'saved', key: `saved-${clip.id}`, clip };
+        ? { kind: 'draft', key: savedEditorRowKey(clip.id), row: draftRow }
+        : { kind: 'saved', key: savedEditorRowKey(clip.id), clip };
     });
 
     newDraftRows.forEach((row) => {
@@ -930,6 +930,10 @@
     });
 
     return result;
+  }
+
+  function savedEditorRowKey(clipId: string) {
+    return `clip-${clipId}`;
   }
 
   function visibleEditorRowsForDisplay(

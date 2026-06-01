@@ -140,6 +140,7 @@ The move editor saves clip definitions before rendering.
 - Timeline tracks, saved ranges, playhead lines, knobs, and drag markers must render crisply at rest; the editor must not rely on transform downscaling or fractional sizing that leaves the timeline persistently blurry.
 - Timeline and edit-row animations must be smooth, restrained, and visibly paced rather than snappy; direct marker/playhead dragging must remain immediate without trailing transitions, and reduced-motion preferences must disable nonessential motion.
 - Playback-nearest edit-row updates must settle briefly before changing the visible row window, so ordinary playback does not constantly reshuffle rows; when the settled window changes, rows should slide smoothly rather than jump.
+- Clicking `Edit` on a different saved or draft row must keep the underlying row identity stable so the row window slides/reflows smoothly instead of tearing down and rebuilding rows.
 - When a saved green move range is opened for editing, it should lift from the lower lane into the active timeline lane while turning orange; the clip padding range and trim/move markers must fade in only after that lift completes.
 
 ## Crop Tool
