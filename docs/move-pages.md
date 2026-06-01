@@ -37,6 +37,7 @@ Shared controls on move pages and move editing surfaces must follow `docs/shared
 - Adding a topic or family from move creation/editing must persist a metadata entry immediately so the value remains visible and selectable after reloads.
 - Topic and family pickers in move creation/editing must not show visible `Change topic` or `Change family` placeholder text once a selected chip is already present.
 - The move creation/editing workspace must use one visible title: `Draft move` for new or draft moves and `Edit move` for published moves.
+- When the move being edited has a local or generated move video, the move creation/editing workspace must show a compact native video player near the top of the editor so the user can confirm the move they are editing.
 - The move creation/editing workspace should avoid redundant `Details` and `Notes` section headings; field labels should carry those groups.
 - The move creation/editing workspace should keep vertical spacing compact enough that Details, Notes, and Connections are visible without excessive scrolling.
 - Move creation/editing must use a scoped editor visual system whose colors avoid dull flat-grey dominance.

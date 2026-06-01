@@ -999,6 +999,36 @@ select {
   background: linear-gradient(180deg, color-mix(in srgb, var(--editor-soft-surface) 58%, transparent), transparent);
 }
 
+.move-editor-preview-section {
+  justify-items: start;
+  padding-top: 0.58rem;
+  padding-bottom: 0.58rem;
+}
+
+.move-editor-card:not(.move-editor-workspace) .move-editor-preview-section {
+  border-bottom: 1px solid #e1e8ef;
+  background: #f8fafc;
+}
+
+.move-editor-video-preview {
+  width: min(25rem, 100%);
+  min-width: 0;
+}
+
+.move-editor-video-preview video {
+  display: block;
+  width: 100%;
+  max-height: 13rem;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  border: 1px solid color-mix(in srgb, var(--editor-border, #d4dee7) 85%, #ffffff);
+  border-radius: 8px;
+  background: #050b10;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 8px 18px rgba(24, 39, 55, 0.12);
+}
+
 .move-editor-workspace .move-editor-actions {
   gap: 0.45rem;
   justify-content: flex-start;

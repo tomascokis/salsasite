@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { getMoves, getRawMoveReference } from '$lib/server/data';
 import { getSiteMetadata } from '$lib/server/metadata';
+import { findPosterForVideoFile } from '$lib/server/posters';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -12,9 +13,18 @@ export const load: PageServerLoad = async ({ params }) => {
     throw error(404, 'Move not found');
   }
 
+  const previewFile = move.previewVideoFile ?? move.videoFiles[0] ?? null;
+
   return {
     move,
     metadata,
-    moves
+    moves,
+    preview: previewFile
+      ? {
+          filePath: previewFile,
+          posterFile: await findPosterForVideoFile(previewFile),
+          label: move.name ?? move.displayId ?? move.id
+        }
+      : null
   };
 };

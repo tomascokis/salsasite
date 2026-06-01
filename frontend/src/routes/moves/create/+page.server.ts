@@ -2,6 +2,22 @@ import { getMoves, getRawMoveReference } from '$lib/server/data';
 import { getSiteMetadata } from '$lib/server/metadata';
 import { listCreatedMoveIds, listMoveDrafts } from '$lib/server/move-editor';
 import { findPosterForVideoFile } from '$lib/server/posters';
+import { getResolvedMoveVideos } from '$lib/server/video-library';
+
+type MovePreview = {
+  filePath: string;
+  posterFile: string | null;
+  label: string;
+};
+
+async function previewForFile(filePath: string | null | undefined, label: string): Promise<MovePreview | null> {
+  if (!filePath) return null;
+  return {
+    filePath,
+    posterFile: await findPosterForVideoFile(filePath),
+    label
+  };
+}
 
 export async function load() {
   const [moves, drafts, recentMoveIds, rawReferences] = await Promise.all([
@@ -17,11 +33,28 @@ export async function load() {
       posterFile: move.videoFiles[0] ? await findPosterForVideoFile(move.videoFiles[0]) : null
     }))
   );
+  const draftPreviewEntries = await Promise.all(
+    drafts.map(async (draft) => {
+      const videos = await getResolvedMoveVideos(draft.move.id, moves);
+      const video = videos[0] ?? null;
+      const preview = await previewForFile(
+        video?.lowResFilePath ?? video?.filePath ?? draft.move.previewVideoFile ?? draft.move.videoFiles[0],
+        draft.move.name ?? draft.move.displayId ?? draft.move.id
+      );
+      return [
+        [draft.draftId, preview],
+        [draft.move.id, preview]
+      ] as const;
+    })
+  );
 
   return {
     drafts,
     metadata,
     moves: moveCards,
+    draftPreviews: Object.fromEntries(
+      draftPreviewEntries.flat().filter((entry): entry is readonly [string, MovePreview] => Boolean(entry[1]))
+    ),
     recentMoveIds
   };
 }

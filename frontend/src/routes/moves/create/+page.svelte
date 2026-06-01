@@ -7,6 +7,7 @@
   import MoveConnectionDiagramEditor from '$lib/components/MoveConnectionDiagramEditor.svelte';
   import MovePicker from '$lib/components/MovePicker.svelte';
   import MoveTypeControl from '$lib/components/MoveTypeControl.svelte';
+  import MoveVideoPreview from '$lib/components/MoveVideoPreview.svelte';
   import SearchablePicker from '$lib/components/SearchablePicker.svelte';
   import { moveDisplayId, normalizeMoveDisplayId } from '$lib/move-id';
   import { draftMoveIdFromName } from '$lib/move-id-utils.js';
@@ -23,6 +24,12 @@
     posterFile: string | null;
   };
 
+  type MovePreview = {
+    filePath: string;
+    posterFile: string | null;
+    label: string;
+  };
+
   type ReviewMoveEntry =
     | { kind: 'draft'; draft: MoveDraft; move: MoveRecord }
     | { kind: 'published'; move: MoveCardRecord };
@@ -37,6 +44,7 @@
     moves: MoveCardRecord[];
     drafts: MoveDraft[];
     metadata: SiteMetadata;
+    draftPreviews: Record<string, MovePreview>;
     recentMoveIds: string[];
   };
 
@@ -100,6 +108,15 @@
   $: selectedTagIds = splitTagText(tags);
   $: currentDisplayId = normalizeMoveDisplayId(id) ?? '';
   $: currentMoveId = selectedEditor?.kind === 'published' ? selectedEditor.id : normalizeMoveId(id);
+  $: selectedPublishedMove = selectedEditor?.kind === 'published'
+    ? data.moves.find((move) => move.id === selectedEditor.id) ?? null
+    : null;
+  $: selectedPublishedPreview = previewFromMove(selectedPublishedMove);
+  $: selectedDraftPreview =
+    selectedEditor?.kind === 'draft'
+      ? data.draftPreviews[selectedEditor.id] ?? data.draftPreviews[currentMoveId]
+      : null;
+  $: selectedMovePreview = selectedDraftPreview ?? selectedPublishedPreview;
   $: connectionMove = {
     id: currentMoveId || '__DRAFT_MOVE__',
     slug: currentMoveId || 'draft-move',
@@ -186,6 +203,17 @@
       id: entry.id,
       label: entry.name,
       secondary: `${entry.moveCount} moves`
+    };
+  }
+
+  function previewFromMove(move: MoveCardRecord | null): MovePreview | null {
+    if (!move) return null;
+    const filePath = move.previewVideoFile ?? move.videoFiles[0] ?? null;
+    if (!filePath) return null;
+    return {
+      filePath,
+      posterFile: move.posterFile,
+      label: move.name ?? moveDisplayId(move)
     };
   }
 
@@ -807,6 +835,16 @@
               <span class="move-editor-status">{status}</span>
             {/if}
           </header>
+
+          {#if selectedMovePreview}
+            <div class="move-editor-section move-editor-preview-section">
+              <MoveVideoPreview
+                filePath={selectedMovePreview.filePath}
+                posterFile={selectedMovePreview.posterFile}
+                label={`${selectedMovePreview.label} video preview`}
+              />
+            </div>
+          {/if}
 
           <div class="move-editor-section move-editor-identity">
             <label class="move-form-field move-form-name">

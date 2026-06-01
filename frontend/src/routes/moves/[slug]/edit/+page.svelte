@@ -4,6 +4,7 @@
   import MoveConnectionDiagramEditor from '$lib/components/MoveConnectionDiagramEditor.svelte';
   import { moveDisplayId } from '$lib/move-id';
   import MoveTypeControl from '$lib/components/MoveTypeControl.svelte';
+  import MoveVideoPreview from '$lib/components/MoveVideoPreview.svelte';
   import SearchablePicker from '$lib/components/SearchablePicker.svelte';
   import type { MetadataEntry, MoveRecord, SiteMetadata } from '$lib/types';
 
@@ -11,6 +12,7 @@
     move: MoveRecord;
     metadata: SiteMetadata;
     moves: MoveRecord[];
+    preview: { filePath: string; posterFile: string | null; label: string } | null;
   };
 
   let name = data.move.name ?? '';
@@ -244,6 +246,16 @@
         <span>{moveDisplayId(data.move)}</span>
       </div>
     </div>
+
+    {#if data.preview}
+      <div class="move-editor-section move-editor-preview-section">
+        <MoveVideoPreview
+          filePath={data.preview.filePath}
+          posterFile={data.preview.posterFile}
+          label={`${data.preview.label} video preview`}
+        />
+      </div>
+    {/if}
 
     <div class="move-editor-grid">
       <label>
