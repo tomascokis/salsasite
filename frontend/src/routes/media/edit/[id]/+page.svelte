@@ -159,6 +159,7 @@
   let isPlaying = false;
   let isMuted = false;
   let videoVolume = 1;
+  let previousAudibleVideoVolume = 1;
   let isVolumeOpen = false;
   let isLooping = false;
   let isLoopingWithPadding = true;
@@ -1498,6 +1499,9 @@
 
     isMuted = videoElement.muted;
     videoVolume = videoElement.volume;
+    if (videoElement.volume > 0) {
+      previousAudibleVideoVolume = videoElement.volume;
+    }
   }
 
   function handleAudioPreferenceChange() {
@@ -1522,6 +1526,23 @@
     const clampedVolume = Math.max(0, Math.min(1, nextVolume));
     videoElement.volume = clampedVolume;
     videoElement.muted = videoElement.volume === 0;
+    handleAudioPreferenceChange();
+  }
+
+  function toggleMuted() {
+    if (!videoElement) {
+      return;
+    }
+
+    if (videoElement.muted || videoElement.volume === 0) {
+      if (videoElement.volume === 0) {
+        videoElement.volume = previousAudibleVideoVolume || 1;
+      }
+      videoElement.muted = false;
+    } else {
+      videoElement.muted = true;
+    }
+
     handleAudioPreferenceChange();
   }
 
@@ -2654,6 +2675,15 @@
                       <button
                         class="editor-video-volume-toggle"
                         class:muted={isMuted || videoVolume === 0}
+                        type="button"
+                        aria-label={isMuted || videoVolume === 0 ? 'Unmute source video' : 'Mute source video'}
+                        aria-pressed={isMuted || videoVolume === 0}
+                        on:click={toggleMuted}
+                      >
+                        <span>{isMuted || videoVolume === 0 ? 'Unmute' : 'Mute'}</span>
+                      </button>
+                      <button
+                        class="editor-video-volume-panel-toggle"
                         type="button"
                         aria-label="Adjust source video volume"
                         aria-expanded={isVolumeOpen}

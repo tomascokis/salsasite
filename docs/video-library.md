@@ -212,6 +212,7 @@ Playback behavior:
 - The playback move-context strip must reserve stable left, center, and right slots so the current-move box remains centered even when only previous or next is visible.
 - Previous and next move boxes in the playback move-context strip must be visibly shorter than the center current-move box.
 - The editor attempts playback from `0.00s` when a source video loads, using the shared site mute preference. On a fresh site load the player should default to unmuted, while browser autoplay policy can still reject autoplay so manual play remains available.
+- The source-video mute button must directly toggle muted/unmuted audio and persist that choice through the shared site mute preference.
 - Timeline positions fall back to saved clip times while video metadata is still loading.
 
 Default draft timing:

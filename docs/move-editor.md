@@ -72,6 +72,8 @@ Audio should be helpful when editing moves, but should respect the user.
 - If no active mute preference exists, enabling move editing should leave audio on.
 - If an active mute preference exists, enabling move editing must not unmute the video.
 - Setting volume to zero counts as a manual mute.
+- The source-video mute button must directly toggle muted/unmuted audio and persist the same site-wide mute preference as native video controls.
+- Opening a mobile volume slider must not replace the mute button's toggle behavior; use a separate compact control when the slider needs its own opener.
 - On mobile, the volume control should be compact: a button opens a small dropdown/popup volume slider.
 - On desktop, the volume slider may be visible inline inside the compact control group.
 
