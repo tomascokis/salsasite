@@ -192,6 +192,9 @@
   let availableMoves: MoveOption[] = data.moves;
   let playbackMoveClips: ClipWithUi[] = [];
   let editorMoveRows: EditorMoveRow[] = [];
+  let visibleEditorMoveRows: EditorMoveRow[] = [];
+  let visibleEditorSavedTimelineClips: ClipWithUi[] = [];
+  let visibleEditorDraftMoveRows: DraftMoveRow[] = [];
   let currentPlaybackMove: ClipWithUi | null = null;
   let previousPlaybackMove: ClipWithUi | null = null;
   let nextPlaybackMove: ClipWithUi | null = null;
@@ -223,6 +226,19 @@
       ? clipRows.filter((clip) => !activeDraftOriginalClipIds.has(clip.id))
       : clipRows;
   $: editorMoveRows = editorRowsForDisplay(clipRows, draftMoveRows, isDraftingMove);
+  $: visibleEditorMoveRows = visibleEditorRowsForDisplay(
+    editorMoveRows,
+    isDraftingMove,
+    playerCurrentMs,
+    activeDraftMoveRowId,
+    activeClipId
+  );
+  $: visibleEditorSavedTimelineClips = visibleEditorMoveRows
+    .filter((item): item is { kind: 'saved'; key: string; clip: ClipWithUi } => item.kind === 'saved')
+    .map((item) => item.clip);
+  $: visibleEditorDraftMoveRows = visibleEditorMoveRows
+    .filter((item): item is { kind: 'draft'; key: string; row: DraftMoveRow } => item.kind === 'draft')
+    .map((item) => item.row);
   $: playbackMoveClips = sortedPlaybackClips(clipRows);
   $: currentPlaybackMove = playbackMoveClips.find(
     (clip) => playerCurrentMs >= clipActionStartMs(clip) && playerCurrentMs <= clipActionEndMs(clip)
@@ -762,8 +778,64 @@
     return result;
   }
 
+  function visibleEditorRowsForDisplay(
+    rows: EditorMoveRow[],
+    editing: boolean,
+    currentMs: number,
+    activeDraftRowId: string | null,
+    activeSavedClipId: string | null
+  ) {
+    if (!editing || rows.length <= 4) {
+      return rows;
+    }
+
+    const activeRow = rows.find((row) => editorRowIsActive(row, activeDraftRowId, activeSavedClipId)) ?? null;
+    const activeKey = activeRow?.key ?? null;
+    const closestRows = rows
+      .filter((row) => row.key !== activeKey)
+      .map((row) => ({
+        row,
+        distanceMs: editorRowDistanceFromMs(row, currentMs),
+        startMs: editorRowStartMs(row)
+      }))
+      .sort(
+        (left, right) =>
+          left.distanceMs - right.distanceMs || left.startMs - right.startMs || left.row.key.localeCompare(right.row.key)
+      )
+      .slice(0, 3)
+      .map((entry) => entry.row);
+    const visibleKeys = new Set<string>(closestRows.map((row) => row.key));
+    if (activeKey) {
+      visibleKeys.add(activeKey);
+    }
+
+    return rows.filter((row) => visibleKeys.has(row.key));
+  }
+
+  function editorRowIsActive(row: EditorMoveRow, activeDraftRowId: string | null, activeSavedClipId: string | null) {
+    if (row.kind === 'draft') {
+      return row.row.id === activeDraftRowId || Boolean(activeSavedClipId && row.row.originalClipId === activeSavedClipId);
+    }
+
+    return row.clip.id === activeSavedClipId;
+  }
+
   function editorRowStartMs(row: EditorMoveRow) {
     return row.kind === 'draft' ? row.row.startMs : clipActionStartMs(row.clip);
+  }
+
+  function editorRowEndMs(row: EditorMoveRow) {
+    return row.kind === 'draft' ? row.row.endMs : clipActionEndMs(row.clip);
+  }
+
+  function editorRowDistanceFromMs(row: EditorMoveRow, milliseconds: number) {
+    const startMs = editorRowStartMs(row);
+    const endMs = editorRowEndMs(row);
+    if (milliseconds >= startMs && milliseconds <= endMs) {
+      return 0;
+    }
+
+    return Math.min(Math.abs(milliseconds - startMs), Math.abs(milliseconds - endMs));
   }
 
   function lastClipBefore(clips: ClipWithUi[], milliseconds: number) {
@@ -2838,7 +2910,7 @@
                   on:wheel={handleTimelineWheel}
                 >
                   <div class="clip-timeline-track"></div>
-                  {#each visibleSavedTimelineClips as clip (clip.id)}
+                  {#each isDraftingMove ? visibleEditorSavedTimelineClips : visibleSavedTimelineClips as clip (clip.id)}
                     <button
                       type="button"
                       class="clip-timeline-selection saved-move-range"
@@ -2859,7 +2931,7 @@
                       class="clip-timeline-selection clip-range"
                       style={timelineRangeStyle(draftStartMs, draftEndMs, timelineScaleKey)}
                     ></div>
-                    {#each draftMoveRows as row (row.id)}
+                    {#each visibleEditorDraftMoveRows as row (row.id)}
                       <div
                         class="clip-timeline-selection move-range"
                         class:active={row.id === activeDraftMoveRowId}
@@ -2979,7 +3051,7 @@
                       <span></span>
                     </div>
                     <div class="draft-move-row-window" bind:this={draftMoveRowWindowElement}>
-                      {#each editorMoveRows as item (item.key)}
+                      {#each visibleEditorMoveRows as item (item.key)}
                         {#if item.kind === 'draft'}
                           {@const row = item.row}
                           <div

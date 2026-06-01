@@ -114,6 +114,7 @@ The move editor saves clip definitions before rendering.
 - Outside active move editing, saved clips must be positioned against the full source-video timeline, not a stale edit zoom or clip viewport.
 - Entering move-editing mode from a source video must not create a new blank row or preselect an existing saved clip. It should open the editor surface with saved clips visible and wait for the user to explicitly click `Add move` or select a saved clip row/timeline range.
 - While the move editor is open, previously saved clips must also appear as compact rows in the editor form so they can be selected for editing from the same surface as new draft rows.
+- While the move editor is open, the row list and lower timeline ranges should show only the currently clicked move plus the three other move ranges closest to the video playhead, rather than every saved move in the source video.
 - Selecting or editing a clip must not reorder the clip rows; active draft rows should replace their saved row in place.
 - Saved clip rows must use the same Start, Move, Label, Start position, and End position columns as editable rows, even when older clips do not yet have descriptor or position values.
 - The move clip row area in edit mode must use a fixed five-row viewport by default with its own vertical scroll when more rows exist, so adding saved or draft move rows does not keep pushing the player/timeline layout taller.
