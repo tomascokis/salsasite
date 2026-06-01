@@ -209,7 +209,6 @@
   let targetEditorMoveRows: EditorMoveRow[] = [];
   let renderedEditorMoveRows: EditorMoveRow[] = [];
   let visibleEditorMoveRows: EditorMoveRow[] = [];
-  let visibleEditorSavedTimelineClips: ClipWithUi[] = [];
   let visibleEditorDraftMoveRows: DraftMoveRow[] = [];
   let currentPlaybackMove: ClipWithUi | null = null;
   let previousPlaybackMove: ClipWithUi | null = null;
@@ -264,9 +263,6 @@
   );
   $: syncRenderedEditorMoveRows(targetEditorMoveRows, rowWindowImmediateSignature);
   $: visibleEditorMoveRows = renderedEditorMoveRows;
-  $: visibleEditorSavedTimelineClips = visibleEditorMoveRows
-    .filter((item): item is { kind: 'saved'; key: string; clip: ClipWithUi } => item.kind === 'saved')
-    .map((item) => item.clip);
   $: visibleEditorDraftMoveRows = visibleEditorMoveRows
     .filter((item): item is { kind: 'draft'; key: string; row: DraftMoveRow } => item.kind === 'draft')
     .map((item) => item.row);
@@ -3088,7 +3084,7 @@
                   on:wheel={handleTimelineWheel}
                 >
                   <div class="clip-timeline-track"></div>
-                  {#each isDraftingMove ? visibleEditorSavedTimelineClips : visibleSavedTimelineClips as clip (clip.id)}
+                  {#each visibleSavedTimelineClips as clip (clip.id)}
                     <button
                       type="button"
                       class="clip-timeline-selection saved-move-range"

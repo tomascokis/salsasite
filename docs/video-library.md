@@ -198,7 +198,8 @@ Current constraints:
 - Draft and saved move editor rows must keep their columns aligned at desktop and tablet widths; if the viewport cannot fit the full row, the row area should scroll horizontally or use a deliberate narrow layout rather than allowing header labels and row controls to auto-place unpredictably.
 - In active edit mode, the video/timeline column must either reserve enough width for the fixed editor row grid or stack separately from the metadata panel; timeline and row controls must not render underneath the metadata panel.
 - In edit mode, the move clip row list must be a fixed five-row scroll window by default so the source video and timeline stay aligned with a stable editor height even when there are more clips.
-- In edit mode, the move clip row list and lower timeline move ranges should show only the currently clicked move plus the three other move ranges closest to the video playhead, rather than every saved move in the source video.
+- In edit mode, the move clip row list should show only the currently clicked move plus the three other move rows closest to the video playhead, rather than every saved move row in the source video.
+- In edit mode, green saved clip bars in the lower timeline lane must continue to show all eligible saved clips, not only the filtered row-window clips.
 - Clicking a timeline clip whose row is outside the current edit-mode row window must auto-scroll that internal row window to the selected row without scrolling the whole page.
 - Timeline move ranges that are currently open for editing must remain orange, while move ranges that are not currently open for editing must appear green.
 - The saved clip range containing the current playback position must be shown in a lighter green than the other saved clip ranges.
