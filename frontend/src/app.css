@@ -713,16 +713,6 @@ select {
   box-shadow: 0 10px 24px rgba(20, 34, 46, 0.05);
 }
 
-.move-backlink {
-  justify-self: start;
-  padding: 0.32rem 0.62rem;
-  border-radius: 999px;
-  border-color: #d6dee6;
-  background: #fbfcfe;
-  color: #475766;
-  font-size: 0.74rem;
-}
-
 .video-panel,
 .description-card {
   padding: 0.8rem 0.9rem;
@@ -4906,17 +4896,6 @@ select {
   color: var(--ink-soft);
   font-size: 0.74rem;
   font-weight: 700;
-}
-
-.media-properties-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex: 0 0 auto;
-}
-
-.media-properties-actions .move-backlink {
-  white-space: nowrap;
 }
 
 .media-properties-card .property-list {

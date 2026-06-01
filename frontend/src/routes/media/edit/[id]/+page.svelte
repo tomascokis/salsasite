@@ -3139,10 +3139,7 @@
                   <div class="media-properties-title">
                     <h3>{selectedAsset.displayName}</h3>
                   </div>
-                  <div class="media-properties-actions">
-                    <a class="pill move-backlink" href="/media">Back to media</a>
-                    <button class="icon-button property-edit-button" type="button" aria-label="Edit properties" title="Edit properties" on:click={() => (isEditingMetadata = !isEditingMetadata)}>✎</button>
-                  </div>
+                  <button class="icon-button property-edit-button" type="button" aria-label="Edit properties" title="Edit properties" on:click={() => (isEditingMetadata = !isEditingMetadata)}>✎</button>
                 </div>
               </div>
               {#if isEditingMetadata}
