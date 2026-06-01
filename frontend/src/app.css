@@ -3836,6 +3836,8 @@ select {
   --clip-editor-visible-rows: 5;
   --clip-editor-row-height: 2.2rem;
   --clip-editor-row-gap: 0.42rem;
+  --clip-editor-row-min-width: 880px;
+  --clip-editor-grid-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px 62px 62px;
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--clip-editor-row-gap);
@@ -3847,9 +3849,10 @@ select {
 
 .draft-move-header {
   display: grid;
-  grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px 62px 62px;
+  grid-template-columns: var(--clip-editor-grid-columns);
   gap: 0.6rem;
   align-items: end;
+  min-width: var(--clip-editor-row-min-width);
   color: #aec0d2;
   font-size: 0.76rem;
   font-weight: 700;
@@ -3857,9 +3860,10 @@ select {
 
 .draft-move-row {
   display: grid;
-  grid-template-columns: 54px minmax(220px, 1fr) minmax(96px, 0.45fr) minmax(118px, 0.5fr) minmax(118px, 0.5fr) 62px 62px 62px;
+  grid-template-columns: var(--clip-editor-grid-columns);
   gap: 0.6rem;
   align-items: end;
+  min-width: var(--clip-editor-row-min-width);
   min-height: var(--clip-editor-row-height);
   --clip-row-font-size: 0.8rem;
   --clip-row-secondary-font-size: 0.72rem;
@@ -3873,6 +3877,7 @@ select {
   display: grid;
   align-content: start;
   gap: var(--clip-editor-row-gap);
+  min-width: var(--clip-editor-row-min-width);
   height: calc(
     (var(--clip-editor-row-height) * var(--clip-editor-visible-rows)) +
       (var(--clip-editor-row-gap) * (var(--clip-editor-visible-rows) - 1))
@@ -6116,26 +6121,13 @@ select {
   }
 
   .editor-draft-form {
-    --clip-editor-row-height: 8.4rem;
-    --clip-editor-row-gap: 0.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-gutter: stable;
   }
 
-  .draft-move-header,
-  .draft-move-row {
-    grid-template-columns: 44px minmax(0, 1fr) 58px;
-    gap: 0.35rem;
-  }
-
-  .draft-move-header span:nth-child(3),
-  .draft-move-header span:nth-child(4),
-  .draft-move-header span:nth-child(5),
-  .draft-descriptor-field,
-  .draft-position-field {
-    grid-column: 2 / -1;
-  }
-
-  .draft-move-row.saved-editor-row {
-    grid-template-columns: 44px minmax(0, 1fr) 58px;
+  .draft-move-row-window {
+    overflow-x: hidden;
   }
 
   .move-picker-input-inline input {

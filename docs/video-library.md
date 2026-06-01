@@ -195,6 +195,7 @@ Current constraints:
 - If the move starts near `0.00s`, the left clip marker clamps to `0.00s`.
 - If the move ends near the video end, the right clip marker clamps to the video duration.
 - Draft move editor rows must keep the Start time, Moves picker content, and Edit control in separate aligned columns; saved clip rows and selected move chips must not inherit generic button chrome that creates nested boxes or visual overlap.
+- Draft and saved move editor rows must keep their columns aligned at desktop and tablet widths; if the viewport cannot fit the full row, the row area should scroll horizontally or use a deliberate narrow layout rather than allowing header labels and row controls to auto-place unpredictably.
 - In edit mode, the move clip row list must be a fixed five-row scroll window by default so the source video and timeline stay aligned with a stable editor height even when there are more clips.
 - In edit mode, the move clip row list and lower timeline move ranges should show only the currently clicked move plus the three other move ranges closest to the video playhead, rather than every saved move in the source video.
 - Clicking a timeline clip whose row is outside the current edit-mode row window must auto-scroll that internal row window to the selected row without scrolling the whole page.

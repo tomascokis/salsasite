@@ -119,6 +119,7 @@ The move editor saves clip definitions before rendering.
 - Saved clip rows must use the same Start, Move, Label, Start position, and End position columns as editable rows, even when older clips do not yet have descriptor or position values.
 - The move clip row area in edit mode must use a fixed five-row viewport by default with its own vertical scroll when more rows exist, so adding saved or draft move rows does not keep pushing the player/timeline layout taller.
 - Selecting a saved clip or draft move that is outside the current five-row viewport must automatically scroll the row viewport just enough to reveal the selected row.
+- Draft and saved move rows must keep their columns aligned at desktop and tablet widths; if the viewport cannot fit the full row, the row area should scroll horizontally or use a deliberate narrow layout rather than allowing header labels and row controls to auto-place unpredictably.
 - New move clips must default to key/prime while the target move has fewer than four clips; once the target move has four clips, additional new clips default to non-key/non-prime.
 - Saved clip rows and the active clip toolbar must provide a star toggle for marking that clip as a key video for its move page.
 - Saved clip rows must provide a visible delete action for removing a move clip.
