@@ -85,8 +85,8 @@
   const DEFAULT_CLIP_TAIL_PADDING_MS = Math.round(DEFAULT_MOVE_DURATION_MS / 2);
   const MOVE_BOUNDARY_SNAP_TOLERANCE_PX = 8;
   const PLAYBACK_CONTEXT_WINDOW_MS = 2500;
-  const MEDIA_MOTION_SHORT_MS = 140;
-  const MEDIA_MOTION_MEDIUM_MS = 220;
+  const MEDIA_MOTION_SHORT_MS = 260;
+  const MEDIA_MOTION_MEDIUM_MS = 520;
   const COUNT_PRESET_SEQUENCES: Record<CountTimingPreset, string[]> = {
     'on2-default': ['6', '7', '1', '2', '3', '5'],
     'on2-all': ['6', '7', '1', '2', '3', '4', '5', '6', '7', '8'],

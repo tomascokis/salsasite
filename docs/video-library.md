@@ -204,7 +204,7 @@ Current constraints:
 - Timeline playhead handles must render as complete circles without clipping in both compact playback mode and expanded draft-editing mode.
 - Timeline playhead handles must exactly fill the vertical gap between the playback track and lower clip lane, using the measured lane geometry.
 - Saved and secondary clip ranges must render on a lower lane below the playhead handle so they do not overlap the playback track marker, including in expanded edit mode.
-- Timeline and edit-row animations must be smooth and restrained, direct marker/playhead dragging must remain immediate without trailing transitions, and reduced-motion preferences must disable nonessential motion.
+- Timeline and edit-row animations must be smooth, restrained, and comfortably paced rather than snappy; direct marker/playhead dragging must remain immediate without trailing transitions, and reduced-motion preferences must disable nonessential motion.
 - When dragging a move start or move end marker, crossing another move boundary or landing within a small screen-precision tolerance of it must snap to that boundary once for that drag. After that first snap, moving away during the same drag must not keep snapping.
 - One or more unsaved draft move rows must not be lost by clicking away, switching clips or sources, exiting the draft editor, or browser/page navigation without an explicit discard confirmation.
 - Background render completion must update render status in place without refreshing or replacing editor state, exiting draft-editing mode, or discarding one or more active draft move rows.

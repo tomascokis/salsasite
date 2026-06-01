@@ -3242,8 +3242,8 @@ select {
 }
 
 .timeline-card {
-  --media-editor-motion-short: 140ms;
-  --media-editor-motion-medium: 220ms;
+  --media-editor-motion-short: 260ms;
+  --media-editor-motion-medium: 520ms;
   --media-editor-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --timeline-transition: var(--media-editor-motion-medium) var(--media-editor-motion-ease);
   --timeline-height: 54px;
