@@ -63,6 +63,7 @@ The editor should keep playback predictable while the user marks precise ranges.
 - Move-editor controls must not duplicate a large center play overlay and a bottom-right play button.
 - Playback controls should be consolidated into one compact control group near the timeline metadata, next to the left of the `Total` element.
 - The compact playback control group should look polished and intentional, with clear icon buttons, readable focus/hover states, and a refined inline volume slider.
+- Source-video playback controls and move-context boxes should stay vertically compact so they do not consume unnecessary timeline height.
 - The play/pause icon should be small.
 - The old bottom-right play button should not be shown.
 
