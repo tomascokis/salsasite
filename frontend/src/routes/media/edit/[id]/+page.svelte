@@ -2,7 +2,7 @@
   import { browser } from '$app/environment';
   import { beforeNavigate } from '$app/navigation';
   import { flip } from 'svelte/animate';
-  import { cubicOut } from 'svelte/easing';
+  import { cubicInOut } from 'svelte/easing';
   import { onDestroy, onMount, tick } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import ContentBadge from '$lib/components/ContentBadge.svelte';
@@ -85,8 +85,9 @@
   const DEFAULT_CLIP_TAIL_PADDING_MS = Math.round(DEFAULT_MOVE_DURATION_MS / 2);
   const MOVE_BOUNDARY_SNAP_TOLERANCE_PX = 8;
   const PLAYBACK_CONTEXT_WINDOW_MS = 2500;
-  const MEDIA_MOTION_SHORT_MS = 260;
-  const MEDIA_MOTION_MEDIUM_MS = 520;
+  const MEDIA_MOTION_SHORT_MS = 320;
+  const MEDIA_MOTION_MEDIUM_MS = 700;
+  const MEDIA_MOTION_REVEAL_DELAY_MS = 120;
   const COUNT_PRESET_SEQUENCES: Record<CountTimingPreset, string[]> = {
     'on2-default': ['6', '7', '1', '2', '3', '5'],
     'on2-all': ['6', '7', '1', '2', '3', '4', '5', '6', '7', '8'],
@@ -187,6 +188,8 @@
   let timelineWidthPx = 0;
   let timelineResizeObserver: ResizeObserver | null = null;
   let playbackAnimationFrame: number | null = null;
+  let timelinePromotionFrame: number | null = null;
+  let timelinePromotionTimer: ReturnType<typeof setTimeout> | null = null;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
   let syncingAssetKey: string | null = null;
   let syncedMediaPath: string | null = null;
@@ -207,6 +210,9 @@
   let visibleNextPlaybackMove: ClipWithUi | null = null;
   let showPlaybackMoveContext = false;
   let prefersReducedMotion = false;
+  let timelinePromotingDraftRowId: string | null = null;
+  let timelinePromotionAtSavedLane = false;
+  let timelineEditorChromeVisible = true;
   let dancerOptions = data.dancerOptions.map((dancer) => ({ id: dancer, label: dancer }));
   let positionPickerOptions = data.positionOptions.map((position) => ({ id: position.id, label: position.label }));
 
@@ -268,6 +274,68 @@
 
   function motionDuration(milliseconds: number) {
     return prefersReducedMotion ? 0 : milliseconds;
+  }
+
+  function clearTimelinePromotionTimers() {
+    if (timelinePromotionFrame !== null && browser) {
+      cancelAnimationFrame(timelinePromotionFrame);
+    }
+    timelinePromotionFrame = null;
+
+    if (timelinePromotionTimer !== null) {
+      clearTimeout(timelinePromotionTimer);
+    }
+    timelinePromotionTimer = null;
+  }
+
+  function resetTimelinePromotion() {
+    clearTimelinePromotionTimers();
+    timelinePromotingDraftRowId = null;
+    timelinePromotionAtSavedLane = false;
+    timelineEditorChromeVisible = true;
+  }
+
+  async function beginSavedClipTimelinePromotion(rowId: string) {
+    clearTimelinePromotionTimers();
+    timelinePromotingDraftRowId = rowId;
+    timelinePromotionAtSavedLane = true;
+    timelineEditorChromeVisible = false;
+
+    if (!browser || prefersReducedMotion) {
+      timelinePromotionAtSavedLane = false;
+      timelineEditorChromeVisible = true;
+      timelinePromotingDraftRowId = null;
+      return;
+    }
+
+    await tick();
+    if (timelinePromotingDraftRowId !== rowId) {
+      return;
+    }
+
+    timelinePromotionFrame = requestAnimationFrame(() => {
+      if (timelinePromotingDraftRowId !== rowId) {
+        timelinePromotionFrame = null;
+        return;
+      }
+
+      timelinePromotionFrame = null;
+      timelinePromotionAtSavedLane = false;
+      timelinePromotionTimer = setTimeout(() => {
+        if (timelinePromotingDraftRowId !== rowId) {
+          timelinePromotionTimer = null;
+          return;
+        }
+
+        timelinePromotionTimer = null;
+        timelineEditorChromeVisible = true;
+        timelinePromotingDraftRowId = null;
+      }, motionDuration(MEDIA_MOTION_MEDIUM_MS + MEDIA_MOTION_REVEAL_DELAY_MS));
+    });
+  }
+
+  function moveRangeIntroDuration(row: DraftMoveRow) {
+    return row.id === timelinePromotingDraftRowId ? 0 : motionDuration(MEDIA_MOTION_SHORT_MS);
   }
   $: clipChangeStates = new Map(
     selectedAsset
@@ -545,22 +613,6 @@
     draftEndMs = clampClipEndMs(draftActionEndMs + Math.max(clipEndContextMs, CLIP_MOVE_BUFFER_MS));
     seekPreview(draftActionStartMs);
     void scrollMoveEditorRowIntoView({ draftRowId: row.id });
-  }
-
-  function editorMoveRowActive(item: EditorMoveRow) {
-    return item.kind === 'draft' && item.row.id === activeDraftMoveRowId;
-  }
-
-  function editorMoveRowBound(item: EditorMoveRow) {
-    return item.kind === 'draft' ? Boolean(item.row.timingGroupId) : Boolean(item.clip.timingGroupId);
-  }
-
-  function editorMoveRowDraftId(item: EditorMoveRow) {
-    return item.kind === 'draft' ? item.row.id : undefined;
-  }
-
-  function editorMoveRowClipId(item: EditorMoveRow) {
-    return item.kind === 'draft' ? item.row.originalClipId ?? undefined : item.clip.id;
   }
 
   async function scrollMoveEditorRowIntoView(target: { draftRowId?: string; clipId?: string }) {
@@ -1009,6 +1061,7 @@
       draftEndMs
     ]);
     seekPreview(actionStart);
+    void beginSavedClipTimelinePromotion(row.id);
     void scrollMoveEditorRowIntoView({ draftRowId: row.id });
   }
 
@@ -2147,6 +2200,7 @@
       actionStart + DEFAULT_MOVE_DURATION_MS
     );
     enableMoveEditorAudio();
+    resetTimelinePromotion();
     activeClipId = createDraftClipId();
     isDraftingMove = true;
     draftActionStartMs = actionStart;
@@ -2191,6 +2245,7 @@
       return;
     }
 
+    resetTimelinePromotion();
     activeClipId = null;
     isDraftingMove = true;
     draftMoveRows = [];
@@ -2211,6 +2266,7 @@
       return;
     }
 
+    resetTimelinePromotion();
     activeClipId = null;
     isDraftingMove = false;
     isLooping = false;
@@ -2399,6 +2455,7 @@
     persistedClipRows = payload.clips.map((clip: DerivedClip) => ({ ...clip }));
     clipRows = payload.clips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
     const clipIds = clipRows.map((clip) => clip.id).filter(Boolean);
+    resetTimelinePromotion();
     activeClipId = null;
     draftMoveRows = [];
     activeDraftMoveRowId = null;
@@ -2607,6 +2664,7 @@
 
   onDestroy(() => {
     timelineResizeObserver?.disconnect();
+    clearTimelinePromotionTimers();
     stopPolling();
     stopPlaybackAnimation();
   });
@@ -2911,7 +2969,7 @@
                       {#if visiblePreviousPlaybackMove}
                         <div
                           class="timeline-context-box timeline-context-side timeline-context-previous"
-                          in:fly={{ x: -6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                          in:fly={{ x: -6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
                           out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
                         >
                           <strong>{playbackMoveName(visiblePreviousPlaybackMove)}</strong>
@@ -2932,7 +2990,7 @@
                       {#if visibleNextPlaybackMove}
                         <div
                           class="timeline-context-box timeline-context-side timeline-context-next"
-                          in:fly={{ x: 6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                          in:fly={{ x: 6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
                           out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
                         >
                           <strong>{playbackMoveName(visibleNextPlaybackMove)}</strong>
@@ -2985,17 +3043,21 @@
                     ></button>
                   {/each}
                   {#if isDraftingMove && activeDraftMoveRow}
-                    <div
-                      class="clip-timeline-selection clip-range"
-                      style={timelineRangeStyle(draftStartMs, draftEndMs, timelineScaleKey)}
-                    ></div>
+                    {#if timelineEditorChromeVisible}
+                      <div
+                        class="clip-timeline-selection clip-range"
+                        style={timelineRangeStyle(draftStartMs, draftEndMs, timelineScaleKey)}
+                        in:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                      ></div>
+                    {/if}
                     {#each visibleEditorDraftMoveRows as row (row.id)}
                       <div
                         class="clip-timeline-selection move-range"
                         class:active={row.id === activeDraftMoveRowId}
                         class:secondary={row.id !== activeDraftMoveRowId}
+                        class:promoting-from-saved={row.id === timelinePromotingDraftRowId && timelinePromotionAtSavedLane}
                         style={draftMoveRangeStyle(row, timelineScaleKey)}
-                        in:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                        in:fade={{ duration: moveRangeIntroDuration(row) }}
                         out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
                         on:dblclick={(event) => editDraftMoveRowFromTimeline(event, row.id)}
                       ></div>
@@ -3011,59 +3073,63 @@
                     title="Playback position"
                     on:pointerdown={(event) => (event.stopPropagation(), startPlayheadDrag(event))}
                   ></div>
-                  {#if isDraftingMove && activeDraftMoveRow}
-                  <button
-                    type="button"
-                    class="clip-timeline-marker clip-marker"
-                    style={markerLeftStyle(draftStartMs, timelineScaleKey)}
-                    aria-label="Drag clip start"
-                    title="Clip starts"
-                    on:pointerdown={(event) => (event.stopPropagation(), startTimelineDrag(event, 'clipStart'))}
-                  >
-                    <span class="clip-timeline-marker-head" aria-hidden="true">
-                      <span class="clip-timeline-marker-fill"></span>
-                    </span>
-                    <span class="clip-timeline-marker-stem" aria-hidden="true"></span>
-                  </button>
-                  <button
-                    type="button"
-                    class="clip-timeline-marker clip-marker"
-                    style={markerLeftStyle(draftEndMs, timelineScaleKey)}
-                    aria-label="Drag clip end"
-                    title="Clip ends"
-                    on:pointerdown={(event) => (event.stopPropagation(), startTimelineDrag(event, 'clipEnd'))}
-                  >
-                    <span class="clip-timeline-marker-head" aria-hidden="true">
-                      <span class="clip-timeline-marker-fill"></span>
-                    </span>
-                    <span class="clip-timeline-marker-stem" aria-hidden="true"></span>
-                  </button>
-                  <button
-                    type="button"
-                    class="clip-timeline-marker move-marker"
-                    style={markerLeftStyle(draftActionStartMs, timelineScaleKey)}
-                    aria-label="Drag move start"
-                    title="Move starts"
-                    on:pointerdown={(event) => (event.stopPropagation(), startTimelineDrag(event, 'moveStart'))}
-                  >
-                    <span class="clip-timeline-marker-head" aria-hidden="true">
-                      <span class="clip-timeline-marker-fill"></span>
-                    </span>
-                    <span class="clip-timeline-marker-stem" aria-hidden="true"></span>
-                  </button>
-                  <button
-                    type="button"
-                    class="clip-timeline-marker move-marker"
-                    style={markerLeftStyle(draftActionEndMs, timelineScaleKey)}
-                    aria-label="Drag move end"
-                    title="Move ends"
-                    on:pointerdown={(event) => (event.stopPropagation(), startTimelineDrag(event, 'moveEnd'))}
-                  >
-                    <span class="clip-timeline-marker-head" aria-hidden="true">
-                      <span class="clip-timeline-marker-fill"></span>
-                    </span>
-                    <span class="clip-timeline-marker-stem" aria-hidden="true"></span>
-                  </button>
+                  {#if isDraftingMove && activeDraftMoveRow && timelineEditorChromeVisible}
+                    <button
+                      type="button"
+                      class="clip-timeline-marker clip-marker"
+                      style={markerLeftStyle(draftStartMs, timelineScaleKey)}
+                      aria-label="Drag clip start"
+                      title="Clip starts"
+                      in:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                      on:pointerdown={(event) => (event.stopPropagation(), startTimelineDrag(event, 'clipStart'))}
+                    >
+                      <span class="clip-timeline-marker-head" aria-hidden="true">
+                        <span class="clip-timeline-marker-fill"></span>
+                      </span>
+                      <span class="clip-timeline-marker-stem" aria-hidden="true"></span>
+                    </button>
+                    <button
+                      type="button"
+                      class="clip-timeline-marker clip-marker"
+                      style={markerLeftStyle(draftEndMs, timelineScaleKey)}
+                      aria-label="Drag clip end"
+                      title="Clip ends"
+                      in:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                      on:pointerdown={(event) => (event.stopPropagation(), startTimelineDrag(event, 'clipEnd'))}
+                    >
+                      <span class="clip-timeline-marker-head" aria-hidden="true">
+                        <span class="clip-timeline-marker-fill"></span>
+                      </span>
+                      <span class="clip-timeline-marker-stem" aria-hidden="true"></span>
+                    </button>
+                    <button
+                      type="button"
+                      class="clip-timeline-marker move-marker"
+                      style={markerLeftStyle(draftActionStartMs, timelineScaleKey)}
+                      aria-label="Drag move start"
+                      title="Move starts"
+                      in:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                      on:pointerdown={(event) => (event.stopPropagation(), startTimelineDrag(event, 'moveStart'))}
+                    >
+                      <span class="clip-timeline-marker-head" aria-hidden="true">
+                        <span class="clip-timeline-marker-fill"></span>
+                      </span>
+                      <span class="clip-timeline-marker-stem" aria-hidden="true"></span>
+                    </button>
+                    <button
+                      type="button"
+                      class="clip-timeline-marker move-marker"
+                      style={markerLeftStyle(draftActionEndMs, timelineScaleKey)}
+                      aria-label="Drag move end"
+                      title="Move ends"
+                      in:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                      on:pointerdown={(event) => (event.stopPropagation(), startTimelineDrag(event, 'moveEnd'))}
+                    >
+                      <span class="clip-timeline-marker-head" aria-hidden="true">
+                        <span class="clip-timeline-marker-fill"></span>
+                      </span>
+                      <span class="clip-timeline-marker-stem" aria-hidden="true"></span>
+                    </button>
                   {/if}
                 </div>
                 <div class="timeline-move-actions">
@@ -3114,13 +3180,13 @@
                       {#each visibleEditorMoveRows as item (item.key)}
                         <div
                           class="draft-move-row"
-                          class:active={editorMoveRowActive(item)}
-                          class:bound={editorMoveRowBound(item)}
+                          class:active={item.kind === 'draft' && item.row.id === activeDraftMoveRowId}
+                          class:bound={item.kind === 'draft' ? Boolean(item.row.timingGroupId) : Boolean(item.clip.timingGroupId)}
                           class:saved-editor-row={item.kind === 'saved'}
-                          data-draft-row-id={editorMoveRowDraftId(item)}
-                          data-clip-row-id={editorMoveRowClipId(item)}
-                          animate:flip={{ duration: motionDuration(MEDIA_MOTION_MEDIUM_MS), easing: cubicOut }}
-                          in:fly={{ y: 4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                          data-draft-row-id={item.kind === 'draft' ? item.row.id : undefined}
+                          data-clip-row-id={item.kind === 'draft' ? item.row.originalClipId ?? undefined : item.clip.id}
+                          animate:flip={{ duration: motionDuration(MEDIA_MOTION_MEDIUM_MS), easing: cubicInOut }}
+                          in:fly={{ y: 4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
                           out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
                         >
                           {#if item.kind === 'draft'}

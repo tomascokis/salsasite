@@ -133,7 +133,8 @@ The move editor saves clip definitions before rendering.
 - When timeline zoom is active, the editor must clearly show that zoom is active.
 - When timeline zoom is active, the editor must provide a reset zoom control.
 - Timeline tracks, saved ranges, playhead lines, knobs, and drag markers must render crisply at rest; the editor must not rely on transform downscaling or fractional sizing that leaves the timeline persistently blurry.
-- Timeline and edit-row animations must be smooth, restrained, and comfortably paced rather than snappy; direct marker/playhead dragging must remain immediate without trailing transitions, and reduced-motion preferences must disable nonessential motion.
+- Timeline and edit-row animations must be smooth, restrained, and visibly paced rather than snappy; direct marker/playhead dragging must remain immediate without trailing transitions, and reduced-motion preferences must disable nonessential motion.
+- When a saved green move range is opened for editing, it should lift from the lower lane into the active timeline lane while turning orange; the clip padding range and trim/move markers must fade in only after that lift completes.
 
 ## Crop Tool
 
