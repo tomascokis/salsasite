@@ -69,7 +69,7 @@ Shared controls on move pages and move editing surfaces must follow `docs/shared
 - Fields in the move identity row must align from the top so compact controls do not sit lower than neighboring fields.
 - The Details field order must place relation type before topic and family.
 - The persisted source field must be labelled `Authorship` in move creation/editing UI.
-- Relation type must stay as explicit segmented controls in the regular layout, then switch to a compact dropdown styled like a badge with an arrow only in explicitly compact layouts.
+- Relation type must stay as explicit segmented controls in the regular layout, then switch to a compact dropdown styled like a badge with an arrow in explicitly compact layouts or whenever the segmented options are measured not to fit without clipping or overlap.
 - The compact relation type dropdown must be operable when clicked and must update the selected relation type.
 - The compact relation type dropdown and its opened menu must use the same visual style as the segmented relation type buttons.
 - Relation type options must be ordered `Base`, `Addition`, `Variation`; `Base` is the default and persists as the empty type value.
