@@ -267,6 +267,7 @@
   let visiblePreviousPlaybackMove: ClipWithUi | null = null;
   let visibleNextPlaybackMove: ClipWithUi | null = null;
   let timelineActionButtons: TimelineActionButton[] = [];
+  let timelineZoomButtons: TimelineActionButton[] = [];
   let showPlaybackMoveContext = false;
   let prefersReducedMotion = false;
   let timelinePromotingDraftRowId: string | null = null;
@@ -361,8 +362,6 @@
     isDraftingMove: boolean;
     hasActiveDraftMoveRow: boolean;
     hasSaveableDraftChanges: boolean;
-    timelineZoomControlsVisible: boolean;
-    isZoomLooping: boolean;
     hasUnsavedClipRowChanges: boolean;
   }): TimelineActionButton[] {
     const actions: TimelineActionButton[] = [];
@@ -384,29 +383,6 @@
       actions.push({ key: 'edit-moves', label: 'Edit moves', onClick: () => void addMoreMoves() });
     }
 
-    if (state.timelineZoomControlsVisible) {
-      actions.push(
-        {
-          key: 'reset-zoom',
-          label: 'Reset zoom',
-          className: 'zoom-control',
-          ariaLabel: 'Reset timeline zoom',
-          title: 'Reset timeline zoom',
-          onClick: resetTimelineZoom
-        },
-        {
-          key: 'loop-zoom',
-          label: 'Loop zoom',
-          className: 'zoom-control',
-          active: state.isZoomLooping,
-          ariaLabel: 'Loop zoom window',
-          ariaPressed: state.isZoomLooping,
-          title: 'Loop zoom window',
-          onClick: toggleZoomLoop
-        }
-      );
-    }
-
     if (state.hasUnsavedClipRowChanges) {
       actions.push({
         key: 'save-clip-changes',
@@ -417,6 +393,33 @@
     }
 
     return actions;
+  }
+
+  function buildTimelineZoomButtons(visible: boolean, zoomLooping: boolean): TimelineActionButton[] {
+    if (!visible) {
+      return [];
+    }
+
+    return [
+      {
+        key: 'reset-zoom',
+        label: 'Reset zoom',
+        className: 'zoom-control',
+        ariaLabel: 'Reset timeline zoom',
+        title: 'Reset timeline zoom',
+        onClick: resetTimelineZoom
+      },
+      {
+        key: 'loop-zoom',
+        label: 'Loop zoom',
+        className: 'zoom-control',
+        active: zoomLooping,
+        ariaLabel: 'Loop zoom window',
+        ariaPressed: zoomLooping,
+        title: 'Loop zoom window',
+        onClick: toggleZoomLoop
+      }
+    ];
   }
 
   function clearTimelinePromotionTimers() {
@@ -579,10 +582,9 @@
     isDraftingMove,
     hasActiveDraftMoveRow: Boolean(activeDraftMoveRow),
     hasSaveableDraftChanges,
-    timelineZoomControlsVisible,
-    isZoomLooping,
     hasUnsavedClipRowChanges
   });
+  $: timelineZoomButtons = buildTimelineZoomButtons(timelineZoomControlsVisible, isZoomLooping);
 
   beforeNavigate((navigation) => {
     if (navigation.willUnload || !hasDraftChanges) {
@@ -3470,14 +3472,36 @@
                   </span>
                   <span><strong>Total</strong> {formatRoundedSeconds(playerDurationMs)}s</span>
                   {#if timelineIsZoomed}
-                    <span
-                      class:timeline-zoom-active={timelineIsZoomed}
-                      in:fly={{ y: -4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
-                      out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
-                    >
-                      <strong>Zoomed</strong>
-                      {formatRoundedSeconds(timelineViewportDurationMs())}s
-                      ({formatRoundedSeconds(timelineViewportStartMs)}s - {formatRoundedSeconds(timelineViewportEndMs)}s)
+                    <span class="timeline-zoom-status">
+                      <span
+                        class:timeline-zoom-active={timelineIsZoomed}
+                        in:fly={{ y: -4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                        out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                      >
+                        <strong>Zoomed</strong>
+                        {formatRoundedSeconds(timelineViewportDurationMs())}s
+                        ({formatRoundedSeconds(timelineViewportStartMs)}s - {formatRoundedSeconds(timelineViewportEndMs)}s)
+                      </span>
+                      {#if timelineZoomControlsVisible}
+                        <span class="timeline-zoom-actions">
+                          {#each timelineZoomButtons as action (action.key)}
+                            <button
+                              class={`timeline-move-action${action.className ? ` ${action.className}` : ''}`}
+                              class:active={action.active}
+                              type="button"
+                              aria-label={action.ariaLabel}
+                              aria-pressed={action.ariaPressed}
+                              title={action.title}
+                              animate:flip={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                              in:fly={{ y: -4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                              out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                              on:click={action.onClick}
+                            >
+                              {action.label}
+                            </button>
+                          {/each}
+                        </span>
+                      {/if}
                     </span>
                   {/if}
                   {#if isDraftingMove}

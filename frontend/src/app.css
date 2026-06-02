@@ -3436,6 +3436,25 @@ select {
   color: #ffd166;
 }
 
+.timeline-zoom-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.timeline-zoom-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.timeline-zoom-actions .timeline-move-action.zoom-control {
+  padding: 0.22rem 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.1;
+}
+
 .timeline-now-playing {
   display: grid;
   grid-template-columns: minmax(6.5rem, 8.5rem) minmax(9rem, 13rem) minmax(6.5rem, 8.5rem);
@@ -3923,6 +3942,19 @@ select {
 @media (max-width: 520px) {
   .timeline-move-actions {
     gap: 0.28rem;
+  }
+
+  .timeline-zoom-status {
+    gap: 0.28rem;
+  }
+
+  .timeline-zoom-actions {
+    gap: 0.24rem;
+  }
+
+  .timeline-zoom-actions .timeline-move-action.zoom-control {
+    padding: 0.2rem 0.42rem;
+    font-size: 0.68rem;
   }
 
   .timeline-move-action {
