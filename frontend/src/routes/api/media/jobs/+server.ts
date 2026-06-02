@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { getMoves } from '$lib/server/data';
 import {
+  exportMediaCatalogSnapshot,
   listMediaManagerJobs,
   queueSourceHashBackfill,
   runMediaCatalogRepairs,
@@ -37,6 +38,17 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({
         ok: true,
         repair: await runMediaCatalogRepairs(await getMoves())
+      });
+    }
+
+    if (payload?.action === 'catalog.export.json') {
+      const exported = await exportMediaCatalogSnapshot();
+      return json({
+        ok: true,
+        export: {
+          filePath: exported.filePath,
+          counts: exported.counts
+        }
       });
     }
 

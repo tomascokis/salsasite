@@ -68,6 +68,7 @@ test('media catalog repository bootstraps JSON into SQLite and treats SQLite as 
   const {
     defaultMediaCatalog,
     ensureMediaCatalogRoots,
+    exportMediaCatalogSnapshot,
     mutateMediaCatalog,
     readMediaCatalog,
     sortMediaCatalog,
@@ -150,4 +151,17 @@ test('media catalog repository bootstraps JSON into SQLite and treats SQLite as 
   const unsorted = await readMediaCatalog();
   sortMediaCatalog(unsorted);
   assert.deepEqual(unsorted.videoAssets.map((asset) => asset.id), ['source-3', 'source-4', 'source-5', 'source-6']);
+
+  const exported = await exportMediaCatalogSnapshot(new Date('2026-06-03T04:05:06.789Z'));
+  assert.equal(exported.filePath, 'media-catalog-exports/video-library-2026-06-03T04-05-06-789Z.json');
+  assert.deepEqual(exported.counts, {
+    videoAssets: 4,
+    moveVideoLinks: 0,
+    derivedClips: 0
+  });
+  const exportedCatalog = JSON.parse(await fs.readFile(exported.absolutePath, 'utf-8'));
+  assert.deepEqual(
+    exportedCatalog.videoAssets.map((asset) => asset.id),
+    ['source-3', 'source-4', 'source-5', 'source-6']
+  );
 });

@@ -49,6 +49,15 @@
     historyActionId?: string;
   };
 
+  type MediaCatalogExportResult = {
+    filePath: string;
+    counts: {
+      videoAssets: number;
+      moveVideoLinks: number;
+      derivedClips: number;
+    };
+  };
+
   export let data: {
     jobs: MediaJob[];
   };
@@ -59,7 +68,9 @@
   let backfillBusy = false;
   let repairScanBusy = false;
   let repairRunBusy = false;
+  let exportBusy = false;
   let repairResult: MediaRepairResult | null = null;
+  let exportResult: MediaCatalogExportResult | null = null;
   let expandedJobIds = new Set<string>();
 
   function formatDate(value: string) {
@@ -200,6 +211,20 @@
     }
   }
 
+  async function exportCatalogSnapshot() {
+    exportBusy = true;
+    statusMessage = '';
+    try {
+      const payload = await postMediaJobAction('catalog.export.json');
+      exportResult = payload.export;
+      statusMessage = `Exported media catalog snapshot to ${exportResult?.filePath ?? 'JSON'}.`;
+    } catch (error) {
+      statusMessage = error instanceof Error ? error.message : 'Could not export media catalog snapshot.';
+    } finally {
+      exportBusy = false;
+    }
+  }
+
   async function retryJob(id: string) {
     busyJobId = id;
     statusMessage = '';
@@ -277,6 +302,29 @@
         {#if repairResult.historyActionId}
           <span>History action: {repairResult.historyActionId}</span>
         {/if}
+      </div>
+    {/if}
+  </section>
+
+  <section class="settings-panel">
+    <div class="settings-header">
+      <h3>Catalog export</h3>
+      <span class="settings-header-actions">
+        <button type="button" disabled={exportBusy} on:click={exportCatalogSnapshot}>
+          {exportBusy ? 'Exporting' : 'Export JSON snapshot'}
+        </button>
+      </span>
+    </div>
+    <p class="muted settings-status">
+      Export creates a point-in-time JSON backup from SQLite. It is not live catalog state.
+    </p>
+    {#if exportResult}
+      <div class="repair-summary">
+        <strong>Snapshot exported</strong>
+        <span>{exportResult.filePath}</span>
+        <span>Video assets: {exportResult.counts.videoAssets}</span>
+        <span>Move links: {exportResult.counts.moveVideoLinks}</span>
+        <span>Derived clips: {exportResult.counts.derivedClips}</span>
       </div>
     {/if}
   </section>

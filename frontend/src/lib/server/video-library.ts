@@ -10,6 +10,10 @@ export {
 } from './media-repair-service';
 
 export {
+  exportMediaCatalogSnapshot
+} from './media-catalog';
+
+export {
   createSourceAsset,
   deleteSourceAsset,
   detectSourceAssetFields,

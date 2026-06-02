@@ -33,6 +33,8 @@ The media manager page at `/settings/media` must expose recent jobs with their f
 
 Media catalog repair is an explicit operator workflow on `/settings/media`. Repair scans must be dry-run only and must not mutate the SQLite catalog, move files, create media jobs, or record history. Applied repair runs may prune missing generated variant paths, add legacy move assets/links, clean stale generated assets, and relink orphaned generated draft IDs; applied runs must record media-manager file actions where files move or rename and must record a non-undoable `media.catalog.repair` history row.
 
+Media catalog JSON export is an explicit operator workflow on `/settings/media`. Export writes a point-in-time snapshot under `DATA_DIR/media-catalog-exports/` for backup, debugging, or comparison. Exported JSON is not watched, not re-imported automatically, not a second source of truth, and not an undo workflow.
+
 Production catalog mutations must go through `mutateMediaCatalog()` so SQLite catalog writes are serialized. Public `readMediaCatalog()` calls wait for any queued catalog write before returning a snapshot. Direct `writeMediaCatalog()` usage is reserved for the repository implementation and focused repository tests.
 
 ## Runtime Setup

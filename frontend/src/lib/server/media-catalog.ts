@@ -35,6 +35,7 @@ import { getAppDatabase } from './app-state';
 
 const LIBRARY_FILENAME = 'video-library.json';
 const LIBRARY_BOOTSTRAP_BACKUP_FILENAME = 'video-library.backup-before-sqlite.json';
+const LIBRARY_EXPORT_DIRNAME = 'media-catalog-exports';
 const SQLITE_BOOTSTRAP_META_KEY = 'media_catalog_sqlite_v1';
 
 let libraryWriteQueue: Promise<unknown> = Promise.resolve();
@@ -56,6 +57,14 @@ function libraryFilePath() {
 
 function libraryBootstrapBackupPath() {
   return path.join(resolveDataDir(), LIBRARY_BOOTSTRAP_BACKUP_FILENAME);
+}
+
+function mediaCatalogExportDir() {
+  return path.join(resolveDataDir(), LIBRARY_EXPORT_DIRNAME);
+}
+
+function exportTimestamp(value: Date) {
+  return value.toISOString().replace(/[:.]/g, '-');
 }
 
 function isVideoTiming(value: unknown): value is VideoTiming {
@@ -674,6 +683,26 @@ export async function writeMediaCatalog(library: VideoLibrary) {
   );
 
   return next;
+}
+
+export async function exportMediaCatalogSnapshot(now = new Date()) {
+  const library = await readMediaCatalog();
+  const exportDir = mediaCatalogExportDir();
+  await fs.mkdir(exportDir, { recursive: true });
+
+  const filename = `video-library-${exportTimestamp(now)}.json`;
+  const absolutePath = path.join(exportDir, filename);
+  await fs.writeFile(absolutePath, `${JSON.stringify(library, null, 2)}\n`, 'utf-8');
+
+  return {
+    filePath: `${LIBRARY_EXPORT_DIRNAME}/${filename}`,
+    absolutePath,
+    counts: {
+      videoAssets: library.videoAssets.length,
+      moveVideoLinks: library.moveVideoLinks.length,
+      derivedClips: library.derivedClips.length
+    }
+  };
 }
 
 export async function mutateMediaCatalog<T>(mutator: (library: VideoLibrary) => Promise<T> | T) {
