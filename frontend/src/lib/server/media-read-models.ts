@@ -3,8 +3,7 @@ import { normalizeManagedVideoPath } from './paths';
 import { findPosterForVideoFile } from './posters';
 import { getPositionOptions, positionLabelById } from './positions';
 import { sourceSuggestions, uploadMonthKey } from '$lib/video-library-utils';
-import { readMediaCatalog } from './media-catalog';
-import { getVideoLibrary } from './media-bootstrap-service';
+import { readVideoLibrary } from './media-bootstrap-service';
 import { isClipRenderPending } from './media-render-service';
 import {
   clipPublicationStatus,
@@ -14,7 +13,7 @@ import {
 } from './media-workflow-helpers';
 
 export async function getResolvedMoveVideos(moveId: string, moves: MoveRecord[]) {
-  const library = await getVideoLibrary(moves);
+  const library = await readVideoLibrary();
   const positionLabels = positionLabelById(await getPositionOptions(moves));
   const assetById = new Map(library.videoAssets.map((asset) => [asset.id, asset]));
   const clipByOutputAssetId = new Map<string, DerivedClip>();
@@ -97,7 +96,7 @@ export async function buildResolvedMoveVideoIndex(moves: MoveRecord[]) {
 }
 
 export async function buildResolvedMoveVideoMetadataIndex(moves: MoveRecord[]) {
-  const library = await getVideoLibrary(moves);
+  const library = await readVideoLibrary();
   const byMoveId = new Map<string, { files: string[]; previewFile: string | null }>();
   const clipByAssetId = new Map<string, DerivedClip>();
 
@@ -143,12 +142,12 @@ export async function buildResolvedMoveVideoMetadataIndex(moves: MoveRecord[]) {
 }
 
 export async function getSourceAssets(moves?: MoveRecord[]) {
-  const library = await getVideoLibrary(moves);
+  const library = await readVideoLibrary();
   return library.videoAssets.filter((asset) => asset.kind === 'source');
 }
 
 export async function getUploadPageData(moves: MoveRecord[]) {
-  const library = await getVideoLibrary(moves);
+  const library = await readVideoLibrary();
   const assets = await Promise.all(
     library.videoAssets
       .filter((asset) => asset.kind === 'source')
@@ -189,7 +188,7 @@ function sourceAssetPublicationStatus(asset: VideoAsset, clips: DerivedClip[]) {
 }
 
 export async function getMediaLibraryPage(moves: MoveRecord[], input?: MediaLibraryPageFilter) {
-  const library = await getVideoLibrary(moves);
+  const library = await readVideoLibrary();
   const limit = Math.max(1, Math.min(100, Math.floor(input?.limit ?? 50)));
   const offset = Math.max(0, Number.parseInt(input?.cursor ?? '0', 10) || 0);
   const publication = input?.publication ?? 'all';
@@ -252,7 +251,7 @@ export async function getMediaLibraryPage(moves: MoveRecord[], input?: MediaLibr
 }
 
 export async function getRenderStatuses(clipIds: string[]) {
-  const library = await readMediaCatalog();
+  const library = await readVideoLibrary();
   return clipIds.map((clipId) => {
     const clip = library.derivedClips.find((entry) => entry.id === clipId) ?? null;
     return {

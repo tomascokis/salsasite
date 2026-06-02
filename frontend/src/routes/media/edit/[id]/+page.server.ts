@@ -3,7 +3,7 @@ import { getMoves, getRawMoveReference } from '$lib/server/data';
 import { getDancerProfiles } from '$lib/server/dancers';
 import { listMoveDrafts } from '$lib/server/move-editor';
 import { getPositionOptions } from '$lib/server/positions';
-import { getUploadPageData, getMediaLibraryPage, getVideoLibrary } from '$lib/server/video-library';
+import { getUploadPageData, getMediaLibraryPage, readVideoLibrary } from '$lib/server/video-library';
 import type { VideoContentType, VideoEnvironment, VideoTiming } from '$lib/types';
 import type { PageServerLoad } from './$types';
 
@@ -34,8 +34,9 @@ export const load: PageServerLoad = async ({ params, url }) => {
   }
 
   const mediaData = await getMediaLibraryPage(moves, { limit: 1 });
+  const library = await readVideoLibrary();
   const [dancers, positionOptions] = await Promise.all([
-    getDancerProfiles(moves, rawReferences, await getVideoLibrary(moves)),
+    getDancerProfiles(moves, rawReferences, library),
     getPositionOptions(moves)
   ]);
   const publishedMoveIds = new Set(moves.map((move) => move.id));

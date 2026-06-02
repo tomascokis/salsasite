@@ -2,11 +2,11 @@ import { getMoves, getRawMoveReference } from '$lib/server/data';
 import { getDancerProfiles } from '$lib/server/dancers';
 import { getSiteMetadata } from '$lib/server/metadata';
 import { findPosterForVideoFile } from '$lib/server/posters';
-import { getVideoLibrary } from '$lib/server/video-library';
+import { readVideoLibrary } from '$lib/server/video-library';
 
 export async function load() {
   const [moves, rawReferences] = await Promise.all([getMoves(), getRawMoveReference()]);
-  const [metadata, library] = await Promise.all([getSiteMetadata(moves, rawReferences), getVideoLibrary(moves)]);
+  const [metadata, library] = await Promise.all([getSiteMetadata(moves, rawReferences), readVideoLibrary()]);
   const dancers = await getDancerProfiles(moves, rawReferences, library);
   const moveOptions = await Promise.all(
     moves.map(async (move) => ({

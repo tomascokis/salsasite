@@ -1,5 +1,7 @@
 export {
-  getVideoLibrary
+  getVideoLibrary,
+  getVideoLibraryWithRepairs,
+  readVideoLibrary
 } from './media-bootstrap-service';
 
 export {

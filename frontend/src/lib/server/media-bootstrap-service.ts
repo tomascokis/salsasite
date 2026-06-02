@@ -355,7 +355,11 @@ async function relinkOrphanedGeneratedDraftMoveIds(library: VideoLibrary, moves:
   return changed;
 }
 
-export async function getVideoLibrary(moves?: MoveRecord[]) {
+export async function readVideoLibrary() {
+  return readMediaCatalog();
+}
+
+export async function getVideoLibraryWithRepairs(moves?: MoveRecord[]) {
   const library = await readMediaCatalog();
 
   if (moves) {
@@ -370,3 +374,5 @@ export async function getVideoLibrary(moves?: MoveRecord[]) {
 
   return library;
 }
+
+export const getVideoLibrary = getVideoLibraryWithRepairs;
