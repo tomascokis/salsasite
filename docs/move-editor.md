@@ -155,6 +155,7 @@ The move editor saves clip definitions before rendering.
 - Saved clip range markers in the timeline should not use visible border or outline rings, and their corners should stay modestly rounded rather than pill-shaped.
 - The timeline play tracker handle should be 4px shorter vertically than its original square size while staying centered on the same vertical midpoint.
 - Timeline surfaces and markers should render flat without decorative shadow or glow effects.
+- Top clip/move trim markers should sit closer to the timeline: the vertical gap between their marker head and the upper timeline track should be reduced by one third from the prior 15px gap to 10px.
 - Timeline and edit-row animations must be smooth, restrained, and visibly paced rather than snappy; direct marker/playhead dragging must remain immediate without trailing transitions, and reduced-motion preferences must disable nonessential motion.
 - Playback-nearest edit-row updates must settle briefly before changing the visible row window, so ordinary playback does not constantly reshuffle rows; when the settled window changes, rows should slide smoothly rather than jump.
 - Clicking `Edit` on a different saved or draft row must keep the underlying row identity stable so the row window slides/reflows smoothly instead of tearing down and rebuilding rows.

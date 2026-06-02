@@ -3814,7 +3814,7 @@ select {
 
 .clip-timeline-marker {
   position: absolute;
-  top: 2px;
+  top: 7px;
   width: 28px;
   height: 70px;
   display: block;
