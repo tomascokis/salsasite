@@ -2193,6 +2193,10 @@
     });
   }
 
+  function shouldShowTimelineZoomControls() {
+    return isTimelineZoomed() || hasManualTimelineZoom || isZoomLooping;
+  }
+
   function timelineOverviewLeft(_scaleKey = '') {
     const duration = inferredTimelineDurationMs();
     return duration ? Math.max(0, Math.min(100, (timelineViewportStartMs / duration) * 100)) : 0;
@@ -3576,9 +3580,9 @@
                   {:else}
                     <button class="timeline-move-action" type="button" on:click={addMoreMoves}>Edit moves</button>
                   {/if}
-                  {#if isTimelineZoomed()}
+                  {#if shouldShowTimelineZoomControls()}
                     <button
-                      class="timeline-move-action"
+                      class="timeline-move-action zoom-control"
                       type="button"
                       aria-label="Reset timeline zoom"
                       title="Reset timeline zoom"
@@ -3587,7 +3591,7 @@
                       Reset zoom
                     </button>
                     <button
-                      class="timeline-move-action"
+                      class="timeline-move-action zoom-control"
                       class:active={isZoomLooping}
                       type="button"
                       aria-pressed={isZoomLooping}

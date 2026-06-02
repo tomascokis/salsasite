@@ -146,6 +146,7 @@ The move editor saves clip definitions before rendering.
 - The zoomed timeline boundary lines must show compact left and right arrow indicators centered 15px above the respective orange edges, not attached to the side markers.
 - Mobile touch pinch zoom should be 10x more sensitive than the base pinch damping while mouse wheel zoom sensitivity remains unchanged.
 - When timeline zoom is active, the editor must provide `Reset zoom` and `Loop zoom` controls in the main timeline action row beside `Edit moves` or `Add move`.
+- Zoom controls must remain visibly grouped with the main timeline action on narrow screens rather than wrapping or disappearing out of view.
 - `Loop zoom` must loop playback over the visible zoom window and remain mutually exclusive with clip-range looping.
 - Timeline tracks, saved ranges, playhead lines, knobs, and drag markers must render crisply at rest; the editor must not rely on transform downscaling or fractional sizing that leaves the timeline persistently blurry.
 - Timeline and edit-row animations must be smooth, restrained, and visibly paced rather than snappy; direct marker/playhead dragging must remain immediate without trailing transitions, and reduced-motion preferences must disable nonessential motion.

@@ -3915,6 +3915,7 @@ select {
 .timeline-move-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
   gap: 0.45rem;
 }
@@ -3928,6 +3929,11 @@ select {
   font-size: 0.8rem;
   font-weight: 800;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.timeline-move-action.zoom-control {
+  padding-inline: 0.58rem;
 }
 
 .timeline-move-action.primary {
@@ -3958,6 +3964,21 @@ select {
 .timeline-move-action.primary:hover,
 .timeline-move-action.primary:focus-visible {
   background: #6f39ec;
+}
+
+@media (max-width: 520px) {
+  .timeline-move-actions {
+    gap: 0.28rem;
+  }
+
+  .timeline-move-action {
+    padding: 0.34rem 0.5rem;
+    font-size: 0.74rem;
+  }
+
+  .timeline-move-action.zoom-control {
+    padding-inline: 0.46rem;
+  }
 }
 
 .timeline-render-status {
