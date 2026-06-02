@@ -5,7 +5,14 @@ import { randomUUID, createHash } from 'node:crypto';
 import { Transform, Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { getAppDatabase, runInTransaction } from './app-state';
-import { resolveDataDir } from './paths';
+import {
+  managedPosterPathForVideo,
+  normalizeManagedVideoPath,
+  resolveDataDir,
+  resolveManagedVideoAbsolutePath,
+  resolvePathInsideRoot,
+  resolvePosterRoot
+} from './paths';
 
 export type MediaJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 export type MediaJobType = 'source.hash' | 'poster.generate' | 'clip.render' | 'file.cleanup' | 'file.delete';
@@ -270,6 +277,22 @@ export function upsertMediaJob(input: {
   return getMediaJobByIdempotencyKey(input.idempotencyKey) as MediaJob;
 }
 
+export function createMediaCleanupJob(input: {
+  targetType: string;
+  targetId: string;
+  payload?: unknown;
+  idempotencyKey?: string;
+}) {
+  return upsertMediaJob({
+    type: 'file.cleanup',
+    targetType: input.targetType,
+    targetId: input.targetId,
+    idempotencyKey: input.idempotencyKey ?? `file.cleanup:${input.targetType}:${input.targetId}:${randomUUID()}`,
+    payload: input.payload,
+    maxAttempts: 1
+  });
+}
+
 export function startMediaJob(jobId: string) {
   return runInTransaction((db) => {
     const row = db.prepare('SELECT * FROM media_jobs WHERE id = ?').get(jobId) as MediaJobRow | undefined;
@@ -494,6 +517,26 @@ async function pathExists(absolutePath: string) {
   }
 }
 
+function managedVideoFileEntries(filePath: string) {
+  const normalizedFilePath = normalizeManagedVideoPath(filePath);
+  const posterExtensions = ['.jpg', '.jpeg', '.webp', '.png', '.avif'];
+  return [
+    {
+      filePath: normalizedFilePath,
+      absolutePath: resolveManagedVideoAbsolutePath(normalizedFilePath),
+      kind: 'video'
+    },
+    ...posterExtensions.map((extension) => {
+      const posterPath = managedPosterPathForVideo(normalizedFilePath, extension);
+      return {
+        filePath: path.posix.join('video-posters', posterPath),
+        absolutePath: resolvePathInsideRoot(resolvePosterRoot(), posterPath),
+        kind: 'poster'
+      };
+    })
+  ];
+}
+
 export async function moveFileToMediaTrash(input: {
   jobId: string;
   filePath: string;
@@ -533,6 +576,203 @@ export async function moveFileToMediaTrash(input: {
   });
 
   return { filePath: logicalPath, backupPath, moved: true };
+}
+
+export async function trashManagedVideoFiles(input: {
+  jobId: string;
+  filePath: string;
+  actionType?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const results = [];
+  for (const entry of managedVideoFileEntries(input.filePath)) {
+    results.push(
+      await moveFileToMediaTrash({
+        jobId: input.jobId,
+        actionType: input.actionType ?? 'move-to-trash',
+        filePath: entry.filePath,
+        absolutePath: entry.absolutePath,
+        metadata: {
+          ...(input.metadata ?? {}),
+          managedVideoPath: normalizeManagedVideoPath(input.filePath),
+          fileKind: entry.kind
+        }
+      })
+    );
+  }
+  return results;
+}
+
+export async function trashManagedVideoFileSet(input: {
+  jobId: string;
+  filePaths: string[];
+  actionType?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const seen = new Set<string>();
+  const results = [];
+  for (const filePath of input.filePaths) {
+    const normalizedFilePath = normalizeManagedVideoPath(filePath);
+    if (seen.has(normalizedFilePath)) {
+      continue;
+    }
+    seen.add(normalizedFilePath);
+    results.push(
+      ...(await trashManagedVideoFiles({
+        jobId: input.jobId,
+        filePath: normalizedFilePath,
+        actionType: input.actionType,
+        metadata: input.metadata
+      }))
+    );
+  }
+  return results;
+}
+
+async function renameFileWithAction(input: {
+  jobId: string;
+  actionType: string;
+  fromPath: string;
+  toPath: string;
+  fromAbsolutePath: string;
+  toAbsolutePath: string;
+  metadata?: Record<string, unknown>;
+}) {
+  if (input.fromAbsolutePath === input.toAbsolutePath) {
+    return { fromPath: input.fromPath, toPath: input.toPath, renamed: false };
+  }
+
+  const metadata = {
+    ...(input.metadata ?? {}),
+    originalAbsolutePath: input.fromAbsolutePath,
+    destinationAbsolutePath: input.toAbsolutePath
+  };
+
+  if (!(await pathExists(input.fromAbsolutePath))) {
+    recordMediaFileAction({
+      jobId: input.jobId,
+      actionType: input.actionType,
+      status: 'succeeded',
+      filePath: normalizeTrashPathPart(input.fromPath),
+      backupPath: normalizeTrashPathPart(input.toPath),
+      metadata: { ...metadata, missing: true }
+    });
+    return { fromPath: input.fromPath, toPath: input.toPath, renamed: false };
+  }
+
+  try {
+    await fsp.mkdir(path.dirname(input.toAbsolutePath), { recursive: true });
+    await fsp.rename(input.fromAbsolutePath, input.toAbsolutePath);
+    recordMediaFileAction({
+      jobId: input.jobId,
+      actionType: input.actionType,
+      status: 'succeeded',
+      filePath: normalizeTrashPathPart(input.fromPath),
+      backupPath: normalizeTrashPathPart(input.toPath),
+      metadata
+    });
+    return { fromPath: input.fromPath, toPath: input.toPath, renamed: true };
+  } catch (error) {
+    recordMediaFileAction({
+      jobId: input.jobId,
+      actionType: input.actionType,
+      status: 'failed',
+      filePath: normalizeTrashPathPart(input.fromPath),
+      backupPath: normalizeTrashPathPart(input.toPath),
+      metadata: {
+        ...metadata,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    });
+    throw error;
+  }
+}
+
+export async function renameManagedVideoFiles(input: {
+  jobId: string;
+  fromPath: string;
+  toPath: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const normalizedFromPath = normalizeManagedVideoPath(input.fromPath);
+  const normalizedToPath = normalizeManagedVideoPath(input.toPath);
+  if (normalizedFromPath === normalizedToPath) {
+    return [];
+  }
+
+  const fromEntries = managedVideoFileEntries(normalizedFromPath);
+  const toEntries = managedVideoFileEntries(normalizedToPath);
+  const results = [];
+  for (let index = 0; index < fromEntries.length; index += 1) {
+    const fromEntry = fromEntries[index];
+    const toEntry = toEntries[index];
+    results.push(
+      await renameFileWithAction({
+        jobId: input.jobId,
+        actionType: fromEntry.kind === 'video' ? 'rename-video' : 'rename-poster',
+        fromPath: fromEntry.filePath,
+        toPath: toEntry.filePath,
+        fromAbsolutePath: fromEntry.absolutePath,
+        toAbsolutePath: toEntry.absolutePath,
+        metadata: {
+          ...(input.metadata ?? {}),
+          managedVideoPath: normalizedFromPath,
+          nextManagedVideoPath: normalizedToPath,
+          fileKind: fromEntry.kind
+        }
+      })
+    );
+  }
+  return results;
+}
+
+export async function deleteTemporaryFile(input: {
+  jobId: string;
+  absolutePath: string;
+  filePath: string;
+  actionType?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const logicalPath = normalizeTrashPathPart(input.filePath);
+  const metadata = {
+    ...(input.metadata ?? {}),
+    originalAbsolutePath: input.absolutePath
+  };
+
+  if (!(await pathExists(input.absolutePath))) {
+    recordMediaFileAction({
+      jobId: input.jobId,
+      actionType: input.actionType ?? 'delete-temp',
+      status: 'succeeded',
+      filePath: logicalPath,
+      metadata: { ...metadata, missing: true }
+    });
+    return { filePath: logicalPath, deleted: false };
+  }
+
+  try {
+    await fsp.unlink(input.absolutePath);
+    recordMediaFileAction({
+      jobId: input.jobId,
+      actionType: input.actionType ?? 'delete-temp',
+      status: 'succeeded',
+      filePath: logicalPath,
+      metadata
+    });
+    return { filePath: logicalPath, deleted: true };
+  } catch (error) {
+    recordMediaFileAction({
+      jobId: input.jobId,
+      actionType: input.actionType ?? 'delete-temp',
+      status: 'failed',
+      filePath: logicalPath,
+      metadata: {
+        ...metadata,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    });
+    throw error;
+  }
 }
 
 export async function restoreTrashedFilesForJob(jobId: string) {

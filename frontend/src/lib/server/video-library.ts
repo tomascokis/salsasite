@@ -24,7 +24,6 @@ import type {
 import {
   MOVE_VIDEO_PREFIX,
   SOURCE_VIDEO_PREFIX,
-  managedPosterPathForVideo,
   normalizeManagedVideoPath,
   resolveDataDir,
   resolveManagedVideoAbsolutePath,
@@ -37,16 +36,19 @@ import { findPosterForVideoFile, queuePosterGeneration } from './posters';
 import {
   completedMediaJob,
   completeMediaJob,
+  createMediaCleanupJob,
+  deleteTemporaryFile,
   failMediaJob,
   getMediaJobById,
   hashFile,
   isMediaJobTargetPending,
   listMediaJobs,
   listQueuedMediaJobs,
-  moveFileToMediaTrash,
+  renameManagedVideoFiles,
   recordMediaFileAction,
   restoreTrashedFilesForJob,
   startMediaJob,
+  trashManagedVideoFileSet,
   upsertMediaJob,
   writeBufferAndHash,
   writeStreamAndHash,
@@ -74,7 +76,6 @@ import { listMoveDrafts } from './move-editor';
 
 const LIBRARY_FILENAME = 'video-library.json';
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.m4v', '.mov']);
-const POSTER_EXTENSIONS = ['.jpg', '.jpeg', '.webp', '.png', '.avif'];
 const CLIP_OUTPUT_EXTENSION = '.mp4';
 const FULL_QUALITY_CRF = '18';
 const LOW_QUALITY_CRF = '29';
@@ -718,7 +719,29 @@ async function bootstrapLegacyMoveAssets(library: VideoLibrary, moves: MoveRecor
     library.moveVideoLinks.length !== linkCountBeforeVariantCleanup ||
     staleGeneratedAssets.length > 0;
 
-  await Promise.all(staleGeneratedAssets.map((asset) => deleteManagedVideoFiles(asset.filePath)));
+  if (staleGeneratedAssets.length) {
+    const cleanupJob = createMediaCleanupJob({
+      targetType: 'legacyGeneratedAssets',
+      targetId: 'bootstrap',
+      payload: {
+        assetIds: staleGeneratedAssets.map((asset) => asset.id),
+        filePaths: staleGeneratedAssets.map((asset) => asset.filePath)
+      }
+    });
+    startMediaJob(cleanupJob.id);
+    try {
+      await trashManagedVideoFileSet({
+        jobId: cleanupJob.id,
+        filePaths: staleGeneratedAssets.map((asset) => asset.filePath),
+        actionType: 'cleanup-generated',
+        metadata: { cleanupReason: 'legacy-generated-bootstrap' }
+      });
+      completeMediaJob(cleanupJob.id);
+    } catch (error) {
+      failMediaJob(cleanupJob.id, error);
+      throw error;
+    }
+  }
 
   for (const file of files) {
     const normalizedPath = normalizeManagedVideoPath(file.relativePath);
@@ -965,85 +988,6 @@ function normalizeDancers(dancers: string[] | string) {
   return values.map((value) => value.trim()).filter(Boolean);
 }
 
-async function unlinkIfExists(filePath: string) {
-  try {
-    await fs.unlink(filePath);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-      throw error;
-    }
-  }
-}
-
-async function renameIfExists(fromPath: string, toPath: string) {
-  if (fromPath === toPath) {
-    return;
-  }
-
-  try {
-    await fs.mkdir(path.dirname(toPath), { recursive: true });
-    await fs.rename(fromPath, toPath);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-      throw error;
-    }
-  }
-}
-
-async function renameManagedVideoFile(oldPath: string, newPath: string) {
-  if (!oldPath || !newPath || oldPath === newPath) {
-    return;
-  }
-
-  await renameIfExists(resolveManagedVideoAbsolutePath(oldPath), resolveManagedVideoAbsolutePath(newPath));
-
-  await Promise.all(
-    POSTER_EXTENSIONS.map((extension) =>
-      renameIfExists(
-        resolvePathInsideRoot(resolvePosterRoot(), managedPosterPathForVideo(oldPath, extension)),
-        resolvePathInsideRoot(resolvePosterRoot(), managedPosterPathForVideo(newPath, extension))
-      )
-    )
-  );
-}
-
-async function deleteManagedVideoFiles(filePath: string) {
-  await unlinkIfExists(resolveManagedVideoAbsolutePath(filePath));
-
-  await Promise.all(
-    POSTER_EXTENSIONS.map((extension) =>
-      unlinkIfExists(resolvePathInsideRoot(resolvePosterRoot(), managedPosterPathForVideo(filePath, extension)))
-    )
-  );
-}
-
-function mediaTrashEntriesForManagedVideo(filePath: string) {
-  const normalizedFilePath = normalizeManagedVideoPath(filePath);
-  return [
-    {
-      filePath: normalizedFilePath,
-      absolutePath: resolveManagedVideoAbsolutePath(normalizedFilePath)
-    },
-    ...POSTER_EXTENSIONS.map((extension) => {
-      const posterPath = managedPosterPathForVideo(normalizedFilePath, extension);
-      return {
-        filePath: path.posix.join('video-posters', posterPath),
-        absolutePath: resolvePathInsideRoot(resolvePosterRoot(), posterPath)
-      };
-    })
-  ];
-}
-
-function uniqueMediaTrashEntries(filePaths: string[]) {
-  const byAbsolutePath = new Map<string, { filePath: string; absolutePath: string }>();
-  for (const filePath of filePaths) {
-    for (const entry of mediaTrashEntriesForManagedVideo(filePath)) {
-      byAbsolutePath.set(entry.absolutePath, entry);
-    }
-  }
-  return [...byAbsolutePath.values()];
-}
-
 function clipSuffixFromPath(filePath: string | null, clipId: string) {
   if (!filePath) {
     return '';
@@ -1151,7 +1095,34 @@ async function syncDerivedClipDisplayIdForMoveInLibrary(
     }
   }
 
-  await Promise.all([...pendingRenames.entries()].map(([fromPath, toPath]) => renameManagedVideoFile(fromPath, toPath)));
+  if (pendingRenames.size) {
+    const renameJob = createMediaCleanupJob({
+      targetType: 'move',
+      targetId: normalizedMoveId,
+      payload: {
+        nextMoveDisplayId: normalizedDisplayId,
+        renames: [...pendingRenames.entries()].map(([fromPath, toPath]) => ({ fromPath, toPath }))
+      }
+    });
+    startMediaJob(renameJob.id);
+    try {
+      for (const [fromPath, toPath] of pendingRenames.entries()) {
+        await renameManagedVideoFiles({
+          jobId: renameJob.id,
+          fromPath,
+          toPath,
+          metadata: {
+            moveId: normalizedMoveId,
+            nextMoveDisplayId: normalizedDisplayId
+          }
+        });
+      }
+      completeMediaJob(renameJob.id);
+    } catch (error) {
+      failMediaJob(renameJob.id, error);
+      throw error;
+    }
+  }
 }
 
 export async function syncDerivedClipDisplayIdForMove(moveId: string, moveDisplayId: string) {
@@ -1276,7 +1247,31 @@ export async function createSourceAsset(input: {
         asset.contentSizeBytes === fingerprint.contentSizeBytes
     );
     if (duplicateAsset) {
-      await unlinkIfExists(absolutePath);
+      const cleanupJob = createMediaCleanupJob({
+        targetType: 'videoAsset',
+        targetId: duplicateAsset.id,
+        payload: {
+          duplicateOfAssetId: duplicateAsset.id,
+          temporaryPath: relativeFilePath
+        }
+      });
+      startMediaJob(cleanupJob.id);
+      try {
+        await deleteTemporaryFile({
+          jobId: cleanupJob.id,
+          absolutePath,
+          filePath: path.posix.join(SOURCE_VIDEO_PREFIX, relativeFilePath),
+          metadata: {
+            duplicateOfAssetId: duplicateAsset.id,
+            contentHash: fingerprint.contentHash,
+            contentSizeBytes: fingerprint.contentSizeBytes
+          }
+        });
+        completeMediaJob(cleanupJob.id);
+      } catch (error) {
+        failMediaJob(cleanupJob.id, error);
+        throw error;
+      }
       return {
         asset: duplicateAsset,
         reusedExisting: true
@@ -1545,17 +1540,14 @@ export async function deleteSourceAsset(assetId: string) {
         ])
       ].filter((filePath): filePath is string => Boolean(filePath));
 
-      for (const entry of uniqueMediaTrashEntries(filePaths)) {
-        await moveFileToMediaTrash({
-          jobId: job.id,
-          actionType: 'move-to-trash',
-          filePath: entry.filePath,
-          absolutePath: entry.absolutePath,
-          metadata: {
-            sourceAssetId: sourceAsset.id
-          }
-        });
-      }
+      await trashManagedVideoFileSet({
+        jobId: job.id,
+        filePaths,
+        actionType: 'move-to-trash',
+        metadata: {
+          sourceAssetId: sourceAsset.id
+        }
+      });
 
       library.derivedClips = library.derivedClips.filter((clip) => clip.sourceAssetId !== sourceAsset.id);
       library.moveVideoLinks = library.moveVideoLinks.filter((link) => !assetIdsToDelete.has(link.assetId));
@@ -1938,10 +1930,35 @@ export async function saveSourceClips(input: {
       }
     });
     sortLibrary(library);
-    await Promise.all([
-      ...removedAssets.map((asset) => deleteManagedVideoFiles(asset.filePath)),
-      ...removedFilePaths.map((filePath) => deleteManagedVideoFiles(filePath))
-    ]);
+    const cleanupFilePaths = [...removedAssets.map((asset) => asset.filePath), ...removedFilePaths];
+    if (cleanupFilePaths.length) {
+      const cleanupJob = createMediaCleanupJob({
+        targetType: 'sourceAsset',
+        targetId: input.sourceAssetId,
+        payload: {
+          cleanupReason: 'removed-source-clips',
+          removedClipIds: removedClips.map((clip) => clip.id),
+          removedAssetIds: [...removedAssetIds],
+          filePaths: cleanupFilePaths
+        }
+      });
+      startMediaJob(cleanupJob.id);
+      try {
+        await trashManagedVideoFileSet({
+          jobId: cleanupJob.id,
+          filePaths: cleanupFilePaths,
+          actionType: 'cleanup-generated',
+          metadata: {
+            sourceAssetId: input.sourceAssetId,
+            cleanupReason: 'removed-source-clips'
+          }
+        });
+        completeMediaJob(cleanupJob.id);
+      } catch (error) {
+        failMediaJob(cleanupJob.id, error);
+        throw error;
+      }
+    }
     return nextClips;
   });
 }
@@ -2037,7 +2054,7 @@ async function renderVideoSegment(
   });
 }
 
-async function renderClip(clipId: string) {
+async function renderClip(clipId: string, jobId: string) {
   const library = await readLibraryFromDisk();
   const clip = library.derivedClips.find((entry) => entry.id === clipId);
   if (!clip) {
@@ -2191,7 +2208,17 @@ async function renderClip(clipId: string) {
   });
 
   const deletedFilePaths = obsoleteGeneratedClipFilePaths([...replacedRenderedFilePaths], currentRenderedFilePaths);
-  await Promise.all(deletedFilePaths.map((filePath) => deleteManagedVideoFiles(filePath)));
+  if (deletedFilePaths.length) {
+    await trashManagedVideoFileSet({
+      jobId,
+      filePaths: deletedFilePaths,
+      actionType: 'cleanup-generated',
+      metadata: {
+        clipId,
+        cleanupReason: 'obsolete-render'
+      }
+    });
+  }
   void queuePosterGeneration(outputRelativePath);
   return {
     outputRelativePath,
@@ -2206,7 +2233,7 @@ async function runRenderJob(job: MediaJob) {
   const clipId = job.targetId;
   try {
     startMediaJob(job.id);
-    const result = await renderClip(clipId);
+    const result = await renderClip(clipId, job.id);
     completeMediaJob(job.id);
     [
       ['render-full-quality-padded', result.outputRelativePath],
@@ -2217,14 +2244,6 @@ async function runRenderJob(job: MediaJob) {
       recordMediaFileAction({
         jobId: job.id,
         actionType,
-        status: 'succeeded',
-        filePath
-      });
-    });
-    result.deletedFilePaths.forEach((filePath) => {
-      recordMediaFileAction({
-        jobId: job.id,
-        actionType: 'delete-obsolete-render',
         status: 'succeeded',
         filePath
       });

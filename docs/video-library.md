@@ -25,6 +25,8 @@ Media filesystem actions must be routed through the server-side media manager ra
 
 Managed source deletion must move source videos, rendered outputs, and matching poster sidecars into `DATA_DIR/media-trash/<job-id>/` instead of permanently unlinking them. The source-delete action must be recorded in action history with enough catalog state and media job state to undo the delete.
 
+Catalog-owned generated media cleanup and managed video renames must also run through media-manager jobs. This includes stale generated legacy assets, removed source-clip outputs, obsolete render outputs, and display-ID-driven generated file renames. Temporary duplicate-upload files may be permanently removed, but the temp delete must still be recorded as a media-manager file action.
+
 ## Runtime Setup
 
 In the live Unraid setup the repo is mounted once at `/server/live`. All video paths should point inside that mount.
@@ -405,6 +407,8 @@ Deleting a source video moves these files into media-manager trash instead of pe
 Source-delete undo restores the catalog rows and moves the trashed files back to their original managed locations when the trash files are still available.
 
 Deleting a source does not remove unrelated legacy move videos.
+
+Removing clips, re-rendering clips, legacy generated cleanup, and move display-ID sync may move or rename generated files and posters. Those file operations are durable media-manager actions, but they are not user-facing history undo actions in this slice.
 
 ## What Requires A Container Rebuild
 
