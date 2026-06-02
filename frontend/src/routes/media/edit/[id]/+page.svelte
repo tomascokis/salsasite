@@ -107,8 +107,9 @@
   const MEDIA_MOTION_SHORT_MS = 320;
   const MEDIA_MOTION_MEDIUM_MS = 700;
   const MEDIA_MOTION_REVEAL_DELAY_MS = 120;
-  const TIMELINE_WHEEL_ZOOM_IN_SCALE = 0.985;
-  const TIMELINE_WHEEL_ZOOM_OUT_SCALE = 1.015;
+  const TIMELINE_WHEEL_ZOOM_DELTA_SCALE = 0.00022;
+  const TIMELINE_SMOOTH_ZOOM_EASE = 0.28;
+  const TIMELINE_SMOOTH_ZOOM_SETTLE_MS = 2;
   const TIMELINE_PINCH_ZOOM_DAMPING = 0.22;
   const TIMELINE_ZOOMING_MS = 180;
   const ROW_WINDOW_SETTLE_MS = 450;
@@ -206,6 +207,7 @@
   let autoplayedMediaPath: string | null = null;
   let timelineViewportStartMs = 0;
   let timelineViewportEndMs = 0;
+  let timelineZoomTargetViewport: TimelineViewport | null = null;
   let hasManualTimelineZoom = false;
   let timelineDragTarget: TimelineMarker | null = null;
   let timelineDragPreviousMs: number | null = null;
@@ -225,6 +227,7 @@
   let playbackAnimationFrame: number | null = null;
   let timelinePromotionFrame: number | null = null;
   let timelinePromotionTimer: ReturnType<typeof setTimeout> | null = null;
+  let timelineZoomAnimationFrame: number | null = null;
   let timelineZoomingTimer: ReturnType<typeof setTimeout> | null = null;
   let rowWindowSettleTimer: ReturnType<typeof setTimeout> | null = null;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
@@ -2255,6 +2258,7 @@
     timelinePinchStartDistancePx = 0;
     timelinePinchStartViewport = null;
     timelinePinchAnchorMs = 0;
+    timelineZoomTargetViewport = null;
   }
 
   function updateTimelineTouchPointer(event: PointerEvent) {
@@ -2333,6 +2337,14 @@
       isTimelineZooming = false;
       timelineZoomingTimer = null;
     }, TIMELINE_ZOOMING_MS);
+  }
+
+  function stopTimelineZoomAnimation() {
+    if (timelineZoomAnimationFrame !== null && browser) {
+      cancelAnimationFrame(timelineZoomAnimationFrame);
+    }
+    timelineZoomAnimationFrame = null;
+    timelineZoomTargetViewport = null;
   }
 
   function startTimelineDrag(event: PointerEvent, target?: TimelineMarker) {
@@ -2476,6 +2488,60 @@
     setTimelineViewport(next);
   }
 
+  function setTimelineZoomTarget(anchorMs: number, scale: number) {
+    const timelineDurationMs = inferredTimelineDurationMs();
+    if (!timelineDurationMs) {
+      return;
+    }
+
+    ensureTimelineViewport();
+    const sourceViewport = timelineZoomTargetViewport ?? {
+      startMs: timelineViewportStartMs,
+      endMs: timelineViewportEndMs
+    };
+    timelineZoomTargetViewport = zoomTimelineViewport({
+      viewportStartMs: sourceViewport.startMs,
+      viewportEndMs: sourceViewport.endMs,
+      durationMs: timelineDurationMs,
+      anchorMs,
+      scale
+    });
+    startTimelineZoomAnimation();
+  }
+
+  function startTimelineZoomAnimation() {
+    if (!browser || timelineZoomAnimationFrame !== null) {
+      return;
+    }
+
+    markTimelineZooming();
+    timelineZoomAnimationFrame = requestAnimationFrame(animateTimelineZoom);
+  }
+
+  function animateTimelineZoom() {
+    timelineZoomAnimationFrame = null;
+    if (!timelineZoomTargetViewport) {
+      return;
+    }
+
+    const nextStart =
+      timelineViewportStartMs + (timelineZoomTargetViewport.startMs - timelineViewportStartMs) * TIMELINE_SMOOTH_ZOOM_EASE;
+    const nextEnd =
+      timelineViewportEndMs + (timelineZoomTargetViewport.endMs - timelineViewportEndMs) * TIMELINE_SMOOTH_ZOOM_EASE;
+    const settled =
+      Math.abs(nextStart - timelineZoomTargetViewport.startMs) <= TIMELINE_SMOOTH_ZOOM_SETTLE_MS &&
+      Math.abs(nextEnd - timelineZoomTargetViewport.endMs) <= TIMELINE_SMOOTH_ZOOM_SETTLE_MS;
+
+    if (settled) {
+      setTimelineViewport(timelineZoomTargetViewport);
+      timelineZoomTargetViewport = null;
+      return;
+    }
+
+    setTimelineViewport({ startMs: nextStart, endMs: nextEnd });
+    timelineZoomAnimationFrame = requestAnimationFrame(animateTimelineZoom);
+  }
+
   function handleTimelineWheel(event: WheelEvent) {
     const timelineDurationMs = inferredTimelineDurationMs();
     if (!timelineElement || !timelineDurationMs) {
@@ -2483,13 +2549,14 @@
     }
 
     event.preventDefault();
-    zoomTimelineAround(
-      timelineMsFromClientX(event.clientX),
-      event.deltaY < 0 ? TIMELINE_WHEEL_ZOOM_IN_SCALE : TIMELINE_WHEEL_ZOOM_OUT_SCALE
-    );
+    const boundedDelta = Math.max(-120, Math.min(120, event.deltaY));
+    const scale = Math.exp(boundedDelta * TIMELINE_WHEEL_ZOOM_DELTA_SCALE);
+    markTimelineZooming();
+    setTimelineZoomTarget(timelineMsFromClientX(event.clientX), scale);
   }
 
   function resetTimelineZoom() {
+    stopTimelineZoomAnimation();
     timelineViewportStartMs = 0;
     timelineViewportEndMs = inferredTimelineDurationMs();
     hasManualTimelineZoom = false;
@@ -2999,6 +3066,7 @@
   onDestroy(() => {
     timelineResizeObserver?.disconnect();
     clearTimelinePromotionTimers();
+    stopTimelineZoomAnimation();
     if (timelineZoomingTimer) {
       clearTimeout(timelineZoomingTimer);
     }
