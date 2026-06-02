@@ -497,7 +497,9 @@ POSTER_ROOT=/server/live/video-posters
 | File | Purpose |
 | --- | --- |
 | `frontend/src/lib/server/media-catalog.ts` | `video-library.json` persistence, normalization, cache handling, and serialized writes. |
-| `frontend/src/lib/server/video-library.ts` | Media workflows, legacy import, read models, clip render, publication, and cleanup orchestration. |
+| `frontend/src/lib/server/media-source-service.ts` | Source upload, metadata update, delete/restore, duplicate cleanup, and source hash workflows. |
+| `frontend/src/lib/server/media-clip-service.ts` | Clip save, key-video update, publication, display-ID rename, and clip catalog mutation workflows. |
+| `frontend/src/lib/server/video-library.ts` | Stable route facade, legacy import, read models, clip render orchestration, and media-manager retry glue. |
 | `frontend/src/lib/server/posters.ts` | Poster lookup and async poster generation. |
 | `frontend/src/lib/server/paths.ts` | Runtime path resolution and managed path safety. |
 | `frontend/src/routes/media/+page.svelte` | Media gallery with source cards and upload tile. |
