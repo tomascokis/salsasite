@@ -3555,7 +3555,7 @@ select {
 .clip-timeline-shell.zoomed::after {
   content: '';
   position: absolute;
-  top: calc(var(--timeline-edge-top) - 11px);
+  top: calc(var(--timeline-edge-top) - 13px);
   z-index: 30;
   display: grid;
   place-items: center;
