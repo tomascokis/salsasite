@@ -151,6 +151,7 @@ The move editor saves clip definitions before rendering.
 - Zoom controls must remain visibly grouped with the main timeline action on narrow screens rather than wrapping or disappearing out of view.
 - `Loop zoom` must loop playback over the visible zoom window and remain mutually exclusive with clip-range looping.
 - Timeline tracks, saved ranges, playhead lines, knobs, and drag markers must render crisply at rest; the editor must not rely on transform downscaling or fractional sizing that leaves the timeline persistently blurry.
+- Saved clip range markers in the timeline should not use visible border or outline rings, and their corners should stay modestly rounded rather than pill-shaped.
 - Timeline and edit-row animations must be smooth, restrained, and visibly paced rather than snappy; direct marker/playhead dragging must remain immediate without trailing transitions, and reduced-motion preferences must disable nonessential motion.
 - Playback-nearest edit-row updates must settle briefly before changing the visible row window, so ordinary playback does not constantly reshuffle rows; when the settled window changes, rows should slide smoothly rather than jump.
 - Clicking `Edit` on a different saved or draft row must keep the underlying row identity stable so the row window slides/reflows smoothly instead of tearing down and rebuilding rows.
