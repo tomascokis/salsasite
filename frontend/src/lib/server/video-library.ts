@@ -42,7 +42,7 @@ import {
   getMediaJobById,
   hashFile,
   isMediaJobTargetPending,
-  listMediaJobs,
+  listMediaJobsWithFileActions,
   listQueuedMediaJobs,
   renameManagedVideoFiles,
   recordMediaFileAction,
@@ -1741,7 +1741,7 @@ export async function queueSourceHashBackfill() {
 }
 
 export function listMediaManagerJobs(limit = 100) {
-  return listMediaJobs(limit);
+  return listMediaJobsWithFileActions(limit);
 }
 
 export async function retryMediaManagerJob(jobId: string) {
@@ -2054,6 +2054,30 @@ async function renderVideoSegment(
   });
 }
 
+export async function cleanupObsoleteRenderedClipFiles(input: {
+  jobId: string;
+  clipId: string;
+  replacedRenderedFilePaths: string[];
+  currentRenderedFilePaths: string[];
+}) {
+  const deletedFilePaths = obsoleteGeneratedClipFilePaths(
+    input.replacedRenderedFilePaths,
+    input.currentRenderedFilePaths
+  );
+  if (deletedFilePaths.length) {
+    await trashManagedVideoFileSet({
+      jobId: input.jobId,
+      filePaths: deletedFilePaths,
+      actionType: 'cleanup-generated',
+      metadata: {
+        clipId: input.clipId,
+        cleanupReason: 'obsolete-render'
+      }
+    });
+  }
+  return deletedFilePaths;
+}
+
 async function renderClip(clipId: string, jobId: string) {
   const library = await readLibraryFromDisk();
   const clip = library.derivedClips.find((entry) => entry.id === clipId);
@@ -2207,18 +2231,12 @@ async function renderClip(clipId: string, jobId: string) {
     sortLibrary(mutableLibrary);
   });
 
-  const deletedFilePaths = obsoleteGeneratedClipFilePaths([...replacedRenderedFilePaths], currentRenderedFilePaths);
-  if (deletedFilePaths.length) {
-    await trashManagedVideoFileSet({
-      jobId,
-      filePaths: deletedFilePaths,
-      actionType: 'cleanup-generated',
-      metadata: {
-        clipId,
-        cleanupReason: 'obsolete-render'
-      }
-    });
-  }
+  const deletedFilePaths = await cleanupObsoleteRenderedClipFiles({
+    jobId,
+    clipId,
+    replacedRenderedFilePaths: [...replacedRenderedFilePaths],
+    currentRenderedFilePaths
+  });
   void queuePosterGeneration(outputRelativePath);
   return {
     outputRelativePath,

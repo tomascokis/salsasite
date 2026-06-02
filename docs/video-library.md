@@ -27,6 +27,8 @@ Managed source deletion must move source videos, rendered outputs, and matching 
 
 Catalog-owned generated media cleanup and managed video renames must also run through media-manager jobs. This includes stale generated legacy assets, removed source-clip outputs, obsolete render outputs, and display-ID-driven generated file renames. Temporary duplicate-upload files may be permanently removed, but the temp delete must still be recorded as a media-manager file action.
 
+The media manager page at `/settings/media` must expose recent jobs with their file-action rows for operational review. File-action details shown through the API or UI must use managed relative paths and sanitized metadata; absolute filesystem paths such as original and destination absolute paths must not be exposed in browser responses.
+
 ## Runtime Setup
 
 In the live Unraid setup the repo is mounted once at `/server/live`. All video paths should point inside that mount.
@@ -376,7 +378,7 @@ docker exec salsasite-dev bash /server/live/scripts/generate_video_posters.sh \
 | --- | --- | --- |
 | `/api/upload/library` | `GET` | Return legacy upload library data. |
 | `/api/media/library?limit=50&cursor=...` | `GET` | Return paginated Media page source cards, grouped by upload month, with tag/class suggestions. |
-| `/api/media/jobs?limit=100` | `GET` | Return recent media-manager jobs. |
+| `/api/media/jobs?limit=100` | `GET` | Return recent media-manager jobs with sanitized file-action details. |
 | `/api/media/jobs` | `POST` | Queue media-manager maintenance actions such as source hash backfill. |
 | `/api/media/jobs/[id]/retry` | `POST` | Retry supported failed media jobs. |
 | `/api/upload/source` | `POST` | Upload a source video and create a source asset. |
@@ -409,6 +411,8 @@ Source-delete undo restores the catalog rows and moves the trashed files back to
 Deleting a source does not remove unrelated legacy move videos.
 
 Removing clips, re-rendering clips, legacy generated cleanup, and move display-ID sync may move or rename generated files and posters. Those file operations are durable media-manager actions, but they are not user-facing history undo actions in this slice.
+
+The `/settings/media` file-action drilldown is for visibility and debugging. It does not make generated cleanup user-history undoable.
 
 ## What Requires A Container Rebuild
 

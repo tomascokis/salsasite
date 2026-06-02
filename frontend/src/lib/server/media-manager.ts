@@ -54,6 +54,18 @@ export type MediaFileAction = {
   updatedAt: string;
 };
 
+export type MediaFileActionSummary = {
+  total: number;
+  failed: number;
+  missing: number;
+  byActionType: Record<string, number>;
+};
+
+export type MediaJobWithFileActions = MediaJob & {
+  fileActions: MediaFileAction[];
+  fileActionSummary: MediaFileActionSummary;
+};
+
 type MediaJobRow = {
   id: string;
   type: string;
@@ -130,6 +142,53 @@ function mediaFileActionFromRow(row: MediaFileActionRow): MediaFileAction {
     metadata: parseJson(row.metadata_json),
     createdAt: row.created_at,
     updatedAt: row.updated_at
+  };
+}
+
+function sanitizeMediaMetadata(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sanitizeMediaMetadata);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => key !== 'originalAbsolutePath' && key !== 'destinationAbsolutePath')
+      .map(([key, entry]) => [key, sanitizeMediaMetadata(entry)])
+  );
+}
+
+function isMissingFileAction(action: MediaFileAction) {
+  return Boolean(
+    action.metadata &&
+      typeof action.metadata === 'object' &&
+      (action.metadata as Record<string, unknown>).missing === true
+  );
+}
+
+function summarizeMediaFileActions(fileActions: MediaFileAction[]): MediaFileActionSummary {
+  const byActionType: Record<string, number> = {};
+  let failed = 0;
+  let missing = 0;
+
+  for (const action of fileActions) {
+    byActionType[action.actionType] = (byActionType[action.actionType] ?? 0) + 1;
+    if (action.status === 'failed') {
+      failed += 1;
+    }
+    if (isMissingFileAction(action)) {
+      missing += 1;
+    }
+  }
+
+  return {
+    total: fileActions.length,
+    failed,
+    missing,
+    byActionType
   };
 }
 
@@ -211,6 +270,21 @@ export function listMediaJobs(limit = 100) {
     )
     .all(Math.max(1, Math.min(250, Math.floor(limit)))) as MediaJobRow[];
   return rows.map(mediaJobFromRow);
+}
+
+export function listMediaJobsWithFileActions(limit = 100): MediaJobWithFileActions[] {
+  return listMediaJobs(limit).map((job) => {
+    const fileActions = listMediaFileActionsForJob(job.id).map((action) => ({
+      ...action,
+      metadata: sanitizeMediaMetadata(action.metadata)
+    }));
+
+    return {
+      ...job,
+      fileActions,
+      fileActionSummary: summarizeMediaFileActions(fileActions)
+    };
+  });
 }
 
 export function upsertMediaJob(input: {

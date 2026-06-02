@@ -43,6 +43,7 @@ test('media manager records managed trash, rename, and temp delete file actions'
     createMediaCleanupJob,
     deleteTemporaryFile,
     listMediaFileActionsForJob,
+    listMediaJobsWithFileActions,
     renameManagedVideoFiles,
     startMediaJob,
     trashManagedVideoFileSet
@@ -90,6 +91,15 @@ test('media manager records managed trash, rename, and temp delete file actions'
   assert.equal(actions.some((action) => action.actionType === 'rename-poster' && action.filePath === 'video-posters/video-moves/old.jpg'), true);
   assert.equal(actions.some((action) => action.actionType === 'cleanup-generated' && action.filePath === 'video-moves/new.mp4'), true);
   assert.equal(actions.some((action) => action.actionType === 'delete-temp' && action.filePath === 'video-sources/temporary.mp4'), true);
+
+  const detailedJob = listMediaJobsWithFileActions(10).find((entry) => entry.id === job.id);
+  assert.ok(detailedJob);
+  assert.equal(detailedJob.fileActionSummary.total, detailedJob.fileActions.length);
+  assert.equal(detailedJob.fileActionSummary.byActionType['rename-video'], 1);
+  assert.equal(detailedJob.fileActionSummary.byActionType['delete-temp'], 1);
+  assert.equal(detailedJob.fileActionSummary.missing > 0, true);
+  assert.equal(JSON.stringify(detailedJob.fileActions).includes('originalAbsolutePath'), false);
+  assert.equal(JSON.stringify(detailedJob.fileActions).includes('destinationAbsolutePath'), false);
 });
 
 test('source delete records media actions and history undo restores catalog and files', async () => {
