@@ -29,6 +29,8 @@ Catalog-owned generated media cleanup and managed video renames must also run th
 
 The media manager page at `/settings/media` must expose recent jobs with their file-action rows for operational review. File-action details shown through the API or UI must use managed relative paths and sanitized metadata; absolute filesystem paths such as original and destination absolute paths must not be exposed in browser responses.
 
+Media catalog repair is an explicit operator workflow on `/settings/media`. Repair scans must be dry-run only and must not mutate `video-library.json`, move files, create media jobs, or record history. Applied repair runs may prune missing generated variant paths, add legacy move assets/links, clean stale generated assets, and relink orphaned generated draft IDs; applied runs must record media-manager file actions where files move or rename and must record a non-undoable `media.catalog.repair` history row.
+
 ## Runtime Setup
 
 In the live Unraid setup the repo is mounted once at `/server/live`. All video paths should point inside that mount.
@@ -427,6 +429,7 @@ Media/catalog mutations must be classified before implementation:
 | Source metadata update | Audit-only action history | Not applicable |
 | Source clip definition save and key-video toggle | Audit-only action history | Removed generated clips are media-manager cleanup actions |
 | Clip render queue and clip publish | Audit-only action history | Render outputs and posters are media-manager jobs/file actions |
+| Applied media catalog repair | Audit-only action history | Generated cleanup and renames are media-manager jobs/file actions |
 | Duplicate-upload temp cleanup, poster generation, source hash backfill, media job retry, generated cleanup, obsolete-render cleanup, and display-ID renames | No action-history row | Media-manager operational jobs/file actions |
 
 Audit-only media history rows are listed in `/settings/history` for review but are intentionally non-undoable. Generated cleanup and managed renames remain observable through `/settings/media` instead of becoming user-history undo workflows.
@@ -501,7 +504,8 @@ POSTER_ROOT=/server/live/video-posters
 | `frontend/src/lib/server/media-source-service.ts` | Source upload, metadata update, delete/restore, duplicate cleanup, and source hash workflows. |
 | `frontend/src/lib/server/media-clip-service.ts` | Clip save, key-video update, publication, display-ID rename, and clip catalog mutation workflows. |
 | `frontend/src/lib/server/media-render-service.ts` | Clip render queueing, ffmpeg orchestration, render file actions, obsolete render cleanup, and render status mutation. |
-| `frontend/src/lib/server/media-bootstrap-service.ts` | No-write catalog reads plus explicit legacy move-video bootstrap, generated cleanup repair, missing variant pruning, and orphan draft relinking. |
+| `frontend/src/lib/server/media-bootstrap-service.ts` | No-write catalog reads plus compatibility repair loading for legacy callers. |
+| `frontend/src/lib/server/media-repair-service.ts` | Explicit scan/apply catalog repair for legacy move-video bootstrap, generated cleanup repair, missing variant pruning, and orphan draft relinking. |
 | `frontend/src/lib/server/media-read-models.ts` | Side-effect-free move video, upload, media library, render status, and summary view models. |
 | `frontend/src/lib/server/media-job-service.ts` | Media-manager job listing and supported job retry glue. |
 | `frontend/src/lib/server/video-library.ts` | Stable compatibility facade that re-exports media server APIs used by routes. |
@@ -520,8 +524,8 @@ POSTER_ROOT=/server/live/video-posters
 
 Media routes should import server media APIs through `frontend/src/lib/server/video-library.ts`. That file is a compatibility facade and should remain re-export-only.
 
-Media domain modules must not import the `video-library.ts` facade. They should import the specific peer service or lower-level module they need. `media-catalog.ts` owns JSON persistence; source, clip, render, bootstrap, read-model, and job services own their named workflow areas; `media-manager.ts` owns durable media jobs and file-action rows.
+Media domain modules must not import the `video-library.ts` facade. They should import the specific peer service or lower-level module they need. `media-catalog.ts` owns JSON persistence; source, clip, render, bootstrap, repair, read-model, and job services own their named workflow areas; `media-manager.ts` owns durable media jobs and file-action rows.
 
-Ordinary page/API read models must use the no-write media catalog path. Legacy bootstrap and repair routines that can mutate `video-library.json` must be invoked explicitly through the bootstrap service repair path, not hidden inside read-model assembly. The compatibility `getVideoLibrary(moves)` export preserves the existing repair-capable behavior for callers that intentionally need it, while `readVideoLibrary()` is the side-effect-free catalog read.
+Ordinary page/API read models must use the no-write media catalog path. Legacy bootstrap and repair routines that can mutate `video-library.json` must be invoked explicitly through the media repair service or the compatibility bootstrap repair path, not hidden inside read-model assembly. The compatibility `getVideoLibrary(moves)` export preserves the existing repair-capable behavior for callers that intentionally need it, while `readVideoLibrary()` is the side-effect-free catalog read.
 
 `media-workflow-helpers.ts` should stay limited to helpers shared by multiple media modules. Helpers used by only one workflow should live in that workflow module unless moving them would duplicate nontrivial logic or create a circular dependency.

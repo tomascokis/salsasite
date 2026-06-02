@@ -5,6 +5,11 @@ export {
 } from './media-bootstrap-service';
 
 export {
+  runMediaCatalogRepairs,
+  scanMediaCatalogRepairs
+} from './media-repair-service';
+
+export {
   createSourceAsset,
   deleteSourceAsset,
   detectSourceAssetFields,

@@ -1,5 +1,11 @@
 import { json } from '@sveltejs/kit';
-import { listMediaManagerJobs, queueSourceHashBackfill } from '$lib/server/video-library';
+import { getMoves } from '$lib/server/data';
+import {
+  listMediaManagerJobs,
+  queueSourceHashBackfill,
+  runMediaCatalogRepairs,
+  scanMediaCatalogRepairs
+} from '$lib/server/video-library';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -11,18 +17,33 @@ export const GET: RequestHandler = async ({ url }) => {
 
 export const POST: RequestHandler = async ({ request }) => {
   const payload = await request.json().catch(() => ({}));
-  if (payload?.action !== 'source.hash.backfill') {
-    return json({ error: 'Unsupported media job action.' }, { status: 400 });
-  }
 
   try {
-    return json({
-      ok: true,
-      ...(await queueSourceHashBackfill())
-    });
+    if (payload?.action === 'source.hash.backfill') {
+      return json({
+        ok: true,
+        ...(await queueSourceHashBackfill())
+      });
+    }
+
+    if (payload?.action === 'catalog.repair.scan') {
+      return json({
+        ok: true,
+        repair: await scanMediaCatalogRepairs(await getMoves())
+      });
+    }
+
+    if (payload?.action === 'catalog.repair.run') {
+      return json({
+        ok: true,
+        repair: await runMediaCatalogRepairs(await getMoves())
+      });
+    }
+
+    return json({ error: 'Unsupported media job action.' }, { status: 400 });
   } catch (error) {
     return json(
-      { error: error instanceof Error ? error.message : 'Could not queue source hash backfill.' },
+      { error: error instanceof Error ? error.message : 'Could not complete media job action.' },
       { status: 400 }
     );
   }

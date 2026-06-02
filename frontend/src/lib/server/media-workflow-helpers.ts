@@ -24,9 +24,14 @@ export function recordVideoAuditAction(input: {
   before: unknown;
   after: unknown;
 }) {
+  let actionId = '';
+  let createdAt = '';
   runInTransaction((db) => {
-    recordAction(db, input);
+    const action = recordAction(db, input);
+    actionId = action.id;
+    createdAt = action.createdAt;
   });
+  return { id: actionId, createdAt };
 }
 
 export function safeDisplayName(filename: string) {

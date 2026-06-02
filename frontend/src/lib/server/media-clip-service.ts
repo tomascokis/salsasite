@@ -157,7 +157,12 @@ function countMarkersEqual(left: ClipCountMarker[], right: ClipCountMarker[]) {
   });
 }
 
-export async function syncDerivedClipDisplayIdForMoveInLibrary(
+export type ManagedVideoRenamePlan = {
+  fromPath: string;
+  toPath: string;
+};
+
+export function applyDerivedClipDisplayIdForMoveCatalogChanges(
   library: VideoLibrary,
   normalizedMoveId: string,
   normalizedDisplayId: string
@@ -247,18 +252,32 @@ export async function syncDerivedClipDisplayIdForMoveInLibrary(
     }
   }
 
-  if (pendingRenames.size) {
+  return [...pendingRenames.entries()].map(([fromPath, toPath]) => ({ fromPath, toPath }));
+}
+
+export async function syncDerivedClipDisplayIdForMoveInLibrary(
+  library: VideoLibrary,
+  normalizedMoveId: string,
+  normalizedDisplayId: string
+) {
+  const pendingRenames = applyDerivedClipDisplayIdForMoveCatalogChanges(
+    library,
+    normalizedMoveId,
+    normalizedDisplayId
+  );
+
+  if (pendingRenames.length) {
     const renameJob = createMediaCleanupJob({
       targetType: 'move',
       targetId: normalizedMoveId,
       payload: {
         nextMoveDisplayId: normalizedDisplayId,
-        renames: [...pendingRenames.entries()].map(([fromPath, toPath]) => ({ fromPath, toPath }))
+        renames: pendingRenames
       }
     });
     startMediaJob(renameJob.id);
     try {
-      for (const [fromPath, toPath] of pendingRenames.entries()) {
+      for (const { fromPath, toPath } of pendingRenames) {
         await renameManagedVideoFiles({
           jobId: renameJob.id,
           fromPath,

@@ -30,6 +30,25 @@
     };
   };
 
+  type MediaRepairSummary = {
+    missingVariantPathsPruned: number;
+    legacyMoveAssetsAdded: number;
+    legacyLinksAdded: number;
+    staleGeneratedAssetsRemoved: number;
+    staleGeneratedFilesTrashed: number;
+    orphanDraftMoveIdsRelinked: number;
+    generatedRenameActions: number;
+    generatedVariantLinksRemoved: number;
+  };
+
+  type MediaRepairResult = {
+    dryRun: boolean;
+    changed: boolean;
+    summary: MediaRepairSummary;
+    mediaJobIds: string[];
+    historyActionId?: string;
+  };
+
   export let data: {
     jobs: MediaJob[];
   };
@@ -38,6 +57,9 @@
   let statusMessage = '';
   let busyJobId: string | null = null;
   let backfillBusy = false;
+  let repairScanBusy = false;
+  let repairRunBusy = false;
+  let repairResult: MediaRepairResult | null = null;
   let expandedJobIds = new Set<string>();
 
   function formatDate(value: string) {
@@ -94,6 +116,37 @@
     return parts.join(' / ');
   }
 
+  const repairSummaryLabels: Array<[keyof MediaRepairSummary, string]> = [
+    ['missingVariantPathsPruned', 'Missing variants pruned'],
+    ['legacyMoveAssetsAdded', 'Legacy assets added'],
+    ['legacyLinksAdded', 'Legacy links added'],
+    ['staleGeneratedAssetsRemoved', 'Stale assets removed'],
+    ['staleGeneratedFilesTrashed', 'Generated files trashed'],
+    ['orphanDraftMoveIdsRelinked', 'Draft ids relinked'],
+    ['generatedRenameActions', 'Generated renames'],
+    ['generatedVariantLinksRemoved', 'Variant links removed']
+  ];
+
+  function repairTotal(result: MediaRepairResult | null) {
+    if (!result) {
+      return 0;
+    }
+    return Object.values(result.summary).reduce((total, count) => total + count, 0);
+  }
+
+  async function postMediaJobAction(action: string) {
+    const response = await fetch('/api/media/jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error ?? 'Could not complete media job action.');
+    }
+    return payload;
+  }
+
   async function refreshJobs() {
     const response = await fetch('/api/media/jobs?limit=100');
     const payload = await response.json();
@@ -104,21 +157,46 @@
     backfillBusy = true;
     statusMessage = '';
     try {
-      const response = await fetch('/api/media/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'source.hash.backfill' })
-      });
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error ?? 'Could not queue source hash backfill.');
-      }
+      const payload = await postMediaJobAction('source.hash.backfill');
       statusMessage = `Queued ${payload.queued ?? 0} source hash job${payload.queued === 1 ? '' : 's'}.`;
       await refreshJobs();
     } catch (error) {
       statusMessage = error instanceof Error ? error.message : 'Could not queue source hash backfill.';
     } finally {
       backfillBusy = false;
+    }
+  }
+
+  async function scanCatalogRepairs() {
+    repairScanBusy = true;
+    statusMessage = '';
+    try {
+      const payload = await postMediaJobAction('catalog.repair.scan');
+      repairResult = payload.repair;
+      statusMessage = repairResult?.changed
+        ? `Catalog repair scan found ${repairTotal(repairResult)} planned change${repairTotal(repairResult) === 1 ? '' : 's'}.`
+        : 'Catalog repair scan found no changes.';
+    } catch (error) {
+      statusMessage = error instanceof Error ? error.message : 'Could not scan media catalog repairs.';
+    } finally {
+      repairScanBusy = false;
+    }
+  }
+
+  async function runCatalogRepairs() {
+    repairRunBusy = true;
+    statusMessage = '';
+    try {
+      const payload = await postMediaJobAction('catalog.repair.run');
+      repairResult = payload.repair;
+      statusMessage = repairResult?.changed
+        ? `Catalog repair applied ${repairTotal(repairResult)} change${repairTotal(repairResult) === 1 ? '' : 's'}.`
+        : 'Catalog repair found no changes to apply.';
+      await refreshJobs();
+    } catch (error) {
+      statusMessage = error instanceof Error ? error.message : 'Could not run media catalog repairs.';
+    } finally {
+      repairRunBusy = false;
     }
   }
 
@@ -164,6 +242,42 @@
     </p>
     {#if statusMessage}
       <p class="muted settings-status">{statusMessage}</p>
+    {/if}
+  </section>
+
+  <section class="settings-panel">
+    <div class="settings-header">
+      <h3>Catalog repair</h3>
+      <span class="settings-header-actions">
+        <button type="button" disabled={repairScanBusy || repairRunBusy} on:click={scanCatalogRepairs}>
+          {repairScanBusy ? 'Scanning' : 'Scan repairs'}
+        </button>
+        <button
+          type="button"
+          disabled={repairRunBusy || repairScanBusy || !repairResult?.changed}
+          on:click={runCatalogRepairs}
+        >
+          {repairRunBusy ? 'Running' : 'Run repairs'}
+        </button>
+      </span>
+    </div>
+    <p class="muted settings-status">
+      Repair scans legacy media links, generated cleanup, missing variants, and orphaned draft ids.
+    </p>
+    {#if repairResult}
+      <div class="repair-summary">
+        <strong>{repairResult.changed ? (repairResult.dryRun ? 'Changes found' : 'Changes applied') : 'No changes'}</strong>
+        <span>{repairResult.dryRun ? 'Dry run' : 'Applied run'}</span>
+        {#each repairSummaryLabels as [key, label]}
+          <span>{label}: {repairResult.summary[key]}</span>
+        {/each}
+        {#if repairResult.mediaJobIds.length > 0}
+          <span>Media jobs: {repairResult.mediaJobIds.join(', ')}</span>
+        {/if}
+        {#if repairResult.historyActionId}
+          <span>History action: {repairResult.historyActionId}</span>
+        {/if}
+      </div>
     {/if}
   </section>
 
@@ -301,6 +415,19 @@
 
   .media-jobs-table-wrap {
     overflow-x: auto;
+  }
+
+  .repair-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 0.35rem 1rem;
+    margin-top: 0.75rem;
+  }
+
+  .repair-summary span {
+    overflow-wrap: anywhere;
+    color: var(--muted);
+    font-size: 0.86rem;
   }
 
   .media-jobs-table {
