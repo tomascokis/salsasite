@@ -3335,6 +3335,7 @@ select {
   --timeline-handle-size: calc(
     var(--timeline-clip-top) + var(--timeline-lower-lane-offset) - var(--timeline-handle-top)
   );
+  --timeline-handle-height: calc(var(--timeline-handle-size) - 4px);
   --timeline-edge-top: 8px;
   --timeline-edge-bottom: 8px;
   display: grid;
@@ -3792,12 +3793,12 @@ select {
 
 .clip-timeline-playhead-handle {
   position: absolute;
-  top: var(--timeline-handle-top);
+  top: calc(var(--timeline-handle-top) + 2px);
   z-index: 3;
   display: block;
   box-sizing: border-box;
   width: var(--timeline-handle-size);
-  height: var(--timeline-handle-size);
+  height: var(--timeline-handle-height);
   padding: 0;
   border: 0;
   border: 2px solid rgba(255, 255, 255, 0.94);
