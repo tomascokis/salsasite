@@ -5,6 +5,8 @@
 The new site is designed to run as a single Node container, not as an R runtime plus nginx.
 The preferred Unraid setup is a live-mounted container: the image provides the runtime and dependencies, while the repo files stay on the mounted share.
 
+Near-term architecture improvements must preserve this shape: one Docker container, one mounted project tree, and live-editable application/data files. Improvements may add stronger persistence, authentication, cache invalidation, or job recovery inside that container, but must not require splitting the app into multiple services unless the deployment contract is explicitly changed.
+
 Main files:
 
 - [docker/Dockerfile](/Volumes/fastdata/server/salsasite-dev/docker/Dockerfile)
@@ -19,6 +21,7 @@ Main files:
 - Move video directory in container: `/server/live/video-moves`
 - Source video directory in container: `/server/live/video-sources`
 - Poster directory in container: `/server/live/video-posters`
+- SQLite app state: `/server/live/migration-data/app-state.sqlite`
 
 For the full video catalog, upload, clip-render, and poster workflow, see [docs/video-library.md](/Volumes/fastdata/server/salsasite-dev/docs/video-library.md).
 

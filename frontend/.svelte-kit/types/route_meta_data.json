@@ -8,6 +8,12 @@
 	"/api/dancers": [
 		"src/routes/api/dancers/+server.ts"
 	],
+	"/api/history": [
+		"src/routes/api/history/+server.ts"
+	],
+	"/api/history/[id]/undo": [
+		"src/routes/api/history/[id]/undo/+server.ts"
+	],
 	"/api/media/library": [
 		"src/routes/api/media/library/+server.ts"
 	],
@@ -84,6 +90,9 @@
 		"src/routes/progress/editor/+page.server.ts"
 	],
 	"/settings": [],
+	"/settings/history": [
+		"src/routes/settings/history/+page.server.ts"
+	],
 	"/settings/pickers": [
 		"src/routes/settings/pickers/+page.server.ts"
 	],

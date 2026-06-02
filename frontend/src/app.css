@@ -5841,6 +5841,13 @@ select {
   font-size: 1.35rem;
 }
 
+.settings-header-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .settings-header button,
 .settings-color-field input[type='text'] {
   border: 1px solid #d0dae4;

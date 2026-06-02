@@ -75,6 +75,24 @@ Suggested phase 1 backend tables:
 - `progress_snapshots`
 - `progress_entries`
 
+## Action History And Undo
+
+Live editing workflows should be designed around an action history so changes can be reviewed and undone.
+
+The near-term implementation should keep this inside the same live-mounted Docker deployment. Do not introduce a separate service just to support history.
+
+The action history should be added as part of the SQLite persistence architecture, not as a later bolt-on after all JSON sidecar stores have been migrated. Each mutating workflow should eventually write a durable action record with:
+
+- action type
+- target entity type and ID
+- timestamp
+- actor or session identifier when authentication exists
+- before state needed to undo the action
+- after state needed to audit or redo the action
+- related file operations when media files are created, renamed, rendered, published, or deleted
+
+Undo support should be implemented incrementally. Start with metadata, dancers, move drafts, and move edits where data-only rollback is straightforward. Add media undo after file operations are represented explicitly enough to restore or safely mark irreversible changes. Render jobs can be tracked as actions, but generated files may need retry/rebuild semantics instead of a simple byte-for-byte undo.
+
 ## Phase 1 parity scope
 
 The first migration should aim for behavioral parity, not redesign:

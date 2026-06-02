@@ -52,7 +52,10 @@
   <section class="settings-panel">
     <div class="settings-header">
       <h2>Labs</h2>
-      <a class="header-button" href="/settings/pickers">Open picker lab</a>
+      <span class="settings-header-actions">
+        <a class="header-button" href="/settings/history">Action history</a>
+        <a class="header-button" href="/settings/pickers">Open picker lab</a>
+      </span>
     </div>
     <p class="muted settings-status">Shared family, dancer, and move picker test page.</p>
   </section>

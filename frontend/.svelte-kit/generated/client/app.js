@@ -17,7 +17,8 @@ export const nodes = [
 	() => import('./nodes/13'),
 	() => import('./nodes/14'),
 	() => import('./nodes/15'),
-	() => import('./nodes/16')
+	() => import('./nodes/16'),
+	() => import('./nodes/17')
 ];
 
 export const server_loads = [];
@@ -35,9 +36,10 @@ export const dictionary = {
 		"/progress": [~11],
 		"/progress/editor": [~12],
 		"/settings": [13],
-		"/settings/pickers": [~14],
-		"/topics/[slug]": [~15],
-		"/upload": [~16]
+		"/settings/history": [~14],
+		"/settings/pickers": [~15],
+		"/topics/[slug]": [~16],
+		"/upload": [~17]
 	};
 
 export const hooks = {

@@ -81,6 +81,7 @@ Current exported files include:
 - `raw-moves-schema.json`: schema information for raw move reference data.
 - `video-library.json`: source/move video assets, move links, and derived clip records.
 - `move-edits.json`: sidecar move overrides, created moves, and draft moves.
+- `app-state.sqlite`: live SQLite state for migrated data-only editing workflows and action history.
 
 The current manifest reports 595 move rows, 12 layout columns, 7 progress snapshots, 540 trackable moves, and 59 moves with local video at export time.
 
@@ -131,7 +132,7 @@ Overview-style pages use the live published move dataset at runtime. Published m
 
 Core move data is represented by `MoveRecord` in [frontend/src/lib/types.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/types.ts). A move includes identity, topic/family grouping, level/type, positions, tags, description, source/authorship, comments, review fields, ordering/layout fields, relationship IDs, validity, and video references.
 
-The app treats the exported `moves.json` as the base catalog and layers local edits from `migration-data/move-edits.json`.
+The app treats the exported `moves.json` as the base catalog and layers local edits from SQLite state under `DATA_DIR/app-state.sqlite`. Existing JSON sidecars are used to bootstrap the SQLite store on first initialization.
 
 [frontend/src/lib/server/move-editor.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/move-editor.ts) manages:
 
@@ -195,7 +196,7 @@ It is designed to become API-backed later; current edits are not persisted serve
 
 ## Metadata
 
-[frontend/src/lib/server/metadata.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/metadata.ts) derives topics and families from moves and raw workbook references, then merges custom entries from `migration-data/metadata.json`.
+[frontend/src/lib/server/metadata.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/metadata.ts) derives topics and families from moves and raw workbook references, then merges custom entries from SQLite state. Existing `migration-data/metadata.json` content is imported during first SQLite initialization.
 
 Metadata entries include names, slugs, descriptions, source type, timestamps, and move counts.
 
@@ -203,7 +204,7 @@ Topics and families have splash pages that reuse the overview renderer with a fi
 
 ## Dancers
 
-[frontend/src/lib/server/dancers.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/dancers.ts) derives dancer profiles from raw move references and video-library asset dancers, then merges custom dancer records from `migration-data/dancers.json`.
+[frontend/src/lib/server/dancers.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/dancers.ts) derives dancer profiles from raw move references and video-library asset dancers, then merges custom dancer records from SQLite state. Existing `migration-data/dancers.json` content is imported during first SQLite initialization.
 
 Dancer profiles include:
 
@@ -227,6 +228,8 @@ The app exposes JSON endpoints for live workflows:
 - `/api/moves/create`: save drafts, create drafts from names, and publish drafts.
 - `/api/metadata`: save topic/family metadata.
 - `/api/dancers`: save dancer profiles.
+- `/api/history`: list recent recorded actions.
+- `/api/history/[id]/undo`: undo supported data-only actions.
 - `/api/media/library`: paginated media library data with filtering.
 - `/api/upload/source`: upload source videos.
 - `/api/upload/source/[id]`: update or delete source assets.
@@ -252,6 +255,12 @@ The UI favors dense, practical, dashboard-like screens over marketing-style page
 
 Status and badge language is intended to stay shared across move pages, media browsing, and clip editing.
 
+## Action History
+
+[frontend/src/lib/server/app-state.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/app-state.ts) owns the SQLite database and bootstraps migrated data-only stores from JSON sidecars. [frontend/src/lib/server/history.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/history.ts) lists and undoes supported actions.
+
+The first undo-capable slice covers metadata entries, dancer profiles/deleted-profile markers, move drafts, and published move edit overrides. Draft publishing actions are recorded but not undoable yet because they may involve media relinks. Media upload, render, publish, poster, rename, and delete operations are not part of undo in this slice.
+
 ## Deployment
 
 The intended deployment is a single Node container on Unraid. The preferred development/deployment shape is a live-mounted container where the repo is mounted into `/server/live` and the container supplies Node dependencies plus `ffmpeg`.
@@ -270,7 +279,7 @@ For browser verification from this checkout, use `http://192.168.0.127:18096`.
 ## Current Limitations And Boundaries
 
 - The static R/Quarto build and the SvelteKit app both exist; the SvelteKit app is the migration target, but the R export layer still feeds it.
-- Several live stores are JSON sidecar files rather than a database.
+- The media library remains a JSON sidecar file; migrated data-only editing workflows use SQLite.
 - Progress editor changes are currently browser-local unless imported/exported through CSV.
 - Authentication, authorization, admin pages, and access tracking are planned but not implemented in the inspected app.
 - Media render jobs are in memory. If the container restarts during rendering, the saved clip definition remains but the active render job is lost.

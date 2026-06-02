@@ -1,5 +1,3 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import type {
   DancerLevel,
   DancerProfile,
@@ -10,16 +8,10 @@ import type {
   VideoAsset,
   VideoLibrary
 } from '$lib/types';
-import { resolveDataDir } from './paths';
+import { getAppDatabase, recordAction, runInTransaction } from './app-state';
 import { findPosterForVideoFile } from './posters';
 
 type StoredDancer = DancerRecord;
-
-type DancerStore = {
-  version: 1;
-  dancers: StoredDancer[];
-  deletedDancerSlugs: string[];
-};
 
 type DancerInput = {
   id?: string;
@@ -31,21 +23,15 @@ type DancerInput = {
   region?: string | null;
 };
 
-const STORE_FILENAME = 'dancers.json';
 const ROLE_VALUES = new Set<DancerRole>(['lead', 'follow', 'unknown']);
 const LEVEL_VALUES = new Set<DancerLevel>(['world-class', 'pro', 'semi-pro', 'amateur', 'unknown']);
 
-function emptyStore(): DancerStore {
-  return {
-    version: 1,
-    dancers: [],
-    deletedDancerSlugs: []
-  };
-}
-
-function storePath() {
-  return path.join(resolveDataDir(), STORE_FILENAME);
-}
+type DancerActionState = {
+  dancer: StoredDancer | null;
+  id: string;
+  slug: string;
+  deletedSlug: boolean;
+};
 
 function nowIso() {
   return new Date().toISOString();
@@ -109,27 +95,108 @@ function dancerSlugFromId(id: string) {
   return dancerSlug(id.startsWith('dancer:') ? id.slice('dancer:'.length) : id);
 }
 
-async function readStore() {
-  try {
-    const contents = await fs.readFile(storePath(), 'utf-8');
-    const parsed = JSON.parse(contents) as Partial<DancerStore>;
-    return {
-      ...emptyStore(),
-      ...parsed,
-      dancers: Array.isArray(parsed.dancers) ? parsed.dancers : [],
-      deletedDancerSlugs: normalizeDeletedDancerSlugs(parsed.deletedDancerSlugs)
-    };
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return emptyStore();
-    }
-    throw error;
-  }
+function dancerRowToRecord(row: Record<string, unknown>): StoredDancer {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    fullName: String(row.full_name),
+    displayName: String(row.display_name),
+    instagramHandle: row.instagram_handle == null ? null : String(row.instagram_handle),
+    role: normalizeRole(row.role),
+    level: normalizeLevel(row.level),
+    region: normalizeOptionalText(row.region),
+    source: row.source === 'derived' ? 'derived' : 'custom',
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at)
+  };
 }
 
-async function writeStore(store: DancerStore) {
-  await fs.mkdir(resolveDataDir(), { recursive: true });
-  await fs.writeFile(storePath(), `${JSON.stringify(store, null, 2)}\n`);
+function listStoredDancers() {
+  return getAppDatabase()
+    .prepare(
+      `
+        SELECT
+          id, slug, full_name, display_name, instagram_handle, role, level,
+          region, source, created_at, updated_at
+        FROM dancer_profiles
+        ORDER BY display_name COLLATE NOCASE
+      `
+    )
+    .all()
+    .map((row) => dancerRowToRecord(row as Record<string, unknown>));
+}
+
+function listDeletedDancerSlugs() {
+  return normalizeDeletedDancerSlugs(
+    getAppDatabase()
+      .prepare('SELECT slug FROM deleted_dancer_slugs ORDER BY slug')
+      .all()
+      .map((row) => (row as { slug: string }).slug)
+  );
+}
+
+function findStoredDancerByIdOrSlug(id: string, slug: string) {
+  const row = getAppDatabase()
+    .prepare(
+      `
+        SELECT
+          id, slug, full_name, display_name, instagram_handle, role, level,
+          region, source, created_at, updated_at
+        FROM dancer_profiles
+        WHERE id = ? OR slug = ?
+        LIMIT 1
+      `
+    )
+    .get(id, slug) as Record<string, unknown> | undefined;
+
+  return row ? dancerRowToRecord(row) : null;
+}
+
+function upsertDancer(db: ReturnType<typeof getAppDatabase>, dancer: StoredDancer) {
+  db.prepare('DELETE FROM dancer_profiles WHERE id = ? OR slug = ?').run(dancer.id, dancer.slug);
+  db.prepare(
+    `
+      INSERT INTO dancer_profiles (
+        id, slug, full_name, display_name, instagram_handle, role, level,
+        region, source, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+  ).run(
+    dancer.id,
+    dancer.slug,
+    dancer.fullName,
+    dancer.displayName,
+    dancer.instagramHandle,
+    dancer.role,
+    dancer.level,
+    dancer.region,
+    dancer.source,
+    dancer.createdAt,
+    dancer.updatedAt
+  );
+}
+
+function captureDancerState(id: string, slug: string): DancerActionState {
+  return {
+    dancer: findStoredDancerByIdOrSlug(id, slug),
+    id,
+    slug,
+    deletedSlug: listDeletedDancerSlugs().includes(slug)
+  };
+}
+
+export function restoreDancerState(db: ReturnType<typeof getAppDatabase>, state: DancerActionState) {
+  if (state.dancer) {
+    upsertDancer(db, state.dancer);
+  } else {
+    db.prepare('DELETE FROM dancer_profiles WHERE id = ? OR slug = ?').run(state.id, state.slug);
+  }
+
+  if (state.deletedSlug) {
+    db.prepare('INSERT OR IGNORE INTO deleted_dancer_slugs (slug) VALUES (?)').run(state.slug);
+  } else {
+    db.prepare('DELETE FROM deleted_dancer_slugs WHERE slug = ?').run(state.slug);
+  }
 }
 
 function derivedDancers(rawReferences: RawMoveReferenceRecord[], library: VideoLibrary) {
@@ -213,9 +280,8 @@ export async function getDancerProfiles(
   rawReferences: RawMoveReferenceRecord[],
   library: VideoLibrary
 ): Promise<DancerProfile[]> {
-  const store = await readStore();
-  const deletedDancerSlugs = new Set(store.deletedDancerSlugs);
-  const dancers = mergeDancers(derivedDancers(rawReferences, library), store.dancers, deletedDancerSlugs);
+  const deletedDancerSlugs = new Set(listDeletedDancerSlugs());
+  const dancers = mergeDancers(derivedDancers(rawReferences, library), listStoredDancers(), deletedDancerSlugs);
   const movesById = new Map(moves.map((move) => [move.id, move]));
 
   return Promise.all(
@@ -267,13 +333,13 @@ export async function saveDancer(input: DancerInput) {
     throw new Error('Full name is required.');
   }
 
-  const store = await readStore();
   const id = input.id || dancerId(fullName);
-  const existing = store.dancers.find((dancer) => dancer.id === id) ?? store.dancers.find((dancer) => dancer.slug === dancerSlug(fullName));
+  const slug = dancerSlug(fullName);
+  const existing = findStoredDancerByIdOrSlug(id, slug);
   const timestamp = nowIso();
   const next: DancerRecord = {
     id: existing?.id ?? id,
-    slug: dancerSlug(fullName),
+    slug,
     fullName,
     displayName: normalizeName(input.displayName) || fullName,
     instagramHandle: normalizeInstagramHandle(input.instagramHandle),
@@ -285,12 +351,27 @@ export async function saveDancer(input: DancerInput) {
     updatedAt: timestamp
   };
 
-  store.dancers = existing
-    ? store.dancers.map((dancer) => (dancer.id === existing.id ? next : dancer))
-    : [...store.dancers, next];
-  store.deletedDancerSlugs = store.deletedDancerSlugs.filter((slug) => slug !== next.slug);
+  const before = captureDancerState(next.id, existing?.slug ?? next.slug);
+  const after: DancerActionState = {
+    dancer: next,
+    id: next.id,
+    slug: next.slug,
+    deletedSlug: false
+  };
 
-  await writeStore(store);
+  runInTransaction((db) => {
+    upsertDancer(db, next);
+    db.prepare('DELETE FROM deleted_dancer_slugs WHERE slug = ?').run(next.slug);
+    recordAction(db, {
+      type: existing ? 'dancer.update' : 'dancer.create',
+      label: `${existing ? 'Updated' : 'Created'} dancer ${next.displayName}`,
+      entityType: 'dancer',
+      entityId: next.id,
+      before,
+      after
+    });
+  });
+
   return next;
 }
 
@@ -300,16 +381,29 @@ export async function deleteDancer(id: string) {
     throw new Error('Dancer id is required.');
   }
 
-  const store = await readStore();
-  const existing = store.dancers.find((dancer) => dancer.id === normalizedId);
+  const existing = findStoredDancerByIdOrSlug(normalizedId, dancerSlugFromId(normalizedId));
   const slug = existing?.slug ?? dancerSlugFromId(normalizedId);
-  const deletedDancerSlugs = new Set(store.deletedDancerSlugs);
-  deletedDancerSlugs.add(slug);
+  const before = captureDancerState(normalizedId, slug);
+  const after: DancerActionState = {
+    dancer: null,
+    id: normalizedId,
+    slug,
+    deletedSlug: true
+  };
 
-  store.dancers = store.dancers.filter((dancer) => dancer.id !== normalizedId && dancer.slug !== slug);
-  store.deletedDancerSlugs = [...deletedDancerSlugs].sort((left, right) => left.localeCompare(right));
+  runInTransaction((db) => {
+    db.prepare('DELETE FROM dancer_profiles WHERE id = ? OR slug = ?').run(normalizedId, slug);
+    db.prepare('INSERT OR IGNORE INTO deleted_dancer_slugs (slug) VALUES (?)').run(slug);
+    recordAction(db, {
+      type: 'dancer.delete',
+      label: `Deleted dancer ${existing?.displayName ?? slug}`,
+      entityType: 'dancer',
+      entityId: normalizedId,
+      before,
+      after
+    });
+  });
 
-  await writeStore(store);
   return {
     id: normalizedId,
     slug
