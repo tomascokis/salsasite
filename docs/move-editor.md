@@ -143,7 +143,7 @@ The move editor saves clip definitions before rendering.
 - Wheel zoom should accumulate into a smooth target viewport and ease continuously toward it rather than stepping/chunking per wheel event.
 - Timeline geometry should begin animating immediately during zoom gestures, using a short direct transition rather than the slower edit-row motion pace.
 - When timeline zoom is active, the editor must clearly show that zoom is active.
-- The zoomed timeline boundary lines must show prominent left and right arrow indicators above the respective orange edges.
+- The zoomed timeline boundary lines must show prominent left and right arrow indicators directly on the respective orange edge markers.
 - When timeline zoom is active, the editor must provide `Reset zoom` and `Loop zoom` controls in the main timeline action row beside `Edit moves` or `Add move`.
 - `Loop zoom` must loop playback over the visible zoom window and remain mutually exclusive with clip-range looping.
 - Timeline tracks, saved ranges, playhead lines, knobs, and drag markers must render crisply at rest; the editor must not rely on transform downscaling or fractional sizing that leaves the timeline persistently blurry.

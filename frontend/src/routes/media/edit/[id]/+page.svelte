@@ -3446,10 +3446,6 @@
                   on:pointerdown={(event) => startTimelineDrag(event)}
                   on:wheel={handleTimelineWheel}
                 >
-                  {#if isTimelineZoomed()}
-                    <span class="timeline-zoom-edge-arrow left" aria-hidden="true"></span>
-                    <span class="timeline-zoom-edge-arrow right" aria-hidden="true"></span>
-                  {/if}
                   <div class="clip-timeline-track"></div>
                   {#each visibleSavedTimelineClips as clip (clip.id)}
                     <button
