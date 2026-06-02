@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
-import { queuePosterGeneration } from '$lib/server/posters';
 import { createSourceAsset } from '$lib/server/video-library';
+import { queuePosterGeneration } from '$lib/server/posters';
 import type { VideoContentType, VideoEnvironment, VideoOriginType, VideoTiming } from '$lib/types';
 import type { RequestHandler } from './$types';
 
@@ -38,7 +38,7 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ error: 'Source is required.' }, { status: 400 });
   }
 
-  const asset = await createSourceAsset({
+  const result = await createSourceAsset({
     originalFilename: file.name,
     displayName: String(formData.get('displayName') ?? '').trim(),
     dancers: String(formData.get('dancers') ?? ''),
@@ -51,10 +51,10 @@ export const POST: RequestHandler = async ({ request }) => {
     classWorkshop: String(formData.get('classWorkshop') ?? '').trim() || null,
     tags: String(formData.get('tags') ?? ''),
     notes: String(formData.get('notes') ?? '').trim() || null,
-    fileBuffer: Buffer.from(await file.arrayBuffer())
+    fileStream: file.stream()
   });
 
-  void queuePosterGeneration(asset.filePath);
+  void queuePosterGeneration(result.asset.filePath);
 
-  return json({ ok: true, asset });
+  return json({ ok: true, asset: result.asset, reusedExisting: result.reusedExisting });
 };

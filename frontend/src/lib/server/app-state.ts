@@ -144,6 +144,41 @@ function createSchema(db: DatabaseSync) {
       updated_at TEXT NOT NULL,
       sort_order INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS media_jobs (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      payload_json TEXT NOT NULL,
+      attempts INTEGER NOT NULL,
+      max_attempts INTEGER NOT NULL,
+      error TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      started_at TEXT,
+      finished_at TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_media_jobs_status ON media_jobs(status, updated_at);
+    CREATE INDEX IF NOT EXISTS idx_media_jobs_target ON media_jobs(target_type, target_id);
+
+    CREATE TABLE IF NOT EXISTS media_file_actions (
+      id TEXT PRIMARY KEY,
+      job_id TEXT NOT NULL,
+      action_type TEXT NOT NULL,
+      status TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      backup_path TEXT,
+      metadata_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(job_id) REFERENCES media_jobs(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_media_file_actions_job ON media_file_actions(job_id);
   `);
 }
 

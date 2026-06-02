@@ -94,6 +94,8 @@ export type VideoContentType = 'music' | 'counts' | 'other';
 export type VideoEnvironment = 'social' | 'class';
 export type VideoOriginType = 'self-recorded' | 'download';
 export type DerivedClipStatus = 'pending' | 'rendering' | 'ready' | 'failed';
+export type MediaHashAlgorithm = 'sha256';
+export type MediaHashStatus = 'pending' | 'ready' | 'failed';
 export type CountOverlayPlacement = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 export type CountTimingPreset = 'on2-default' | 'on2-all' | 'on1-default' | 'on1-all';
 
@@ -127,6 +129,10 @@ export interface VideoAsset {
   classWorkshop: string | null;
   tags: string[];
   notes: string | null;
+  contentHash: string | null;
+  contentHashAlgorithm: MediaHashAlgorithm | null;
+  contentSizeBytes: number | null;
+  hashStatus: MediaHashStatus;
   createdAt: string;
 }
 

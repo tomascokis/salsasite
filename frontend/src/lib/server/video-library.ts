@@ -12,6 +12,8 @@ import type {
   MoveRecord,
   MoveVideoEntry,
   MoveVideoLink,
+  MediaHashAlgorithm,
+  MediaHashStatus,
   VideoAsset,
   VideoContentType,
   VideoEnvironment,
@@ -32,6 +34,13 @@ import {
   resolveSourceRoot
 } from './paths';
 import { findPosterForVideoFile, queuePosterGeneration } from './posters';
+import {
+  completedMediaJob,
+  recordMediaFileAction,
+  writeBufferAndHash,
+  writeStreamAndHash,
+  type MediaFingerprint
+} from './media-manager';
 import { getPositionOptions, positionLabelById } from './positions';
 import {
   normalizeDateString,
@@ -139,6 +148,26 @@ function isVideoEnvironment(value: unknown): value is VideoEnvironment {
 
 function isVideoOriginType(value: unknown): value is VideoOriginType {
   return value === 'self-recorded' || value === 'download';
+}
+
+function normalizeContentHash(value: unknown) {
+  const text = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return /^sha256:[a-f0-9]{64}$/.test(text) ? text : null;
+}
+
+function normalizeHashAlgorithm(value: unknown): MediaHashAlgorithm | null {
+  return value === 'sha256' ? 'sha256' : null;
+}
+
+function normalizeHashStatus(value: unknown, contentHash: string | null): MediaHashStatus {
+  if (value === 'failed') return 'failed';
+  if (contentHash) return 'ready';
+  return 'pending';
+}
+
+function normalizeContentSizeBytes(value: unknown) {
+  const numberValue = Number(value);
+  return Number.isSafeInteger(numberValue) && numberValue >= 0 ? numberValue : null;
 }
 
 function isCountOverlayPlacement(value: unknown): value is CountOverlayPlacement {
@@ -256,6 +285,7 @@ function normalizeVideoAsset(raw: Partial<VideoAsset> & { sourceType?: string })
 
   const metadata = normalizeLegacyMetadata(raw);
   const originType = isVideoOriginType(raw.originType) ? raw.originType : 'self-recorded';
+  const contentHash = normalizeContentHash(raw.contentHash);
   return {
     id: String(raw.id),
     kind: raw.kind,
@@ -272,6 +302,10 @@ function normalizeVideoAsset(raw: Partial<VideoAsset> & { sourceType?: string })
     classWorkshop: normalizeOptionalText(raw.classWorkshop),
     tags: normalizeTags(raw.tags),
     notes: raw.notes ? String(raw.notes) : null,
+    contentHash,
+    contentHashAlgorithm: contentHash ? normalizeHashAlgorithm(raw.contentHashAlgorithm) ?? 'sha256' : null,
+    contentSizeBytes: normalizeContentSizeBytes(raw.contentSizeBytes),
+    hashStatus: normalizeHashStatus(raw.hashStatus, contentHash),
     createdAt: String(raw.createdAt || nowIso())
   };
 }
@@ -692,6 +726,10 @@ async function bootstrapLegacyMoveAssets(library: VideoLibrary, moves: MoveRecor
         classWorkshop: null,
         tags: [],
         notes: null,
+        contentHash: null,
+        contentHashAlgorithm: null,
+        contentSizeBytes: null,
+        hashStatus: 'pending',
         createdAt: file.createdAt
       };
       library.videoAssets.push(asset);
@@ -1140,9 +1178,10 @@ export async function createSourceAsset(input: {
   classWorkshop?: string | null;
   tags?: string[] | string | null;
   notes: string | null;
-  fileBuffer: Buffer;
+  fileBuffer?: Buffer;
+  fileStream?: ReadableStream<Uint8Array>;
 }) {
-  return mutateLibrary(async (library) => {
+  const result = await mutateLibrary(async (library) => {
     await ensureRoots();
 
     const takenPaths = new Set(
@@ -1152,11 +1191,39 @@ export async function createSourceAsset(input: {
     );
     const relativeFilePath = uniquePathForDirectory(input.originalFilename, '', takenPaths);
     const absolutePath = resolvePathInsideRoot(resolveSourceRoot(), relativeFilePath);
-    await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-    await fs.writeFile(absolutePath, input.fileBuffer);
+    let fingerprint: MediaFingerprint;
+    if (input.fileStream) {
+      fingerprint = await writeStreamAndHash({
+        stream: input.fileStream,
+        absolutePath
+      });
+    } else if (input.fileBuffer) {
+      fingerprint = await writeBufferAndHash({
+        buffer: input.fileBuffer,
+        absolutePath
+      });
+    } else {
+      throw new Error('A source video file is required.');
+    }
+
+    const duplicateAsset = library.videoAssets.find(
+      (asset) =>
+        asset.kind === 'source' &&
+        asset.contentHash === fingerprint.contentHash &&
+        asset.contentSizeBytes === fingerprint.contentSizeBytes
+    );
+    if (duplicateAsset) {
+      await unlinkIfExists(absolutePath);
+      return {
+        asset: duplicateAsset,
+        reusedExisting: true
+      };
+    }
+
+    const assetId = randomUUID();
 
     const asset: VideoAsset = {
-      id: randomUUID(),
+      id: assetId,
       kind: 'source',
       filePath: path.posix.join(SOURCE_VIDEO_PREFIX, relativeFilePath),
       displayName: input.displayName.trim() || safeDisplayName(input.originalFilename),
@@ -1171,14 +1238,52 @@ export async function createSourceAsset(input: {
       classWorkshop: normalizeOptionalText(input.classWorkshop),
       tags: normalizeTags(input.tags),
       notes: input.notes?.trim() || null,
+      contentHash: fingerprint.contentHash,
+      contentHashAlgorithm: fingerprint.contentHashAlgorithm,
+      contentSizeBytes: fingerprint.contentSizeBytes,
+      hashStatus: 'ready',
       createdAt: nowIso()
     };
 
     library.videoAssets.push(asset);
     sortLibrary(library);
 
-    return asset;
+    return {
+      asset,
+      reusedExisting: false,
+      fingerprint
+    };
   });
+
+  if (!result.reusedExisting && result.fingerprint) {
+    const fingerprint = result.fingerprint;
+    const hashJob = completedMediaJob({
+      type: 'source.hash',
+      targetType: 'videoAsset',
+      targetId: result.asset.id,
+      idempotencyKey: `source.hash:${result.asset.id}:${fingerprint.contentHash}`,
+      payload: {
+        filePath: result.asset.filePath,
+        contentHash: fingerprint.contentHash,
+        contentSizeBytes: fingerprint.contentSizeBytes
+      }
+    });
+    recordMediaFileAction({
+      jobId: hashJob.id,
+      actionType: 'write-source',
+      status: 'succeeded',
+      filePath: result.asset.filePath,
+      metadata: {
+        contentHash: fingerprint.contentHash,
+        contentSizeBytes: fingerprint.contentSizeBytes
+      }
+    });
+  }
+
+  return {
+    asset: result.asset,
+    reusedExisting: result.reusedExisting
+  };
 }
 
 export async function updateSourceAsset(input: {
@@ -1712,6 +1817,10 @@ async function renderClip(clipId: string) {
         classWorkshop: source.classWorkshop,
         tags: [...source.tags],
         notes: source.notes,
+        contentHash: null,
+        contentHashAlgorithm: null,
+        contentSizeBytes: null,
+        hashStatus: 'pending',
         createdAt: nowIso()
       };
       mutableLibrary.videoAssets.push(outputAsset);

@@ -21,6 +21,8 @@ DATA_DIR/video-library.json
 
 The exported move data still defines the encyclopedia. The video catalog only defines media assets, move-to-video links, and clip definitions.
 
+Media filesystem actions must be routed through the server-side media manager rather than being open-coded in routes or page loaders. The media manager records durable jobs in `DATA_DIR/app-state.sqlite` while the video relationships remain in `DATA_DIR/video-library.json`.
+
 ## Runtime Setup
 
 In the live Unraid setup the repo is mounted once at `/server/live`. All video paths should point inside that mount.
@@ -72,8 +74,14 @@ Important fields:
 - `classWorkshop`: legacy optional source-context text retained in stored data, but not shown or edited in the media editor UI.
 - `tags`: optional miscellaneous source tags such as `low quality`.
 - `notes`: optional text.
+- `contentHash`: optional source byte fingerprint stored as `sha256:<hex>`.
+- `contentHashAlgorithm`: currently `sha256` when a byte fingerprint is known.
+- `contentSizeBytes`: source file size captured with the byte fingerprint.
+- `hashStatus`: `pending`, `ready`, or `failed`.
 
 Existing legacy files get metadata inferred from their filenames where possible.
+
+Source assets keep their normal catalog `id` as the app identity. `contentHash` is an immutable byte fingerprint used for duplicate detection and recovery, not the primary key. Two files with the same SHA-256 hash and byte size are treated as the same exact source material. Remuxed or transcoded copies may have different byte hashes and require a later video fingerprint if softer duplicate matching is needed.
 
 ### Media Editor Metadata Controls
 
@@ -245,7 +253,7 @@ Default draft timing:
 
 Saved clip definitions do not create move videos until they are rendered.
 
-Rendering is handled by the app server with `ffmpeg`. This is an in-process queue designed for the single-container Unraid setup.
+Rendering is handled by the app server with `ffmpeg`. This is currently an in-process queue designed for the single-container Unraid setup. Future render scheduling should move through the media manager job model before changing output or publish semantics.
 
 The render command is effectively:
 
@@ -329,7 +337,7 @@ The app checks these extensions:
 .jpg .jpeg .webp .png .avif
 ```
 
-Poster generation is queued automatically for uploaded sources and rendered clips when `ffmpeg` is available.
+Poster generation is queued automatically for uploaded sources and rendered clips when `ffmpeg` is available. Poster requests must create or reuse durable `poster.generate` media-manager jobs before running `ffmpeg`.
 
 Bulk-generate move posters on Unraid:
 
