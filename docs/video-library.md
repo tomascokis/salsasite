@@ -13,15 +13,17 @@ The app has two video concepts:
 
 Source videos are not shown directly on move pages. A source video must be sliced and rendered into one or more move clips before it appears on a move detail page.
 
-The source of truth for video relationships is a writable JSON catalog:
+The source of truth for video relationships is the media catalog tables in the app SQLite database:
 
 ```text
-DATA_DIR/video-library.json
+DATA_DIR/app-state.sqlite
 ```
+
+`DATA_DIR/video-library.json` is a one-time bootstrap seed and backup/export artifact. After the first successful SQLite bootstrap, it is not a live-edited catalog and changes to that JSON file are not picked up by ordinary media reads.
 
 The exported move data still defines the encyclopedia. The video catalog only defines media assets, move-to-video links, and clip definitions.
 
-Media filesystem actions must be routed through the server-side media manager rather than being open-coded in routes or page loaders. The media manager records durable jobs in `DATA_DIR/app-state.sqlite` while the video relationships remain in `DATA_DIR/video-library.json`.
+Media filesystem actions must be routed through the server-side media manager rather than being open-coded in routes or page loaders. The media manager records durable jobs and file-action rows in `DATA_DIR/app-state.sqlite` alongside the SQLite-backed media catalog.
 
 Managed source deletion must move source videos, rendered outputs, and matching poster sidecars into `DATA_DIR/media-trash/<job-id>/` instead of permanently unlinking them. The source-delete action must be recorded in action history with enough catalog state and media job state to undo the delete while those trash entries remain available.
 
@@ -29,9 +31,9 @@ Catalog-owned generated media cleanup and managed video renames must also run th
 
 The media manager page at `/settings/media` must expose recent jobs with their file-action rows for operational review. File-action details shown through the API or UI must use managed relative paths and sanitized metadata; absolute filesystem paths such as original and destination absolute paths must not be exposed in browser responses.
 
-Media catalog repair is an explicit operator workflow on `/settings/media`. Repair scans must be dry-run only and must not mutate `video-library.json`, move files, create media jobs, or record history. Applied repair runs may prune missing generated variant paths, add legacy move assets/links, clean stale generated assets, and relink orphaned generated draft IDs; applied runs must record media-manager file actions where files move or rename and must record a non-undoable `media.catalog.repair` history row.
+Media catalog repair is an explicit operator workflow on `/settings/media`. Repair scans must be dry-run only and must not mutate the SQLite catalog, move files, create media jobs, or record history. Applied repair runs may prune missing generated variant paths, add legacy move assets/links, clean stale generated assets, and relink orphaned generated draft IDs; applied runs must record media-manager file actions where files move or rename and must record a non-undoable `media.catalog.repair` history row.
 
-Production catalog mutations must go through `mutateMediaCatalog()` so JSON writes are serialized. Public `readMediaCatalog()` calls wait for any queued catalog write before returning a snapshot. Direct `writeMediaCatalog()` usage is reserved for the repository implementation and focused repository tests.
+Production catalog mutations must go through `mutateMediaCatalog()` so SQLite catalog writes are serialized. Public `readMediaCatalog()` calls wait for any queued catalog write before returning a snapshot. Direct `writeMediaCatalog()` usage is reserved for the repository implementation and focused repository tests.
 
 ## Runtime Setup
 
@@ -39,7 +41,7 @@ In the live Unraid setup the repo is mounted once at `/server/live`. All video p
 
 | Purpose | Env var | Container path | Host path |
 | --- | --- | --- | --- |
-| App-managed JSON state | `DATA_DIR` | `/server/live/migration-data` | `/mnt/user/fastdata/server/salsasite-dev/migration-data` |
+| App-managed SQLite/JSON state | `DATA_DIR` | `/server/live/migration-data` | `/mnt/user/fastdata/server/salsasite-dev/migration-data` |
 | Playable move clips | `MEDIA_ROOT` | `/server/live/video-moves` | `/mnt/user/fastdata/server/salsasite-dev/video-moves` |
 | Uploaded source videos | `SOURCE_ROOT` | `/server/live/video-sources` | `/mnt/user/fastdata/server/salsasite-dev/video-sources` |
 | Poster images | `POSTER_ROOT` | `/server/live/video-posters` | `/mnt/user/fastdata/server/salsasite-dev/video-posters` |
@@ -58,7 +60,7 @@ The dev image includes `ffmpeg`. Rendering clips and generating posters should n
 
 ## Catalog Model
 
-`video-library.json` contains three arrays.
+The SQLite media catalog represents the same three logical collections that the legacy `video-library.json` seed contains.
 
 | Array | Purpose |
 | --- | --- |
@@ -302,7 +304,7 @@ When render fails:
 - The failure message is stored on the clip.
 - The clip can be rendered again after fixing the cause.
 
-If the container restarts while a job is rendering, the media manager recovers the interrupted job to `queued` so it can be retried. The saved clip definition remains in `video-library.json`.
+If the container restarts while a job is rendering, the media manager recovers the interrupted job to `queued` so it can be retried. The saved clip definition remains in the SQLite media catalog.
 
 ## Move Page Resolution
 
@@ -443,7 +445,7 @@ With the live-mounted setup, these do not require rebuilding the Docker image:
 - Svelte frontend source edits
 - server route edits
 - upload page/editor edits
-- JSON catalog changes
+- media catalog table changes through the running app
 - adding or deleting videos
 - adding or deleting posters
 
@@ -502,7 +504,7 @@ POSTER_ROOT=/server/live/video-posters
 
 | File | Purpose |
 | --- | --- |
-| `frontend/src/lib/server/media-catalog.ts` | `video-library.json` persistence, normalization, cache handling, and serialized writes. |
+| `frontend/src/lib/server/media-catalog.ts` | SQLite media catalog persistence, legacy `video-library.json` bootstrap, normalization, and serialized writes. |
 | `frontend/src/lib/server/media-source-service.ts` | Source upload, metadata update, delete/restore, duplicate cleanup, and source hash workflows. |
 | `frontend/src/lib/server/media-clip-service.ts` | Clip save, key-video update, publication, display-ID rename, and clip catalog mutation workflows. |
 | `frontend/src/lib/server/media-render-service.ts` | Clip render queueing, ffmpeg orchestration, render file actions, obsolete render cleanup, and render status mutation. |
@@ -526,9 +528,9 @@ POSTER_ROOT=/server/live/video-posters
 
 Media routes should import server media APIs through `frontend/src/lib/server/video-library.ts`. That file is a compatibility facade and should remain re-export-only.
 
-Media domain modules must not import the `video-library.ts` facade. They should import the specific peer service or lower-level module they need. `media-catalog.ts` owns JSON persistence; source, clip, render, bootstrap, repair, read-model, and job services own their named workflow areas; `media-manager.ts` owns durable media jobs and file-action rows.
+Media domain modules must not import the `video-library.ts` facade. They should import the specific peer service or lower-level module they need. `media-catalog.ts` owns SQLite catalog persistence and the one-time legacy JSON bootstrap; source, clip, render, bootstrap, repair, read-model, and job services own their named workflow areas; `media-manager.ts` owns durable media jobs and file-action rows.
 
-Ordinary page/API read models must use the no-write media catalog path. Legacy bootstrap and repair routines that can mutate `video-library.json` must be invoked explicitly through the media repair service or the compatibility bootstrap repair path, not hidden inside read-model assembly. The compatibility `getVideoLibrary(moves)` export preserves the existing repair-capable behavior for callers that intentionally need it, while `readVideoLibrary()` is the side-effect-free catalog read.
+Ordinary page/API read models must use the no-write media catalog path. Legacy bootstrap and repair routines that can mutate the SQLite media catalog must be invoked explicitly through the media repair service or the compatibility bootstrap repair path, not hidden inside read-model assembly. The compatibility `getVideoLibrary(moves)` export preserves the existing repair-capable behavior for callers that intentionally need it, while `readVideoLibrary()` is the side-effect-free catalog read.
 
 Workflow modules should use `mutateMediaCatalog()` for catalog changes and should not import `writeMediaCatalog()` directly. If a workflow needs file operations and catalog changes, it should validate the catalog state, execute managed file operations through `media-manager.ts`, and commit catalog changes through the serialized repository boundary with explicit failure behavior.
 

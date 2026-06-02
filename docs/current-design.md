@@ -22,7 +22,7 @@ The repository currently contains two generations of the system:
 
 The SvelteKit app is the active migration target. The R pipeline remains the source for exporting the existing workbook/RDS data into JSON.
 
-Media catalog reads are split from media catalog repair. Ordinary media read models load `video-library.json` without mutating it; legacy move-video bootstrap, missing generated-variant pruning, generated cleanup repair, and orphan draft relinking are explicit media repair operations exposed to operators from `/settings/media`. Production catalog mutations go through the serialized media catalog repository, and public catalog reads wait for queued writes before returning. This keeps live page/API reads predictable while preserving the current one-Docker, live-edit JSON catalog architecture.
+Media catalog reads are split from media catalog repair. Ordinary media read models load the SQLite media catalog without mutating it; legacy move-video bootstrap, missing generated-variant pruning, generated cleanup repair, and orphan draft relinking are explicit media repair operations exposed to operators from `/settings/media`. Production catalog mutations go through the serialized media catalog repository, and public catalog reads wait for queued writes before returning. This keeps live page/API reads predictable while preserving the current one-Docker, live-edit architecture.
 
 ## High-Level Architecture
 
@@ -81,9 +81,9 @@ Current exported files include:
 - `search-index.json`: app-native search index.
 - `raw-moves.json`: workbook-derived move reference data.
 - `raw-moves-schema.json`: schema information for raw move reference data.
-- `video-library.json`: source/move video assets, move links, and derived clip records.
+- `video-library.json`: legacy media catalog bootstrap seed and backup/export artifact.
 - `move-edits.json`: sidecar move overrides, created moves, and draft moves.
-- `app-state.sqlite`: live SQLite state for migrated data-only editing workflows and action history.
+- `app-state.sqlite`: live SQLite state for migrated data-only editing workflows, media catalog tables, media jobs, and action history.
 
 The current manifest reports 595 move rows, 12 layout columns, 7 progress snapshots, 540 trackable moves, and 59 moves with local video at export time.
 
@@ -158,7 +158,7 @@ The same relationship model is used in:
 
 ## Video And Media Library
 
-The media system is split between [frontend/src/lib/server/media-catalog.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/media-catalog.ts), which owns `video-library.json` persistence, normalization, cache handling, and serialized writes; source, clip, render, bootstrap, repair, read-model, and job workflow services, which own catalog/media behavior; and [frontend/src/lib/server/video-library.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/video-library.ts), which is the stable public facade for route imports. Detailed media module boundary rules live in [docs/video-library.md](/Volumes/fastdata/server/salsasite-dev/docs/video-library.md). Together they manage:
+The media system is split between [frontend/src/lib/server/media-catalog.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/media-catalog.ts), which owns SQLite catalog persistence, legacy `video-library.json` bootstrap, normalization, and serialized writes; source, clip, render, bootstrap, repair, read-model, and job workflow services, which own catalog/media behavior; and [frontend/src/lib/server/video-library.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/video-library.ts), which is the stable public facade for route imports. Detailed media module boundary rules live in [docs/video-library.md](/Volumes/fastdata/server/salsasite-dev/docs/video-library.md). Together they manage:
 
 - Source video assets under `video-sources/`.
 - Move video assets under `video-moves/`.

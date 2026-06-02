@@ -82,6 +82,23 @@ test('production media workflows do not import direct catalog writes', async () 
   assert.deepEqual(offenders, []);
 });
 
+test('media-catalog is the only server module that references the legacy video-library JSON file', async () => {
+  const files = await walkFiles(serverRoot, (filePath) => filePath.endsWith('.ts'));
+  const offenders = [];
+
+  for (const filePath of files) {
+    if (path.basename(filePath) === 'media-catalog.ts') {
+      continue;
+    }
+    const source = await fs.readFile(filePath, 'utf-8');
+    if (source.includes('video-library.json')) {
+      offenders.push(path.relative(projectRoot, filePath));
+    }
+  }
+
+  assert.deepEqual(offenders, []);
+});
+
 test('media read models use the no-write video library read path', async () => {
   const filePath = path.join(serverRoot, 'media-read-models.ts');
   const source = await fs.readFile(filePath, 'utf-8');

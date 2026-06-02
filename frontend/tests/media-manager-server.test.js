@@ -216,6 +216,7 @@ test('source delete records media actions and history undo restores catalog and 
   );
 
   const { deleteSourceAsset } = await import('../src/lib/server/video-library.ts');
+  const { readMediaCatalog } = await import('../src/lib/server/media-catalog.ts');
   const { listHistory, undoAction } = await import('../src/lib/server/history.ts');
 
   const result = await deleteSourceAsset('source-asset');
@@ -225,7 +226,7 @@ test('source delete records media actions and history undo restores catalog and 
   assert.equal(await exists(paddedFile), false);
   assert.equal(await exists(actionFile), false);
 
-  const deletedLibrary = JSON.parse(await fs.readFile(libraryPath, 'utf-8'));
+  const deletedLibrary = await readMediaCatalog();
   assert.equal(deletedLibrary.videoAssets.length, 0);
   assert.equal(deletedLibrary.derivedClips.length, 0);
   assert.equal(deletedLibrary.moveVideoLinks.length, 0);
@@ -235,7 +236,7 @@ test('source delete records media actions and history undo restores catalog and 
   assert.equal(deleteAction.canUndo, true);
   await undoAction(deleteAction.id);
 
-  const restoredLibrary = JSON.parse(await fs.readFile(libraryPath, 'utf-8'));
+  const restoredLibrary = await readMediaCatalog();
   assert.equal(restoredLibrary.videoAssets.length, 2);
   assert.equal(restoredLibrary.derivedClips.length, 1);
   assert.equal(restoredLibrary.moveVideoLinks.length, 1);

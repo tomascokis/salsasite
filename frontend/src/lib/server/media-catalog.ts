@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
+import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import type { DatabaseSync } from 'node:sqlite';
 import type {
   ClipCountMarker,
   ClipCropRect,
@@ -29,18 +31,16 @@ import {
   resolvePosterRoot,
   resolveSourceRoot
 } from './paths';
+import { getAppDatabase } from './app-state';
 
 const LIBRARY_FILENAME = 'video-library.json';
+const LIBRARY_BOOTSTRAP_BACKUP_FILENAME = 'video-library.backup-before-sqlite.json';
+const SQLITE_BOOTSTRAP_META_KEY = 'media_catalog_sqlite_v1';
 
-let libraryCache:
-  | {
-      filePath: string;
-      mtimeMs: number;
-      library: VideoLibrary;
-    }
-  | null = null;
+let libraryWriteQueue: Promise<unknown> = Promise.resolve();
+let bootstrapPromise: Promise<void> | null = null;
 
-let libraryWriteQueue = Promise.resolve();
+type DatabaseRow = Record<string, unknown>;
 
 function nowIso() {
   return new Date().toISOString();
@@ -52,6 +52,10 @@ function safeDisplayName(filename: string) {
 
 function libraryFilePath() {
   return path.join(resolveDataDir(), LIBRARY_FILENAME);
+}
+
+function libraryBootstrapBackupPath() {
+  return path.join(resolveDataDir(), LIBRARY_BOOTSTRAP_BACKUP_FILENAME);
 }
 
 function isVideoTiming(value: unknown): value is VideoTiming {
@@ -292,16 +296,49 @@ export async function ensureMediaCatalogRoots() {
   ]);
 }
 
-async function readMediaCatalogFromDisk() {
-  const filePath = libraryFilePath();
+function serializeJson(value: unknown) {
+  return JSON.stringify(value ?? null);
+}
+
+function parseJson(value: unknown, fallback: unknown) {
+  if (typeof value !== 'string' || !value) {
+    return fallback;
+  }
 
   try {
-    const stat = await fs.stat(filePath);
-    if (libraryCache && libraryCache.filePath === filePath && libraryCache.mtimeMs === stat.mtimeMs) {
-      return structuredClone(libraryCache.library);
-    }
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
 
-    const contents = await fs.readFile(filePath, 'utf-8');
+function sqliteBoolean(value: unknown) {
+  return value ? 1 : 0;
+}
+
+function sqlNullable(value: string | number | null | undefined) {
+  return value ?? null;
+}
+
+function fromSqliteBoolean(value: unknown) {
+  return Number(value) === 1;
+}
+
+function statementRows<T>(statement: ReturnType<DatabaseSync['prepare']>, ...params: any[]): T[] {
+  return statement.all(...params) as T[];
+}
+
+async function readMediaCatalogFromJsonSeed() {
+  const filePath = libraryFilePath();
+  let contents: string;
+
+  try {
+    contents = await fs.readFile(filePath, 'utf-8');
+  } catch {
+    return { library: defaultMediaCatalog(), sourceExists: false, sourceContents: null };
+  }
+
+  try {
     const parsed = JSON.parse(contents) as Partial<VideoLibrary>;
     const library: VideoLibrary = {
       videoAssets: Array.isArray(parsed.videoAssets)
@@ -313,43 +350,347 @@ async function readMediaCatalogFromDisk() {
         : []
     };
 
-    libraryCache = {
-      filePath,
-      mtimeMs: stat.mtimeMs,
-      library
-    };
-
-    return structuredClone(library);
+    sortMediaCatalog(library);
+    return { library, sourceExists: true, sourceContents: contents };
   } catch {
-    return defaultMediaCatalog();
+    return { library: defaultMediaCatalog(), sourceExists: true, sourceContents: contents };
   }
+}
+
+function readMediaCatalogFromSqlite(db: DatabaseSync): VideoLibrary {
+  const videoAssets = statementRows<DatabaseRow>(
+    db.prepare(`
+      SELECT
+        id, kind, file_path, display_name, original_filename, dancers_json, timing, content_type, environment,
+        origin_type, source_url, record_date, class_workshop, tags_json, notes, content_hash,
+        content_hash_algorithm, content_size_bytes, hash_status, created_at
+      FROM media_video_assets
+      ORDER BY created_at, id
+    `)
+  )
+    .map((row) =>
+      normalizeVideoAsset({
+        id: String(row.id),
+        kind: row.kind as VideoAsset['kind'],
+        filePath: String(row.file_path),
+        displayName: String(row.display_name),
+        originalFilename: String(row.original_filename),
+        dancers: parseJson(row.dancers_json, []),
+        timing: row.timing as VideoTiming,
+        contentType: row.content_type as VideoContentType,
+        environment: row.environment as VideoEnvironment,
+        originType: row.origin_type as VideoOriginType,
+        sourceUrl: row.source_url == null ? null : String(row.source_url),
+        recordDate: row.record_date == null ? null : String(row.record_date),
+        classWorkshop: row.class_workshop == null ? null : String(row.class_workshop),
+        tags: parseJson(row.tags_json, []),
+        notes: row.notes == null ? null : String(row.notes),
+        contentHash: row.content_hash == null ? null : String(row.content_hash),
+        contentHashAlgorithm:
+          row.content_hash_algorithm == null ? null : (String(row.content_hash_algorithm) as MediaHashAlgorithm),
+        contentSizeBytes: row.content_size_bytes == null ? null : Number(row.content_size_bytes),
+        hashStatus: row.hash_status as MediaHashStatus,
+        createdAt: String(row.created_at)
+      })
+    )
+    .filter((asset): asset is VideoAsset => Boolean(asset));
+
+  const moveVideoLinks = statementRows<DatabaseRow>(
+    db.prepare(`
+      SELECT id, move_id, asset_id, sort_order, created_at
+      FROM media_move_video_links
+      ORDER BY move_id, sort_order, id
+    `)
+  ).map((row) => ({
+    id: String(row.id),
+    moveId: String(row.move_id),
+    assetId: String(row.asset_id),
+    order: Math.floor(Number(row.sort_order)),
+    createdAt: String(row.created_at)
+  }));
+
+  const derivedClips = statementRows<DatabaseRow>(
+    db.prepare(`
+      SELECT
+        id, source_asset_id, move_id, move_display_id, is_key_video, label, descriptor_label,
+        start_position_id, end_position_id, timing_group_id, manually_named, start_ms, end_ms,
+        action_start_ms, action_end_ms, crop_rect_json, count_markers_json, count_overlay_placement,
+        count_timing_preset, output_asset_id, action_output_file_path, low_res_output_file_path,
+        low_res_padded_output_file_path, published_asset_id, published_action_output_file_path,
+        published_low_res_file_path, published_low_res_padded_file_path, published_at, status,
+        error, created_at, updated_at
+      FROM media_derived_clips
+      ORDER BY source_asset_id, start_ms, id
+    `)
+  )
+    .map((row) =>
+      normalizeDerivedClip(
+        {
+          id: String(row.id),
+          sourceAssetId: String(row.source_asset_id),
+          moveId: String(row.move_id),
+          moveDisplayId: row.move_display_id == null ? null : String(row.move_display_id),
+          isKeyVideo: fromSqliteBoolean(row.is_key_video),
+          label: row.label == null ? null : String(row.label),
+          descriptorLabel: row.descriptor_label == null ? null : String(row.descriptor_label),
+          startPositionId: row.start_position_id == null ? null : String(row.start_position_id),
+          endPositionId: row.end_position_id == null ? null : String(row.end_position_id),
+          timingGroupId: row.timing_group_id == null ? null : String(row.timing_group_id),
+          manuallyNamed: fromSqliteBoolean(row.manually_named),
+          startMs: Number(row.start_ms),
+          endMs: Number(row.end_ms),
+          actionStartMs: row.action_start_ms == null ? null : Number(row.action_start_ms),
+          actionEndMs: row.action_end_ms == null ? null : Number(row.action_end_ms),
+          cropRect: parseJson(row.crop_rect_json, null) as ClipCropRect | null,
+          countMarkers: parseJson(row.count_markers_json, []) as ClipCountMarker[],
+          countOverlayPlacement: row.count_overlay_placement as CountOverlayPlacement,
+          countTimingPreset: row.count_timing_preset as CountTimingPreset,
+          outputAssetId: row.output_asset_id == null ? null : String(row.output_asset_id),
+          actionOutputFilePath: row.action_output_file_path == null ? null : String(row.action_output_file_path),
+          lowResOutputFilePath: row.low_res_output_file_path == null ? null : String(row.low_res_output_file_path),
+          lowResPaddedOutputFilePath:
+            row.low_res_padded_output_file_path == null ? null : String(row.low_res_padded_output_file_path),
+          publishedAssetId: row.published_asset_id == null ? null : String(row.published_asset_id),
+          publishedActionOutputFilePath:
+            row.published_action_output_file_path == null ? null : String(row.published_action_output_file_path),
+          publishedLowResFilePath: row.published_low_res_file_path == null ? null : String(row.published_low_res_file_path),
+          publishedLowResPaddedFilePath:
+            row.published_low_res_padded_file_path == null ? null : String(row.published_low_res_padded_file_path),
+          publishedAt: row.published_at == null ? null : String(row.published_at),
+          status: row.status as DerivedClip['status'],
+          error: row.error == null ? null : String(row.error),
+          createdAt: String(row.created_at),
+          updatedAt: String(row.updated_at)
+        },
+        { moveVideoLinks }
+      )
+    )
+    .filter((clip): clip is DerivedClip => Boolean(clip));
+
+  const library = { videoAssets, moveVideoLinks, derivedClips };
+  sortMediaCatalog(library);
+  return library;
+}
+
+function replaceMediaCatalogInTransaction(db: DatabaseSync, input: VideoLibrary) {
+  const library = structuredClone(input);
+  sortMediaCatalog(library);
+
+  db.prepare('DELETE FROM media_derived_clips').run();
+  db.prepare('DELETE FROM media_move_video_links').run();
+  db.prepare('DELETE FROM media_video_assets').run();
+
+  const insertAsset = db.prepare(`
+    INSERT INTO media_video_assets (
+      id, kind, file_path, display_name, original_filename, dancers_json, timing, content_type,
+      environment, origin_type, source_url, record_date, class_workshop, tags_json, notes,
+      content_hash, content_hash_algorithm, content_size_bytes, hash_status, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  for (const asset of library.videoAssets
+    .map((entry) => normalizeVideoAsset(entry))
+    .filter((entry): entry is VideoAsset => Boolean(entry))) {
+    insertAsset.run(
+      asset.id,
+      asset.kind,
+      normalizeManagedVideoPath(asset.filePath),
+      asset.displayName,
+      asset.originalFilename,
+      serializeJson(asset.dancers),
+      asset.timing,
+      asset.contentType,
+      asset.environment,
+      asset.originType,
+      asset.sourceUrl,
+      asset.recordDate,
+      asset.classWorkshop,
+      serializeJson(asset.tags),
+      asset.notes,
+      asset.contentHash,
+      asset.contentHashAlgorithm,
+      asset.contentSizeBytes,
+      asset.hashStatus,
+      asset.createdAt
+    );
+  }
+
+  const insertLink = db.prepare(`
+    INSERT INTO media_move_video_links (id, move_id, asset_id, sort_order, created_at)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  for (const link of library.moveVideoLinks) {
+    if (!link.id || !link.moveId || !link.assetId) {
+      continue;
+    }
+    insertLink.run(
+      String(link.id),
+      String(link.moveId).trim().toUpperCase(),
+      String(link.assetId),
+      Math.floor(Number(link.order ?? 0)),
+      String(link.createdAt || nowIso())
+    );
+  }
+
+  const normalizedClips = library.derivedClips
+    .map((entry) => normalizeDerivedClip(entry, library))
+    .filter((entry): entry is DerivedClip => Boolean(entry));
+  const insertClip = db.prepare(`
+    INSERT INTO media_derived_clips (
+      id, source_asset_id, move_id, move_display_id, is_key_video, label, descriptor_label,
+      start_position_id, end_position_id, timing_group_id, manually_named, start_ms, end_ms,
+      action_start_ms, action_end_ms, crop_rect_json, count_markers_json, count_overlay_placement,
+      count_timing_preset, output_asset_id, action_output_file_path, low_res_output_file_path,
+      low_res_padded_output_file_path, published_asset_id, published_action_output_file_path,
+      published_low_res_file_path, published_low_res_padded_file_path, published_at, status,
+      error, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  for (const clip of normalizedClips) {
+    insertClip.run(
+      clip.id,
+      clip.sourceAssetId,
+      clip.moveId,
+      sqlNullable(clip.moveDisplayId),
+      sqliteBoolean(clip.isKeyVideo),
+      sqlNullable(clip.label),
+      sqlNullable(clip.descriptorLabel),
+      sqlNullable(clip.startPositionId),
+      sqlNullable(clip.endPositionId),
+      sqlNullable(clip.timingGroupId),
+      sqliteBoolean(clip.manuallyNamed),
+      clip.startMs,
+      clip.endMs,
+      sqlNullable(clip.actionStartMs),
+      sqlNullable(clip.actionEndMs),
+      clip.cropRect ? serializeJson(clip.cropRect) : null,
+      serializeJson(clip.countMarkers),
+      clip.countOverlayPlacement,
+      clip.countTimingPreset,
+      sqlNullable(clip.outputAssetId),
+      sqlNullable(clip.actionOutputFilePath),
+      sqlNullable(clip.lowResOutputFilePath),
+      sqlNullable(clip.lowResPaddedOutputFilePath),
+      sqlNullable(clip.publishedAssetId),
+      sqlNullable(clip.publishedActionOutputFilePath),
+      sqlNullable(clip.publishedLowResFilePath),
+      sqlNullable(clip.publishedLowResPaddedFilePath),
+      sqlNullable(clip.publishedAt),
+      clip.status,
+      sqlNullable(clip.error),
+      clip.createdAt,
+      clip.updatedAt
+    );
+  }
+}
+
+function mediaCatalogRowCount(db: DatabaseSync) {
+  const row = db.prepare('SELECT COUNT(*) AS count FROM media_video_assets').get() as
+    | { count?: number | bigint }
+    | undefined;
+  return Number(row?.count ?? 0);
+}
+
+async function ensureSqliteBootstrap() {
+  if (!bootstrapPromise) {
+    bootstrapPromise = (async () => {
+      try {
+        await ensureMediaCatalogRoots();
+        const db = getAppDatabase();
+        const completed = db.prepare('SELECT value FROM app_state_meta WHERE key = ?').get(SQLITE_BOOTSTRAP_META_KEY) as
+          | { value: string }
+          | undefined;
+
+        if (completed?.value === 'complete') {
+          return;
+        }
+
+        if (mediaCatalogRowCount(db) > 0) {
+          db.prepare('INSERT OR REPLACE INTO app_state_meta (key, value) VALUES (?, ?)').run(
+            SQLITE_BOOTSTRAP_META_KEY,
+            'complete'
+          );
+          return;
+        }
+
+        const seed = await readMediaCatalogFromJsonSeed();
+        if (seed.sourceExists && seed.sourceContents !== null) {
+          try {
+            await fs.copyFile(libraryFilePath(), libraryBootstrapBackupPath(), fsConstants.COPYFILE_EXCL);
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+              throw error;
+            }
+          }
+        }
+
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          replaceMediaCatalogInTransaction(db, seed.library);
+          db.prepare('INSERT OR REPLACE INTO app_state_meta (key, value) VALUES (?, ?)').run(
+            SQLITE_BOOTSTRAP_META_KEY,
+            'complete'
+          );
+          db.exec('COMMIT');
+        } catch (error) {
+          db.exec('ROLLBACK');
+          throw error;
+        }
+      } catch (error) {
+        bootstrapPromise = null;
+        throw error;
+      }
+    })();
+  }
+
+  return bootstrapPromise;
 }
 
 export async function readMediaCatalog() {
   await libraryWriteQueue;
-  return readMediaCatalogFromDisk();
+  await ensureSqliteBootstrap();
+  return structuredClone(readMediaCatalogFromSqlite(getAppDatabase()));
 }
 
 export async function writeMediaCatalog(library: VideoLibrary) {
-  await ensureMediaCatalogRoots();
+  const next = libraryWriteQueue.then(async () => {
+    await ensureSqliteBootstrap();
+    const db = getAppDatabase();
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      replaceMediaCatalogInTransaction(db, library);
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  });
 
-  const filePath = libraryFilePath();
-  const serialized = JSON.stringify(library, null, 2);
-  await fs.writeFile(filePath, `${serialized}\n`, 'utf-8');
-  const stat = await fs.stat(filePath);
-  libraryCache = {
-    filePath,
-    mtimeMs: stat.mtimeMs,
-    library: structuredClone(library)
-  };
+  libraryWriteQueue = next.then(
+    () => undefined,
+    () => undefined
+  );
+
+  return next;
 }
 
 export async function mutateMediaCatalog<T>(mutator: (library: VideoLibrary) => Promise<T> | T) {
   const next = libraryWriteQueue.then(async () => {
-    const library = await readMediaCatalogFromDisk();
+    await ensureSqliteBootstrap();
+    const db = getAppDatabase();
+    const library = readMediaCatalogFromSqlite(db);
     const result = await mutator(library);
-    await writeMediaCatalog(library);
-    return result;
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      replaceMediaCatalogInTransaction(db, library);
+      db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
   });
 
   libraryWriteQueue = next.then(

@@ -3,11 +3,12 @@ import './server-module-hooks.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import path from 'node:path';
 
 import {
   cleanupMediaTestEnvironment,
   derivedClip,
-  readLibrary,
+  exists,
   setupMediaTestEnvironment,
   sourceAsset
 } from './media-server-fixtures.js';
@@ -18,17 +19,52 @@ test.after(async () => {
   await cleanupMediaTestEnvironment(env.tempRoot);
 });
 
-function source(id, displayName) {
+function source(id, displayName, overrides = {}) {
   return sourceAsset({
     id,
     filePath: `video-sources/${id}.mp4`,
     displayName,
     originalFilename: `${id}.mp4`,
-    createdAt: `2026-06-02T00:00:0${id.slice(-1)}.000Z`
+    createdAt: `2026-06-02T00:00:0${id.slice(-1)}.000Z`,
+    ...overrides
   });
 }
 
-test('media catalog repository reads defaults, normalizes JSON, writes cache, and serializes mutations', async () => {
+await fs.writeFile(
+  env.libraryPath,
+  `${JSON.stringify({
+    videoAssets: [
+      { id: 'bad' },
+      {
+        ...source('source-1', 'External Source', {
+          dancers: ['A', 'B'],
+          tags: ['tag-a', 'tag-b']
+        }),
+        timing: 'bad',
+        contentType: 'bad',
+        environment: 'bad',
+        filePath: '/video-sources/source-1.mp4'
+      }
+    ],
+    moveVideoLinks: 'not-an-array',
+    derivedClips: [
+      { id: 'bad-clip' },
+      {
+        ...derivedClip({
+          id: 'clip-1',
+          sourceAssetId: 'source-1',
+          moveId: 'rt000001',
+          outputAssetId: null,
+          publishedAssetId: null,
+          cropRect: { x: 0.1, y: 0.2, width: 0.7, height: 0.6 }
+        }),
+        countMarkers: [{ id: 'count-1', count: '1', ms: '1200', clear: true }]
+      }
+    ]
+  })}\n`
+);
+
+test('media catalog repository bootstraps JSON into SQLite and treats SQLite as authoritative', async () => {
   const {
     defaultMediaCatalog,
     ensureMediaCatalogRoots,
@@ -37,80 +73,48 @@ test('media catalog repository reads defaults, normalizes JSON, writes cache, an
     sortMediaCatalog,
     writeMediaCatalog
   } = await import('../src/lib/server/media-catalog.ts');
+  const { getAppDatabase } = await import('../src/lib/server/app-state.ts');
 
   assert.deepEqual(defaultMediaCatalog(), {
     videoAssets: [],
     moveVideoLinks: [],
     derivedClips: []
   });
-  assert.deepEqual(await readMediaCatalog(), {
-    videoAssets: [],
-    moveVideoLinks: [],
-    derivedClips: []
-  });
 
   await ensureMediaCatalogRoots();
-  await fs.writeFile(
-    env.libraryPath,
-    `${JSON.stringify({
-      videoAssets: [
-        { id: 'bad' },
-        {
-          ...source('source-1', 'External Source'),
-          timing: 'bad',
-          contentType: 'bad',
-          environment: 'bad',
-          filePath: '/video-sources/source-1.mp4'
-        }
-      ],
-      moveVideoLinks: 'not-an-array',
-      derivedClips: [
-        { id: 'bad-clip' },
-        {
-          ...derivedClip({
-            id: 'clip-1',
-            sourceAssetId: 'source-1',
-            moveId: 'rt000001',
-            outputAssetId: null,
-            publishedAssetId: null
-          }),
-          countMarkers: [{ id: 'count-1', count: '1', ms: '1200', clear: true }]
-        }
-      ]
-    })}\n`
-  );
-
   const normalized = await readMediaCatalog();
   assert.equal(normalized.videoAssets.length, 1);
   assert.equal(normalized.videoAssets[0].filePath, '/video-sources/source-1.mp4');
   assert.equal(normalized.videoAssets[0].timing, 'other');
   assert.equal(normalized.videoAssets[0].contentType, 'other');
   assert.equal(normalized.videoAssets[0].environment, 'class');
+  assert.deepEqual(normalized.videoAssets[0].dancers, ['A', 'B']);
+  assert.deepEqual(normalized.videoAssets[0].tags, ['tag-a', 'tag-b']);
   assert.deepEqual(normalized.moveVideoLinks, []);
   assert.equal(normalized.derivedClips.length, 1);
   assert.equal(normalized.derivedClips[0].moveId, 'RT000001');
   assert.equal(normalized.derivedClips[0].countMarkers[0].ms, 1200);
+  assert.deepEqual(normalized.derivedClips[0].cropRect, { x: 0.1, y: 0.2, width: 0.7, height: 0.6 });
+  assert.equal(await exists(path.join(env.dataDir, 'video-library.backup-before-sqlite.json')), true);
 
-  const catalog = {
-    videoAssets: [source('source-2', 'Written Source')],
-    moveVideoLinks: [],
-    derivedClips: []
-  };
-  await writeMediaCatalog(catalog);
-  const written = await readLibrary(env.libraryPath);
-  assert.equal(written.videoAssets[0].id, 'source-2');
-  assert.equal((await fs.readFile(env.libraryPath, 'utf-8')).endsWith('\n'), true);
-  const cached = await readMediaCatalog();
-  assert.equal(cached.videoAssets[0].id, 'source-2');
-  cached.videoAssets[0].displayName = 'Mutated Clone';
-  assert.equal((await readMediaCatalog()).videoAssets[0].displayName, 'Written Source');
+  const meta = getAppDatabase().prepare('SELECT value FROM app_state_meta WHERE key = ?').get('media_catalog_sqlite_v1');
+  assert.equal(meta.value, 'complete');
 
-  await new Promise((resolve) => setTimeout(resolve, 5));
   await fs.writeFile(
     env.libraryPath,
-    `${JSON.stringify({ videoAssets: [source('source-3', 'Externally Written')], moveVideoLinks: [], derivedClips: [] }, null, 2)}\n`
+    `${JSON.stringify({ videoAssets: [source('source-2', 'Ignored JSON')], moveVideoLinks: [], derivedClips: [] }, null, 2)}\n`
   );
-  assert.equal((await readMediaCatalog()).videoAssets[0].id, 'source-3');
+  assert.equal((await readMediaCatalog()).videoAssets[0].id, 'source-1');
+
+  await writeMediaCatalog({
+    videoAssets: [source('source-3', 'Written Source')],
+    moveVideoLinks: [],
+    derivedClips: []
+  });
+  const written = await readMediaCatalog();
+  assert.equal(written.videoAssets[0].id, 'source-3');
+  written.videoAssets[0].displayName = 'Mutated Clone';
+  assert.equal((await readMediaCatalog()).videoAssets[0].displayName, 'Written Source');
 
   await Promise.all([
     mutateMediaCatalog((library) => {

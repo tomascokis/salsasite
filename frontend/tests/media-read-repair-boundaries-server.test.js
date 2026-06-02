@@ -7,6 +7,7 @@ import path from 'node:path';
 
 import {
   cleanupMediaTestEnvironment,
+  readLibrary,
   setupMediaTestEnvironment,
   writeFile,
   writeLibrary
@@ -91,7 +92,7 @@ test('explicit bootstrap repair path still persists legacy move assets', async (
   assert.equal(asset.kind, 'move');
   assert.equal(repaired.moveVideoLinks.some((link) => link.moveId === 'RT000001' && link.assetId === asset.id), true);
 
-  const persisted = JSON.parse(await fs.readFile(env.libraryPath, 'utf-8'));
+  const persisted = await readLibrary(env.libraryPath);
   assert.equal(persisted.videoAssets.some((entry) => entry.id === asset.id), true);
   assert.deepEqual(await getVideoLibrary(moves), repaired);
 });

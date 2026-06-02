@@ -46,10 +46,13 @@ export async function writeFile(filePath, contents = 'media') {
 
 export async function writeLibrary(libraryPath, library) {
   await fs.writeFile(libraryPath, `${JSON.stringify(library, null, 2)}\n`);
+  const { writeMediaCatalog } = await import('../src/lib/server/media-catalog.ts');
+  await writeMediaCatalog(library);
 }
 
 export async function readLibrary(libraryPath) {
-  return JSON.parse(await fs.readFile(libraryPath, 'utf-8'));
+  const { readMediaCatalog } = await import('../src/lib/server/media-catalog.ts');
+  return readMediaCatalog();
 }
 
 export function sourceAsset(overrides = {}) {

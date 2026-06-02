@@ -179,6 +179,83 @@ function createSchema(db: DatabaseSync) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_media_file_actions_job ON media_file_actions(job_id);
+
+    CREATE TABLE IF NOT EXISTS media_video_assets (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      file_path TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      original_filename TEXT NOT NULL,
+      dancers_json TEXT NOT NULL,
+      timing TEXT NOT NULL,
+      content_type TEXT NOT NULL,
+      environment TEXT NOT NULL,
+      origin_type TEXT NOT NULL,
+      source_url TEXT,
+      record_date TEXT,
+      class_workshop TEXT,
+      tags_json TEXT NOT NULL,
+      notes TEXT,
+      content_hash TEXT,
+      content_hash_algorithm TEXT,
+      content_size_bytes INTEGER,
+      hash_status TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_media_video_assets_kind ON media_video_assets(kind);
+    CREATE INDEX IF NOT EXISTS idx_media_video_assets_content_hash ON media_video_assets(content_hash, content_size_bytes);
+
+    CREATE TABLE IF NOT EXISTS media_move_video_links (
+      id TEXT PRIMARY KEY,
+      move_id TEXT NOT NULL,
+      asset_id TEXT NOT NULL,
+      sort_order INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(asset_id) REFERENCES media_video_assets(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_media_move_video_links_move ON media_move_video_links(move_id, sort_order);
+    CREATE INDEX IF NOT EXISTS idx_media_move_video_links_asset ON media_move_video_links(asset_id);
+
+    CREATE TABLE IF NOT EXISTS media_derived_clips (
+      id TEXT PRIMARY KEY,
+      source_asset_id TEXT NOT NULL,
+      move_id TEXT NOT NULL,
+      move_display_id TEXT,
+      is_key_video INTEGER NOT NULL,
+      label TEXT,
+      descriptor_label TEXT,
+      start_position_id TEXT,
+      end_position_id TEXT,
+      timing_group_id TEXT,
+      manually_named INTEGER NOT NULL,
+      start_ms INTEGER NOT NULL,
+      end_ms INTEGER NOT NULL,
+      action_start_ms INTEGER,
+      action_end_ms INTEGER,
+      crop_rect_json TEXT,
+      count_markers_json TEXT NOT NULL,
+      count_overlay_placement TEXT NOT NULL,
+      count_timing_preset TEXT NOT NULL,
+      output_asset_id TEXT,
+      action_output_file_path TEXT,
+      low_res_output_file_path TEXT,
+      low_res_padded_output_file_path TEXT,
+      published_asset_id TEXT,
+      published_action_output_file_path TEXT,
+      published_low_res_file_path TEXT,
+      published_low_res_padded_file_path TEXT,
+      published_at TEXT,
+      status TEXT NOT NULL,
+      error TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(source_asset_id) REFERENCES media_video_assets(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_media_derived_clips_source ON media_derived_clips(source_asset_id);
+    CREATE INDEX IF NOT EXISTS idx_media_derived_clips_move ON media_derived_clips(move_id);
   `);
 }
 
