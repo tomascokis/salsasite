@@ -125,17 +125,25 @@ test('media catalog repository reads defaults, normalizes JSON, writes cache, an
     ['source-3', 'source-4', 'source-5']
   );
 
+  const delayedMutation = mutateMediaCatalog(async (library) => {
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    library.videoAssets.push(source('source-6', 'Delayed Mutation'));
+  });
+  const readDuringMutation = readMediaCatalog();
+  await delayedMutation;
+  assert.equal((await readDuringMutation).videoAssets.some((asset) => asset.id === 'source-6'), true);
+
   await assert.rejects(
     () =>
       mutateMediaCatalog((library) => {
-        library.videoAssets.push(source('source-6', 'Failed Mutation'));
+        library.videoAssets.push(source('source-7', 'Failed Mutation'));
         throw new Error('planned failure');
       }),
     /planned failure/
   );
-  assert.equal((await readMediaCatalog()).videoAssets.some((asset) => asset.id === 'source-6'), false);
+  assert.equal((await readMediaCatalog()).videoAssets.some((asset) => asset.id === 'source-7'), false);
 
   const unsorted = await readMediaCatalog();
   sortMediaCatalog(unsorted);
-  assert.deepEqual(unsorted.videoAssets.map((asset) => asset.id), ['source-3', 'source-4', 'source-5']);
+  assert.deepEqual(unsorted.videoAssets.map((asset) => asset.id), ['source-3', 'source-4', 'source-5', 'source-6']);
 });

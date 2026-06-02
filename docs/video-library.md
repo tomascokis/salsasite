@@ -31,6 +31,8 @@ The media manager page at `/settings/media` must expose recent jobs with their f
 
 Media catalog repair is an explicit operator workflow on `/settings/media`. Repair scans must be dry-run only and must not mutate `video-library.json`, move files, create media jobs, or record history. Applied repair runs may prune missing generated variant paths, add legacy move assets/links, clean stale generated assets, and relink orphaned generated draft IDs; applied runs must record media-manager file actions where files move or rename and must record a non-undoable `media.catalog.repair` history row.
 
+Production catalog mutations must go through `mutateMediaCatalog()` so JSON writes are serialized. Public `readMediaCatalog()` calls wait for any queued catalog write before returning a snapshot. Direct `writeMediaCatalog()` usage is reserved for the repository implementation and focused repository tests.
+
 ## Runtime Setup
 
 In the live Unraid setup the repo is mounted once at `/server/live`. All video paths should point inside that mount.
@@ -117,15 +119,15 @@ Each derived clip stores both the rendered clip range and the actual move range:
 
 ## Legacy Move Video Import
 
-Existing files under `video-moves/` continue to work without manual catalog editing.
+Existing files under `video-moves/` continue to work after an explicit media catalog repair.
 
-On normal library reads, the server scans `MEDIA_ROOT` for:
+When an operator scans or runs catalog repair, the server scans `MEDIA_ROOT` for:
 
 ```text
 .mp4 .m4v .mov
 ```
 
-If a filename starts with a known move ID, the app creates or reuses a `move` asset and creates a move link.
+If a filename starts with a known move ID, the repair can create or reuse a `move` asset and create a move link.
 
 Example:
 
@@ -135,7 +137,7 @@ video-moves/BK020201 Block unwrap via hip [on2, music].mp4
 
 This links the file to move `BK020201`.
 
-The bootstrap process is additive. It does not delete catalog rows for missing files.
+The repair process is additive for legacy move videos. It does not delete catalog rows for missing legacy files.
 
 ## Media Workflow
 
@@ -527,5 +529,7 @@ Media routes should import server media APIs through `frontend/src/lib/server/vi
 Media domain modules must not import the `video-library.ts` facade. They should import the specific peer service or lower-level module they need. `media-catalog.ts` owns JSON persistence; source, clip, render, bootstrap, repair, read-model, and job services own their named workflow areas; `media-manager.ts` owns durable media jobs and file-action rows.
 
 Ordinary page/API read models must use the no-write media catalog path. Legacy bootstrap and repair routines that can mutate `video-library.json` must be invoked explicitly through the media repair service or the compatibility bootstrap repair path, not hidden inside read-model assembly. The compatibility `getVideoLibrary(moves)` export preserves the existing repair-capable behavior for callers that intentionally need it, while `readVideoLibrary()` is the side-effect-free catalog read.
+
+Workflow modules should use `mutateMediaCatalog()` for catalog changes and should not import `writeMediaCatalog()` directly. If a workflow needs file operations and catalog changes, it should validate the catalog state, execute managed file operations through `media-manager.ts`, and commit catalog changes through the serialized repository boundary with explicit failure behavior.
 
 `media-workflow-helpers.ts` should stay limited to helpers shared by multiple media modules. Helpers used by only one workflow should live in that workflow module unless moving them would duplicate nontrivial logic or create a circular dependency.

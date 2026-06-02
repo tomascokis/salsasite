@@ -656,17 +656,16 @@ async function drainSourceHashQueue() {
 }
 
 export async function queueSourceHash(assetId: string) {
-  const library = await readMediaCatalog();
-  const asset = library.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
-  if (!asset) {
-    throw new Error('Source asset not found.');
-  }
-
-  await mutateMediaCatalog((mutableLibrary) => {
+  const asset = await mutateMediaCatalog((mutableLibrary) => {
     const mutableAsset = mutableLibrary.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
-    if (mutableAsset) {
-      mutableAsset.hashStatus = 'pending';
+    if (!mutableAsset) {
+      throw new Error('Source asset not found.');
     }
+    mutableAsset.hashStatus = 'pending';
+    return {
+      id: mutableAsset.id,
+      filePath: mutableAsset.filePath
+    };
   });
 
   const job = upsertMediaJob({

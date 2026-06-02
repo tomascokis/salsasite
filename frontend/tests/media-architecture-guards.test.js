@@ -64,3 +64,29 @@ test('routes use video-library facade instead of media domain modules', async ()
 
   assert.deepEqual(offenders, []);
 });
+
+test('production media workflows do not import direct catalog writes', async () => {
+  const files = await walkFiles(serverRoot, (filePath) => filePath.endsWith('.ts'));
+  const offenders = [];
+
+  for (const filePath of files) {
+    if (path.basename(filePath) === 'media-catalog.ts') {
+      continue;
+    }
+    const source = await fs.readFile(filePath, 'utf-8');
+    if (/import\s*\{[^}]*\bwriteMediaCatalog\b[^}]*\}\s*from\s*['"]\.\/media-catalog['"]/.test(source)) {
+      offenders.push(path.relative(projectRoot, filePath));
+    }
+  }
+
+  assert.deepEqual(offenders, []);
+});
+
+test('media read models use the no-write video library read path', async () => {
+  const filePath = path.join(serverRoot, 'media-read-models.ts');
+  const source = await fs.readFile(filePath, 'utf-8');
+
+  assert.match(source, /import\s*\{[^}]*\breadVideoLibrary\b[^}]*\}\s*from\s*['"]\.\/media-bootstrap-service['"]/);
+  assert.doesNotMatch(source, /from\s*['"]\.\/media-catalog['"]/);
+  assert.doesNotMatch(source, /\bgetVideoLibrary(?:WithRepairs)?\s*\(/);
+});

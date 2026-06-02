@@ -292,7 +292,7 @@ export async function ensureMediaCatalogRoots() {
   ]);
 }
 
-export async function readMediaCatalog() {
+async function readMediaCatalogFromDisk() {
   const filePath = libraryFilePath();
 
   try {
@@ -325,6 +325,11 @@ export async function readMediaCatalog() {
   }
 }
 
+export async function readMediaCatalog() {
+  await libraryWriteQueue;
+  return readMediaCatalogFromDisk();
+}
+
 export async function writeMediaCatalog(library: VideoLibrary) {
   await ensureMediaCatalogRoots();
 
@@ -341,7 +346,7 @@ export async function writeMediaCatalog(library: VideoLibrary) {
 
 export async function mutateMediaCatalog<T>(mutator: (library: VideoLibrary) => Promise<T> | T) {
   const next = libraryWriteQueue.then(async () => {
-    const library = await readMediaCatalog();
+    const library = await readMediaCatalogFromDisk();
     const result = await mutator(library);
     await writeMediaCatalog(library);
     return result;

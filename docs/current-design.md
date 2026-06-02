@@ -22,7 +22,7 @@ The repository currently contains two generations of the system:
 
 The SvelteKit app is the active migration target. The R pipeline remains the source for exporting the existing workbook/RDS data into JSON.
 
-Media catalog reads are split from media catalog repair. Ordinary media read models load `video-library.json` without mutating it; legacy move-video bootstrap, missing generated-variant pruning, generated cleanup repair, and orphan draft relinking are explicit media repair operations exposed to operators from `/settings/media`. This keeps live page/API reads predictable while preserving the current one-Docker, live-edit JSON catalog architecture.
+Media catalog reads are split from media catalog repair. Ordinary media read models load `video-library.json` without mutating it; legacy move-video bootstrap, missing generated-variant pruning, generated cleanup repair, and orphan draft relinking are explicit media repair operations exposed to operators from `/settings/media`. Production catalog mutations go through the serialized media catalog repository, and public catalog reads wait for queued writes before returning. This keeps live page/API reads predictable while preserving the current one-Docker, live-edit JSON catalog architecture.
 
 ## High-Level Architecture
 
