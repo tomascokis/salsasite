@@ -107,8 +107,9 @@
   const MEDIA_MOTION_SHORT_MS = 320;
   const MEDIA_MOTION_MEDIUM_MS = 700;
   const MEDIA_MOTION_REVEAL_DELAY_MS = 120;
-  const TIMELINE_WHEEL_ZOOM_IN_SCALE = 0.94;
-  const TIMELINE_WHEEL_ZOOM_OUT_SCALE = 1.06;
+  const TIMELINE_WHEEL_ZOOM_IN_SCALE = 0.985;
+  const TIMELINE_WHEEL_ZOOM_OUT_SCALE = 1.015;
+  const TIMELINE_PINCH_ZOOM_DAMPING = 0.22;
   const TIMELINE_ZOOMING_MS = 180;
   const ROW_WINDOW_SETTLE_MS = 450;
   const ROW_MOVE_MS = 850;
@@ -2319,7 +2320,7 @@
     }
 
     const rawScale = timelinePinchStartDistancePx / distance;
-    const dampedScale = 1 + (rawScale - 1) * 0.45;
+    const dampedScale = 1 + (rawScale - 1) * TIMELINE_PINCH_ZOOM_DAMPING;
     zoomTimelineAround(timelinePinchAnchorMs, dampedScale, timelinePinchStartViewport);
   }
 

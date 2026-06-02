@@ -139,7 +139,7 @@ The move editor saves clip definitions before rendering.
 - Timeline zoom must be available in playback mode and move-editing mode.
 - Scrolling over the timeline should zoom around the pointer position.
 - Pinching on the timeline should zoom around the pinch midpoint.
-- Scroll and pinch zoom should use restrained sensitivity so small gestures do not jump too far.
+- Scroll and pinch zoom should use very low sensitivity so small gestures produce gradual viewport changes rather than jumps.
 - Timeline geometry should begin animating immediately during zoom gestures, using a short direct transition rather than the slower edit-row motion pace.
 - When timeline zoom is active, the editor must clearly show that zoom is active.
 - When timeline zoom is active, the editor must provide `Reset zoom` and `Loop zoom` controls in the main timeline action row beside `Edit moves` or `Add move`.
