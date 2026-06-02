@@ -5,6 +5,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { Transform, Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { getAppDatabase, runInTransaction } from './app-state';
+import { resolveDataDir } from './paths';
 
 export type MediaJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 export type MediaJobType = 'source.hash' | 'poster.generate' | 'clip.render' | 'file.cleanup' | 'file.delete';
@@ -34,6 +35,18 @@ export type MediaJob = {
   finishedAt: string | null;
 };
 
+export type MediaFileAction = {
+  id: string;
+  jobId: string;
+  actionType: string;
+  status: 'planned' | 'running' | 'succeeded' | 'failed';
+  filePath: string;
+  backupPath: string | null;
+  metadata: unknown;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type MediaJobRow = {
   id: string;
   type: string;
@@ -49,6 +62,18 @@ type MediaJobRow = {
   updated_at: string;
   started_at: string | null;
   finished_at: string | null;
+};
+
+type MediaFileActionRow = {
+  id: string;
+  job_id: string;
+  action_type: string;
+  status: string;
+  file_path: string;
+  backup_path: string | null;
+  metadata_json: string;
+  created_at: string;
+  updated_at: string;
 };
 
 let recoveredInterruptedJobs = false;
@@ -84,6 +109,23 @@ function mediaJobFromRow(row: MediaJobRow): MediaJob {
   };
 }
 
+function mediaFileActionFromRow(row: MediaFileActionRow): MediaFileAction {
+  return {
+    id: row.id,
+    jobId: row.job_id,
+    actionType: row.action_type,
+    status:
+      row.status === 'planned' || row.status === 'running' || row.status === 'succeeded' || row.status === 'failed'
+        ? row.status
+        : 'failed',
+    filePath: row.file_path,
+    backupPath: row.backup_path,
+    metadata: parseJson(row.metadata_json),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
 function isMediaJobStatus(value: string): value is MediaJobStatus {
   return value === 'queued' || value === 'running' || value === 'succeeded' || value === 'failed' || value === 'cancelled';
 }
@@ -114,6 +156,12 @@ export function getMediaJobByIdempotencyKey(idempotencyKey: string) {
   return row ? mediaJobFromRow(row) : null;
 }
 
+export function getMediaJobById(id: string) {
+  recoverInterruptedJobs();
+  const row = getAppDatabase().prepare('SELECT * FROM media_jobs WHERE id = ?').get(id) as MediaJobRow | undefined;
+  return row ? mediaJobFromRow(row) : null;
+}
+
 export function getMediaJobByTarget(type: MediaJobType, targetType: string, targetId: string) {
   recoverInterruptedJobs();
   const row = getAppDatabase()
@@ -141,6 +189,20 @@ export function listQueuedMediaJobs(type: MediaJobType, limit = 10) {
       `
     )
     .all(type, 'queued', Math.max(1, Math.min(50, Math.floor(limit)))) as MediaJobRow[];
+  return rows.map(mediaJobFromRow);
+}
+
+export function listMediaJobs(limit = 100) {
+  recoverInterruptedJobs();
+  const rows = getAppDatabase()
+    .prepare(
+      `
+        SELECT * FROM media_jobs
+        ORDER BY updated_at DESC
+        LIMIT ?
+      `
+    )
+    .all(Math.max(1, Math.min(250, Math.floor(limit)))) as MediaJobRow[];
   return rows.map(mediaJobFromRow);
 }
 
@@ -305,6 +367,19 @@ export function recordMediaFileAction(input: {
     );
 }
 
+export function listMediaFileActionsForJob(jobId: string) {
+  const rows = getAppDatabase()
+    .prepare(
+      `
+        SELECT * FROM media_file_actions
+        WHERE job_id = ?
+        ORDER BY created_at ASC
+      `
+    )
+    .all(jobId) as MediaFileActionRow[];
+  return rows.map(mediaFileActionFromRow);
+}
+
 export function completedMediaJob(input: {
   type: MediaJobType;
   targetType: string;
@@ -363,4 +438,130 @@ export async function writeBufferAndHash(input: {
     contentHashAlgorithm: 'sha256',
     contentSizeBytes: input.buffer.length
   };
+}
+
+export async function hashFile(absolutePath: string): Promise<MediaFingerprint> {
+  const hash = createHash('sha256');
+  let contentSizeBytes = 0;
+  await pipeline(
+    fs.createReadStream(absolutePath),
+    new Transform({
+      transform(chunk, _encoding, callback) {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        hash.update(buffer);
+        contentSizeBytes += buffer.length;
+        callback();
+      }
+    })
+  );
+
+  return {
+    contentHash: `sha256:${hash.digest('hex')}`,
+    contentHashAlgorithm: 'sha256',
+    contentSizeBytes
+  };
+}
+
+function normalizeTrashPathPart(filePath: string) {
+  const normalized = path.posix.normalize(filePath.replaceAll(path.sep, '/')).replace(/^\/+/, '');
+  if (!normalized || normalized === '.' || normalized.startsWith('../') || normalized.includes('/../')) {
+    throw new Error('Invalid trash file path.');
+  }
+  return normalized;
+}
+
+function mediaTrashRoot() {
+  return path.join(resolveDataDir(), 'media-trash');
+}
+
+function absoluteTrashPath(backupPath: string) {
+  const relativeBackupPath = normalizeTrashPathPart(backupPath);
+  const absolutePath = path.resolve(resolveDataDir(), relativeBackupPath);
+  const root = path.resolve(mediaTrashRoot());
+  const normalizedRoot = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  if (absolutePath !== root && !absolutePath.startsWith(normalizedRoot)) {
+    throw new Error('Invalid media trash path.');
+  }
+  return absolutePath;
+}
+
+async function pathExists(absolutePath: string) {
+  try {
+    await fsp.access(absolutePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function moveFileToMediaTrash(input: {
+  jobId: string;
+  filePath: string;
+  absolutePath: string;
+  actionType?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const logicalPath = normalizeTrashPathPart(input.filePath);
+  const backupPath = path.posix.join('media-trash', input.jobId, logicalPath);
+  const absoluteBackupPath = absoluteTrashPath(backupPath);
+  const metadata = {
+    ...(input.metadata ?? {}),
+    originalAbsolutePath: input.absolutePath
+  };
+
+  if (!(await pathExists(input.absolutePath))) {
+    recordMediaFileAction({
+      jobId: input.jobId,
+      actionType: input.actionType ?? 'move-to-trash',
+      status: 'succeeded',
+      filePath: logicalPath,
+      backupPath: null,
+      metadata: { ...metadata, missing: true }
+    });
+    return { filePath: logicalPath, backupPath: null, moved: false };
+  }
+
+  await fsp.mkdir(path.dirname(absoluteBackupPath), { recursive: true });
+  await fsp.rename(input.absolutePath, absoluteBackupPath);
+  recordMediaFileAction({
+    jobId: input.jobId,
+    actionType: input.actionType ?? 'move-to-trash',
+    status: 'succeeded',
+    filePath: logicalPath,
+    backupPath,
+    metadata
+  });
+
+  return { filePath: logicalPath, backupPath, moved: true };
+}
+
+export async function restoreTrashedFilesForJob(jobId: string) {
+  const actions = listMediaFileActionsForJob(jobId)
+    .filter((action) => action.status === 'succeeded' && action.backupPath)
+    .reverse();
+  const restored: string[] = [];
+
+  for (const action of actions) {
+    const metadata = action.metadata && typeof action.metadata === 'object' ? (action.metadata as Record<string, unknown>) : {};
+    const destination = typeof metadata.originalAbsolutePath === 'string' ? metadata.originalAbsolutePath : null;
+    if (!destination || !action.backupPath) {
+      continue;
+    }
+
+    const backupAbsolutePath = absoluteTrashPath(action.backupPath);
+    const destinationExists = await pathExists(destination);
+    const backupExists = await pathExists(backupAbsolutePath);
+    if (destinationExists) {
+      continue;
+    }
+    if (!backupExists) {
+      throw new Error(`Missing trashed media file for ${action.filePath}.`);
+    }
+
+    await fsp.mkdir(path.dirname(destination), { recursive: true });
+    await fsp.rename(backupAbsolutePath, destination);
+    restored.push(action.filePath);
+  }
+
+  return restored;
 }

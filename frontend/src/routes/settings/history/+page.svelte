@@ -60,7 +60,7 @@
       <a class="header-button" href="/settings">Settings</a>
     </div>
     <p class="muted settings-status">
-      Data-only changes can be undone here. Media file operations are recorded later.
+      Data changes and managed source video deletes can be undone here.
     </p>
     {#if statusMessage}
       <p class="muted settings-status">{statusMessage}</p>
@@ -145,4 +145,3 @@
     color: var(--muted);
   }
 </style>
-

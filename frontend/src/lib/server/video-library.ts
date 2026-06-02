@@ -38,9 +38,14 @@ import {
   completedMediaJob,
   completeMediaJob,
   failMediaJob,
+  getMediaJobById,
+  hashFile,
   isMediaJobTargetPending,
+  listMediaJobs,
   listQueuedMediaJobs,
+  moveFileToMediaTrash,
   recordMediaFileAction,
+  restoreTrashedFilesForJob,
   startMediaJob,
   upsertMediaJob,
   writeBufferAndHash,
@@ -48,6 +53,7 @@ import {
   type MediaJob,
   type MediaFingerprint
 } from './media-manager';
+import { recordAction, runInTransaction } from './app-state';
 import { getPositionOptions, positionLabelById } from './positions';
 import {
   normalizeDateString,
@@ -73,6 +79,7 @@ const CLIP_OUTPUT_EXTENSION = '.mp4';
 const FULL_QUALITY_CRF = '18';
 const LOW_QUALITY_CRF = '29';
 let renderWorkerRunning = false;
+let sourceHashWorkerRunning = false;
 
 let libraryCache:
   | {
@@ -1010,6 +1017,33 @@ async function deleteManagedVideoFiles(filePath: string) {
   );
 }
 
+function mediaTrashEntriesForManagedVideo(filePath: string) {
+  const normalizedFilePath = normalizeManagedVideoPath(filePath);
+  return [
+    {
+      filePath: normalizedFilePath,
+      absolutePath: resolveManagedVideoAbsolutePath(normalizedFilePath)
+    },
+    ...POSTER_EXTENSIONS.map((extension) => {
+      const posterPath = managedPosterPathForVideo(normalizedFilePath, extension);
+      return {
+        filePath: path.posix.join('video-posters', posterPath),
+        absolutePath: resolvePathInsideRoot(resolvePosterRoot(), posterPath)
+      };
+    })
+  ];
+}
+
+function uniqueMediaTrashEntries(filePaths: string[]) {
+  const byAbsolutePath = new Map<string, { filePath: string; absolutePath: string }>();
+  for (const filePath of filePaths) {
+    for (const entry of mediaTrashEntriesForManagedVideo(filePath)) {
+      byAbsolutePath.set(entry.absolutePath, entry);
+    }
+  }
+  return [...byAbsolutePath.values()];
+}
+
 function clipSuffixFromPath(filePath: string | null, clipId: string) {
   if (!filePath) {
     return '';
@@ -1448,31 +1482,60 @@ export async function detectSourceAssetFields(assetId: string, input?: { originT
 }
 
 export async function deleteSourceAsset(assetId: string) {
-  return mutateLibrary(async (library) => {
-    const sourceAsset = library.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
-    if (!sourceAsset) {
-      throw new Error('Source asset not found');
-    }
+  const job = upsertMediaJob({
+    type: 'file.delete',
+    targetType: 'videoAsset',
+    targetId: assetId,
+    idempotencyKey: `file.delete:source:${assetId}:${randomUUID()}`,
+    payload: { assetId },
+    maxAttempts: 1
+  });
 
-    const sourceClips = library.derivedClips.filter((clip) => clip.sourceAssetId === sourceAsset.id);
-    const outputAssetIds = new Set(
-      sourceClips
-        .flatMap((clip) => [clip.outputAssetId, clip.publishedAssetId])
-        .filter((id): id is string => Boolean(id))
-    );
-    const outputAssets = library.videoAssets.filter((asset) => outputAssetIds.has(asset.id));
-    const assetIdsToDelete = new Set([sourceAsset.id, ...outputAssetIds]);
-    const deletedAssetIds = Array.from(assetIdsToDelete);
+  let actionState:
+    | {
+        mediaJobId: string;
+        sourceAsset: VideoAsset;
+        outputAssets: VideoAsset[];
+        sourceClips: DerivedClip[];
+        moveLinks: MoveVideoLink[];
+        deletedAssetIds: string[];
+        deletedClipIds: string[];
+      }
+    | null = null;
 
-    library.derivedClips = library.derivedClips.filter((clip) => clip.sourceAssetId !== sourceAsset.id);
-    library.moveVideoLinks = library.moveVideoLinks.filter((link) => !assetIdsToDelete.has(link.assetId));
-    library.videoAssets = library.videoAssets.filter((asset) => !assetIdsToDelete.has(asset.id));
-    sortLibrary(library);
+  try {
+    startMediaJob(job.id);
+    const result = await mutateLibrary(async (library) => {
+      const sourceAsset = library.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
+      if (!sourceAsset) {
+        throw new Error('Source asset not found');
+      }
 
-    await Promise.all([sourceAsset, ...outputAssets].map((asset) => deleteManagedVideoFiles(asset.filePath)));
-    await Promise.all(
-      sourceClips
-        .flatMap((clip) => [
+      const sourceClips = library.derivedClips.filter((clip) => clip.sourceAssetId === sourceAsset.id);
+      const outputAssetIds = new Set(
+        sourceClips
+          .flatMap((clip) => [clip.outputAssetId, clip.publishedAssetId])
+          .filter((id): id is string => Boolean(id))
+      );
+      const outputAssets = library.videoAssets.filter((asset) => outputAssetIds.has(asset.id));
+      const assetIdsToDelete = new Set([sourceAsset.id, ...outputAssetIds]);
+      const deletedAssetIds = Array.from(assetIdsToDelete);
+      const deletedClipIds = sourceClips.map((clip) => clip.id);
+      const moveLinks = library.moveVideoLinks.filter((link) => assetIdsToDelete.has(link.assetId));
+      actionState = {
+        mediaJobId: job.id,
+        sourceAsset: structuredClone(sourceAsset),
+        outputAssets: structuredClone(outputAssets),
+        sourceClips: structuredClone(sourceClips),
+        moveLinks: structuredClone(moveLinks),
+        deletedAssetIds,
+        deletedClipIds
+      };
+
+      const filePaths = [
+        sourceAsset.filePath,
+        ...outputAssets.map((asset) => asset.filePath),
+        ...sourceClips.flatMap((clip) => [
           clip.actionOutputFilePath,
           clip.lowResOutputFilePath,
           clip.lowResPaddedOutputFilePath,
@@ -1480,15 +1543,233 @@ export async function deleteSourceAsset(assetId: string) {
           clip.publishedLowResFilePath,
           clip.publishedLowResPaddedFilePath
         ])
-        .filter((filePath): filePath is string => Boolean(filePath))
-        .map((filePath) => deleteManagedVideoFiles(filePath))
-    );
+      ].filter((filePath): filePath is string => Boolean(filePath));
+
+      for (const entry of uniqueMediaTrashEntries(filePaths)) {
+        await moveFileToMediaTrash({
+          jobId: job.id,
+          actionType: 'move-to-trash',
+          filePath: entry.filePath,
+          absolutePath: entry.absolutePath,
+          metadata: {
+            sourceAssetId: sourceAsset.id
+          }
+        });
+      }
+
+      library.derivedClips = library.derivedClips.filter((clip) => clip.sourceAssetId !== sourceAsset.id);
+      library.moveVideoLinks = library.moveVideoLinks.filter((link) => !assetIdsToDelete.has(link.assetId));
+      library.videoAssets = library.videoAssets.filter((asset) => !assetIdsToDelete.has(asset.id));
+      sortLibrary(library);
+
+      return {
+        deletedAssetIds,
+        deletedClipIds
+      };
+    });
+
+    if (actionState) {
+      runInTransaction((db) => {
+        recordAction(db, {
+          type: 'media.source.delete',
+          label: `Deleted source video: ${actionState?.sourceAsset.displayName ?? assetId}`,
+          entityType: 'media:source',
+          entityId: assetId,
+          before: actionState,
+          after: {
+            mediaJobId: job.id,
+            deletedAssetIds: result.deletedAssetIds,
+            deletedClipIds: result.deletedClipIds
+          }
+        });
+      });
+    }
+
+    completeMediaJob(job.id);
+    return result;
+  } catch (error) {
+    failMediaJob(job.id, error);
+    if (actionState) {
+      await restoreDeletedSourceMedia(actionState).catch(() => undefined);
+    }
+    throw error;
+  }
+}
+
+export async function restoreDeletedSourceMedia(state: unknown) {
+  if (!state || typeof state !== 'object') {
+    throw new Error('Missing media delete snapshot.');
+  }
+
+  const snapshot = state as {
+    mediaJobId?: unknown;
+    sourceAsset?: unknown;
+    outputAssets?: unknown;
+    sourceClips?: unknown;
+    moveLinks?: unknown;
+  };
+  const mediaJobId = typeof snapshot.mediaJobId === 'string' ? snapshot.mediaJobId : null;
+  const sourceAsset = snapshot.sourceAsset as VideoAsset | undefined;
+  const outputAssets = Array.isArray(snapshot.outputAssets) ? (snapshot.outputAssets as VideoAsset[]) : [];
+  const sourceClips = Array.isArray(snapshot.sourceClips) ? (snapshot.sourceClips as DerivedClip[]) : [];
+  const moveLinks = Array.isArray(snapshot.moveLinks) ? (snapshot.moveLinks as MoveVideoLink[]) : [];
+  if (!mediaJobId || !sourceAsset?.id || sourceAsset.kind !== 'source') {
+    throw new Error('Invalid media delete snapshot.');
+  }
+
+  await restoreTrashedFilesForJob(mediaJobId);
+
+  return mutateLibrary((library) => {
+    const assetIds = new Set([sourceAsset.id, ...outputAssets.map((asset) => asset.id)]);
+    const clipIds = new Set(sourceClips.map((clip) => clip.id));
+    const linkIds = new Set(moveLinks.map((link) => link.id));
+
+    library.videoAssets = library.videoAssets.filter((asset) => !assetIds.has(asset.id));
+    library.derivedClips = library.derivedClips.filter((clip) => !clipIds.has(clip.id));
+    library.moveVideoLinks = library.moveVideoLinks.filter((link) => !linkIds.has(link.id) && !assetIds.has(link.assetId));
+    library.videoAssets.push(structuredClone(sourceAsset), ...structuredClone(outputAssets));
+    library.derivedClips.push(...structuredClone(sourceClips));
+    library.moveVideoLinks.push(...structuredClone(moveLinks));
+    sortLibrary(library);
 
     return {
-      deletedAssetIds,
-      deletedClipIds: sourceClips.map((clip) => clip.id)
+      restoredAssetIds: [...assetIds],
+      restoredClipIds: [...clipIds]
     };
   });
+}
+
+async function runSourceHashJob(job: MediaJob) {
+  const assetId = job.targetId;
+  try {
+    startMediaJob(job.id);
+    const library = await readLibraryFromDisk();
+    const sourceAsset = library.videoAssets.find((asset) => asset.id === assetId && asset.kind === 'source');
+    if (!sourceAsset) {
+      throw new Error('Source asset not found.');
+    }
+
+    const absolutePath = resolveManagedVideoAbsolutePath(sourceAsset.filePath);
+    const fingerprint = await hashFile(absolutePath);
+    await mutateLibrary((mutableLibrary) => {
+      const asset = mutableLibrary.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
+      if (!asset) {
+        throw new Error('Source asset not found.');
+      }
+      asset.contentHash = fingerprint.contentHash;
+      asset.contentHashAlgorithm = fingerprint.contentHashAlgorithm;
+      asset.contentSizeBytes = fingerprint.contentSizeBytes;
+      asset.hashStatus = 'ready';
+      sortLibrary(mutableLibrary);
+    });
+
+    completeMediaJob(job.id);
+    recordMediaFileAction({
+      jobId: job.id,
+      actionType: 'hash-source',
+      status: 'succeeded',
+      filePath: sourceAsset.filePath,
+      metadata: {
+        contentHash: fingerprint.contentHash,
+        contentSizeBytes: fingerprint.contentSizeBytes
+      }
+    });
+  } catch (error) {
+    failMediaJob(job.id, error);
+    await mutateLibrary((library) => {
+      const asset = library.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
+      if (asset) {
+        asset.hashStatus = 'failed';
+      }
+    });
+  }
+}
+
+async function drainSourceHashQueue() {
+  if (sourceHashWorkerRunning) {
+    return;
+  }
+
+  sourceHashWorkerRunning = true;
+  try {
+    while (true) {
+      const job = listQueuedMediaJobs('source.hash', 1)[0] ?? null;
+      if (!job) {
+        return;
+      }
+      await runSourceHashJob(job);
+    }
+  } finally {
+    sourceHashWorkerRunning = false;
+  }
+}
+
+export async function queueSourceHash(assetId: string) {
+  const library = await readLibraryFromDisk();
+  const asset = library.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
+  if (!asset) {
+    throw new Error('Source asset not found.');
+  }
+
+  await mutateLibrary((mutableLibrary) => {
+    const mutableAsset = mutableLibrary.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
+    if (mutableAsset) {
+      mutableAsset.hashStatus = 'pending';
+    }
+  });
+
+  const job = upsertMediaJob({
+    type: 'source.hash',
+    targetType: 'videoAsset',
+    targetId: assetId,
+    idempotencyKey: `source.hash:${assetId}:backfill`,
+    payload: { assetId, filePath: asset.filePath },
+    retryFailed: true,
+    retryCompleted: true
+  });
+
+  void drainSourceHashQueue();
+  return job;
+}
+
+export async function queueSourceHashBackfill() {
+  const library = await readLibraryFromDisk();
+  const assets = library.videoAssets.filter(
+    (asset) => asset.kind === 'source' && (!asset.contentHash || asset.hashStatus !== 'ready')
+  );
+  const jobs: MediaJob[] = [];
+  for (const asset of assets) {
+    jobs.push(await queueSourceHash(asset.id));
+  }
+  void drainSourceHashQueue();
+  return {
+    queued: jobs.length,
+    jobIds: jobs.map((job) => job.id)
+  };
+}
+
+export function listMediaManagerJobs(limit = 100) {
+  return listMediaJobs(limit);
+}
+
+export async function retryMediaManagerJob(jobId: string) {
+  const job = getMediaJobById(jobId);
+  if (!job) {
+    throw new Error('Media job not found.');
+  }
+
+  if (job.type === 'clip.render') {
+    return queueClipRender(job.targetId);
+  }
+  if (job.type === 'poster.generate') {
+    await queuePosterGeneration(job.targetId);
+    return getMediaJobById(job.id) ?? job;
+  }
+  if (job.type === 'source.hash') {
+    return queueSourceHash(job.targetId);
+  }
+
+  throw new Error('This media job type cannot be retried from the UI.');
 }
 
 export async function saveSourceClips(input: {

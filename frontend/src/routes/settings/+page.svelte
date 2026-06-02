@@ -53,6 +53,7 @@
     <div class="settings-header">
       <h2>Labs</h2>
       <span class="settings-header-actions">
+        <a class="header-button" href="/settings/media">Media manager</a>
         <a class="header-button" href="/settings/history">Action history</a>
         <a class="header-button" href="/settings/pickers">Open picker lab</a>
       </span>

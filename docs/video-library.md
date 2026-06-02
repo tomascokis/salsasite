@@ -23,6 +23,8 @@ The exported move data still defines the encyclopedia. The video catalog only de
 
 Media filesystem actions must be routed through the server-side media manager rather than being open-coded in routes or page loaders. The media manager records durable jobs in `DATA_DIR/app-state.sqlite` while the video relationships remain in `DATA_DIR/video-library.json`.
 
+Managed source deletion must move source videos, rendered outputs, and matching poster sidecars into `DATA_DIR/media-trash/<job-id>/` instead of permanently unlinking them. The source-delete action must be recorded in action history with enough catalog state and media job state to undo the delete.
+
 ## Runtime Setup
 
 In the live Unraid setup the repo is mounted once at `/server/live`. All video paths should point inside that mount.
@@ -372,9 +374,12 @@ docker exec salsasite-dev bash /server/live/scripts/generate_video_posters.sh \
 | --- | --- | --- |
 | `/api/upload/library` | `GET` | Return legacy upload library data. |
 | `/api/media/library?limit=50&cursor=...` | `GET` | Return paginated Media page source cards, grouped by upload month, with tag/class suggestions. |
+| `/api/media/jobs?limit=100` | `GET` | Return recent media-manager jobs. |
+| `/api/media/jobs` | `POST` | Queue media-manager maintenance actions such as source hash backfill. |
+| `/api/media/jobs/[id]/retry` | `POST` | Retry supported failed media jobs. |
 | `/api/upload/source` | `POST` | Upload a source video and create a source asset. |
 | `/api/upload/source/[id]` | `PUT` | Update source metadata. |
-| `/api/upload/source/[id]` | `DELETE` | Delete source, derived clips, rendered outputs, links, and posters. |
+| `/api/upload/source/[id]` | `DELETE` | Move source, derived clips, rendered outputs, links, and posters through managed delete/trash. |
 | `/api/upload/clips` | `POST` | Save clip definitions for a source asset. |
 | `/api/upload/render` | `POST` | Queue render jobs. |
 | `/api/upload/render?ids=...` | `GET` | Poll render status. |
@@ -383,15 +388,21 @@ docker exec salsasite-dev bash /server/live/scripts/generate_video_posters.sh \
 
 ## Deletion Semantics
 
-Deleting a source video removes:
+Deleting a source video removes catalog references for:
+
+- derived clip definitions from that source
+- move links for those rendered move clips
+- catalog asset rows for the source and rendered outputs
+
+Deleting a source video moves these files into media-manager trash instead of permanently unlinking them:
 
 - the source video file
 - source poster files
-- derived clip definitions from that source
 - rendered move clips made from that source
 - posters for those rendered move clips
-- move links for those rendered move clips
-- catalog asset rows for the source and rendered outputs
+- generated low-resolution preview variants for the affected derived clips
+
+Source-delete undo restores the catalog rows and moves the trashed files back to their original managed locations when the trash files are still available.
 
 Deleting a source does not remove unrelated legacy move videos.
 

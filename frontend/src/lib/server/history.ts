@@ -10,6 +10,7 @@ import {
 import { restoreDancerState } from './dancers';
 import { restoreMetadataEntryState } from './metadata';
 import { restoreMoveEditStoreState } from './move-editor';
+import { restoreDeletedSourceMedia } from './video-library';
 
 type ActionRow = {
   id: string;
@@ -71,8 +72,12 @@ function actionUndoReason(action: ActionRecord) {
     return null;
   }
 
+  if (action.entityType === 'media:source' && action.type === 'media.source.delete') {
+    return null;
+  }
+
   if (action.type === 'moveDraft.publish') {
-    return 'Published drafts may include media relinks; media undo is not part of this slice';
+    return 'Published drafts may include media relinks that are not undoable yet';
   }
 
   return 'This action type is not undoable yet';
@@ -107,7 +112,7 @@ export function listHistory(limit = 100) {
   return listActions(limit).map(toHistoryEntry);
 }
 
-export function undoAction(id: string) {
+export async function undoAction(id: string) {
   const action = loadAction(id);
   if (!action) {
     throw new Error('Action not found.');
@@ -116,6 +121,10 @@ export function undoAction(id: string) {
   const undoUnavailableReason = actionUndoReason(action);
   if (undoUnavailableReason) {
     throw new Error(undoUnavailableReason);
+  }
+
+  if (action.entityType === 'media:source' && action.type === 'media.source.delete') {
+    await restoreDeletedSourceMedia(action.before);
   }
 
   let undoActionId = '';
@@ -154,4 +163,3 @@ export function undoAction(id: string) {
     })
   };
 }
-

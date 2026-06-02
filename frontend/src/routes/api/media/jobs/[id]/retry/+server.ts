@@ -1,16 +1,16 @@
 import { json } from '@sveltejs/kit';
-import { undoAction } from '$lib/server/history';
+import { retryMediaManagerJob } from '$lib/server/video-library';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ params }) => {
   try {
     return json({
       ok: true,
-      ...(await undoAction(params.id))
+      job: await retryMediaManagerJob(params.id)
     });
   } catch (error) {
     return json(
-      { error: error instanceof Error ? error.message : 'Could not undo action.' },
+      { error: error instanceof Error ? error.message : 'Could not retry media job.' },
       { status: 400 }
     );
   }

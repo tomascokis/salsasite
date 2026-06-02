@@ -91,7 +91,7 @@ The action history should be added as part of the SQLite persistence architectur
 - after state needed to audit or redo the action
 - related file operations when media files are created, renamed, rendered, published, or deleted
 
-Undo support should be implemented incrementally. Start with metadata, dancers, move drafts, and move edits where data-only rollback is straightforward. Add media undo after file operations are represented explicitly enough to restore or safely mark irreversible changes. Render jobs can be tracked as actions, but generated files may need retry/rebuild semantics instead of a simple byte-for-byte undo.
+Undo support should be implemented incrementally. Metadata, dancers, move drafts, move edits, and managed source-video deletes are undoable. Source-video delete undo depends on the media manager trash entries remaining available under `DATA_DIR/media-trash`. Render jobs can be tracked as actions, but generated files may need retry/rebuild semantics instead of a simple byte-for-byte undo.
 
 ## Phase 1 parity scope
 
