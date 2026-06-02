@@ -156,7 +156,7 @@ The same relationship model is used in:
 
 ## Video And Media Library
 
-The media system is split between [frontend/src/lib/server/media-catalog.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/media-catalog.ts), which owns `video-library.json` persistence, normalization, cache handling, and serialized writes; source and clip workflow services, which own catalog mutations; and [frontend/src/lib/server/video-library.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/video-library.ts), which remains the public facade for routes plus read-model and render orchestration. Together they manage:
+The media system is split between [frontend/src/lib/server/media-catalog.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/media-catalog.ts), which owns `video-library.json` persistence, normalization, cache handling, and serialized writes; source, clip, and render workflow services, which own catalog/media mutations; and [frontend/src/lib/server/video-library.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/video-library.ts), which remains the public facade for routes plus read models and legacy import. Together they manage:
 
 - Source video assets under `video-sources/`.
 - Move video assets under `video-moves/`.
