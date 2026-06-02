@@ -3409,12 +3409,7 @@
                     </div>
                     <div class="timeline-context-box timeline-context-current" class:empty={!currentPlaybackMove}>
                       {#key currentPlaybackMove?.id ?? 'empty'}
-                        <strong
-                          in:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
-                          out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
-                        >
-                          {currentPlaybackMove ? playbackMoveName(currentPlaybackMove) : '—'}
-                        </strong>
+                        <strong>{currentPlaybackMove ? playbackMoveName(currentPlaybackMove) : '—'}</strong>
                       {/key}
                     </div>
                     <div class="timeline-context-slot timeline-context-slot-next">
