@@ -6,6 +6,7 @@ import type {
   CountOverlayPlacement,
   CountTimingPreset,
   DerivedClip,
+  MoveVideoLink,
   VideoLibrary
 } from '$lib/types';
 import { MOVE_VIDEO_PREFIX } from './paths';
@@ -27,19 +28,134 @@ import {
   clipOutputRelativePath,
   clipPublicationStatus,
   clipSuffixFromPath,
-  countMarkersEqual,
-  cropRectsEqual,
-  derivedClipAuditSnapshot,
   generatedClipLabel,
-  isCountOverlayPlacement,
-  isCountTimingPreset,
-  moveVideoLinkAuditSnapshot,
-  normalizeCountMarkers,
-  normalizeCropRect,
   nowIso,
   publishClipToMove,
   recordVideoAuditAction
 } from './media-workflow-helpers';
+
+function derivedClipAuditSnapshot(clip: DerivedClip | null | undefined) {
+  if (!clip) {
+    return null;
+  }
+  return {
+    id: clip.id,
+    sourceAssetId: clip.sourceAssetId,
+    moveId: clip.moveId,
+    moveDisplayId: clip.moveDisplayId ?? null,
+    isKeyVideo: clip.isKeyVideo,
+    label: clip.label,
+    descriptorLabel: clip.descriptorLabel,
+    startPositionId: clip.startPositionId,
+    endPositionId: clip.endPositionId,
+    timingGroupId: clip.timingGroupId,
+    manuallyNamed: clip.manuallyNamed,
+    startMs: clip.startMs,
+    endMs: clip.endMs,
+    actionStartMs: clip.actionStartMs,
+    actionEndMs: clip.actionEndMs,
+    cropRect: clip.cropRect,
+    countMarkerCount: clip.countMarkers.length,
+    countOverlayPlacement: clip.countOverlayPlacement,
+    countTimingPreset: clip.countTimingPreset,
+    outputAssetId: clip.outputAssetId,
+    actionOutputFilePath: clip.actionOutputFilePath,
+    lowResOutputFilePath: clip.lowResOutputFilePath,
+    lowResPaddedOutputFilePath: clip.lowResPaddedOutputFilePath,
+    publishedAssetId: clip.publishedAssetId,
+    publishedAt: clip.publishedAt,
+    status: clip.status,
+    updatedAt: clip.updatedAt
+  };
+}
+
+function moveVideoLinkAuditSnapshot(link: MoveVideoLink) {
+  return {
+    id: link.id,
+    moveId: link.moveId,
+    assetId: link.assetId,
+    order: link.order,
+    createdAt: link.createdAt
+  };
+}
+
+function isCountOverlayPlacement(value: unknown): value is CountOverlayPlacement {
+  return value === 'top-left' || value === 'top-right' || value === 'bottom-left' || value === 'bottom-right';
+}
+
+function isCountTimingPreset(value: unknown): value is CountTimingPreset {
+  return value === 'on2-default' || value === 'on2-all' || value === 'on1-default' || value === 'on1-all';
+}
+
+function normalizeCropRect(value: unknown): ClipCropRect | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const raw = value as Partial<ClipCropRect>;
+  const x = Number(raw.x);
+  const y = Number(raw.y);
+  const width = Number(raw.width);
+  const height = Number(raw.height);
+  if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return {
+    x: Math.max(0, Math.min(1, x)),
+    y: Math.max(0, Math.min(1, y)),
+    width: Math.max(0.01, Math.min(1, width)),
+    height: Math.max(0.01, Math.min(1, height))
+  };
+}
+
+function normalizeCountMarkers(value: unknown): ClipCountMarker[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return null;
+      }
+
+      const raw = entry as Partial<ClipCountMarker>;
+      const count = String(raw.count ?? '').trim();
+      const ms = Math.max(0, Math.floor(Number(raw.ms ?? 0)));
+      if (!count || !Number.isFinite(ms)) {
+        return null;
+      }
+
+      return {
+        id: String(raw.id || randomUUID()),
+        count,
+        ms,
+        clear: Boolean(raw.clear)
+      };
+    })
+    .filter((entry): entry is ClipCountMarker => Boolean(entry))
+    .sort((left, right) => left.ms - right.ms);
+}
+
+function cropRectsEqual(left: ClipCropRect | null, right: ClipCropRect | null) {
+  if (!left || !right) {
+    return left === right;
+  }
+
+  return left.x === right.x && left.y === right.y && left.width === right.width && left.height === right.height;
+}
+
+function countMarkersEqual(left: ClipCountMarker[], right: ClipCountMarker[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((marker, index) => {
+    const other = right[index];
+    return other && marker.count === other.count && marker.ms === other.ms && marker.clear === other.clear;
+  });
+}
 
 export async function syncDerivedClipDisplayIdForMoveInLibrary(
   library: VideoLibrary,

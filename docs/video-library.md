@@ -515,3 +515,11 @@ POSTER_ROOT=/server/live/video-posters
 | `frontend/src/routes/media/[...path]/+server.ts` | Byte-range video serving. |
 | `frontend/src/routes/posters/[...path]/+server.ts` | Poster serving. |
 | `scripts/generate_video_posters.sh` | Bulk poster generation helper. |
+
+## Media Module Boundaries
+
+Media routes should import server media APIs through `frontend/src/lib/server/video-library.ts`. That file is a compatibility facade and should remain re-export-only.
+
+Media domain modules must not import the `video-library.ts` facade. They should import the specific peer service or lower-level module they need. `media-catalog.ts` owns JSON persistence; source, clip, render, bootstrap, read-model, and job services own their named workflow areas; `media-manager.ts` owns durable media jobs and file-action rows.
+
+`media-workflow-helpers.ts` should stay limited to helpers shared by multiple media modules. Helpers used by only one workflow should live in that workflow module unless moving them would duplicate nontrivial logic or create a circular dependency.

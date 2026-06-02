@@ -32,15 +32,60 @@ import { ensureMediaCatalogRoots, mutateMediaCatalog, readMediaCatalog, sortMedi
 import { normalizeDateString, normalizeOptionalText, normalizeTags } from '$lib/video-library-utils';
 import {
   generatedClipLabel,
-  normalizeDancers,
   nowIso,
   recordVideoAuditAction,
   safeDisplayName,
-  sourceAssetAuditSnapshot,
-  uniquePathForDirectory
+  sanitizeFilenamePart
 } from './media-workflow-helpers';
 
 let sourceHashWorkerRunning = false;
+
+function sourceAssetAuditSnapshot(asset: VideoAsset | null | undefined) {
+  if (!asset) {
+    return null;
+  }
+  return {
+    id: asset.id,
+    filePath: asset.filePath,
+    displayName: asset.displayName,
+    originalFilename: asset.originalFilename,
+    dancers: [...asset.dancers],
+    timing: asset.timing,
+    contentType: asset.contentType,
+    environment: asset.environment,
+    originType: asset.originType,
+    sourceUrl: asset.sourceUrl,
+    recordDate: asset.recordDate,
+    classWorkshop: asset.classWorkshop,
+    tags: [...asset.tags],
+    notes: asset.notes,
+    contentHash: asset.contentHash,
+    contentSizeBytes: asset.contentSizeBytes,
+    hashStatus: asset.hashStatus,
+    createdAt: asset.createdAt
+  };
+}
+
+function normalizeDancers(dancers: string[] | string) {
+  const values = Array.isArray(dancers) ? dancers : dancers.split(',');
+  return values.map((value) => value.trim()).filter(Boolean);
+}
+
+function uniquePathForDirectory(fileName: string, relativeDirectory: string, takenPaths: Set<string>) {
+  const parsed = path.parse(fileName);
+  const safeName = sanitizeFilenamePart(parsed.name) || 'video';
+  const safeExtension = parsed.ext || '.mp4';
+  let candidate = path.posix.join(relativeDirectory, `${safeName}${safeExtension}`);
+  let suffix = 2;
+
+  while (takenPaths.has(candidate)) {
+    candidate = path.posix.join(relativeDirectory, `${safeName} ${suffix}${safeExtension}`);
+    suffix += 1;
+  }
+
+  takenPaths.add(candidate);
+  return candidate;
+}
 
 export async function createSourceAsset(input: {
   originalFilename: string;
