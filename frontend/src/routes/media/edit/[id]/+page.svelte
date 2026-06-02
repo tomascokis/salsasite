@@ -15,6 +15,12 @@
     saveVideoAudioPreferenceFromElement
   } from '$lib/video-audio-preference';
   import { snapMoveBoundaryForDrag } from '$lib/timeline-snapping.js';
+  import {
+    clampTimelineViewport,
+    msFromTimelineRatio,
+    timelineZoomed,
+    zoomTimelineViewport
+  } from '$lib/timeline-zoom.js';
   import { visibleMoveRowKeys } from '$lib/video-library-utils.js';
   import type {
     ClipCountMarker,
@@ -79,6 +85,8 @@
   type TimelineMarker = 'clipStart' | 'clipEnd' | 'moveStart' | 'moveEnd' | 'playhead';
   type CountModeStep = 'idle' | 'placing';
   type ClipChangeState = 'new' | 'edited';
+  type TimelinePointer = { clientX: number; clientY: number };
+  type TimelineViewport = { startMs: number; endMs: number };
   type FullscreenDocument = Document & {
     webkitFullscreenElement?: Element | null;
     webkitExitFullscreen?: () => Promise<void> | void;
@@ -185,6 +193,7 @@
   let isVideoFullscreen = false;
   let isLooping = false;
   let isLoopingWithPadding = true;
+  let isZoomLooping = false;
   let playbackError = '';
   let playerDurationMs = 0;
   let playerCurrentMs = 0;
@@ -198,6 +207,11 @@
   let timelineDragSnapConsumed = false;
   let timelineDragCaptureElement: HTMLElement | null = null;
   let timelineDragPointerId: number | null = null;
+  let timelineTouchPointers = new Map<number, TimelinePointer>();
+  let timelinePinchActive = false;
+  let timelinePinchStartDistancePx = 0;
+  let timelinePinchStartViewport: TimelineViewport | null = null;
+  let timelinePinchAnchorMs = 0;
   let resumePlaybackAfterTimelineDrag = false;
   let timelineElement: HTMLDivElement | null = null;
   let draftMoveRowWindowElement: HTMLDivElement | null = null;
@@ -469,16 +483,6 @@
     }
   });
 
-  $: if (!isDraftingMove) {
-    const timelineDurationMs = inferredTimelineDurationMs();
-    if (
-      timelineDurationMs &&
-      (hasManualTimelineZoom || timelineViewportStartMs !== 0 || timelineViewportEndMs !== timelineDurationMs)
-    ) {
-      resetTimelineZoom();
-    }
-  }
-
   $: if (!isDraftingMove && isLooping) {
     isLooping = false;
   }
@@ -544,6 +548,8 @@
       timelineViewportStartMs = 0;
       timelineViewportEndMs = 0;
       hasManualTimelineZoom = false;
+      isZoomLooping = false;
+      resetTimelinePinch();
       void tick().then(initializeSelectedVideo);
     }
     if (data.selectedClipId && clipRows.some((clip) => clip.id === data.selectedClipId)) {
@@ -1116,10 +1122,10 @@
     autoClipEnd = true;
     isLooping = true;
     isLoopingWithPadding = true;
+    isZoomLooping = false;
     countMode = 'idle';
     countModeIndex = 0;
     isCroppingClip = false;
-    resetTimelineZoom();
     draftInitialSnapshot = JSON.stringify([
       draftMoveRows.map((draftRow) => [
         draftRow.id,
@@ -1891,7 +1897,22 @@
   }
 
   function activeLoopRange() {
-    if (!isDraftingMove) {
+    if (isZoomLooping) {
+      ensureTimelineViewport();
+      if (!isTimelineZoomed()) {
+        return null;
+      }
+
+      const startMs = clampMs(timelineViewportStartMs);
+      const endMs = clampMs(timelineViewportEndMs);
+      if (endMs <= startMs + 50) {
+        return null;
+      }
+
+      return { startMs, endMs };
+    }
+
+    if (!isDraftingMove || !isLooping) {
       return null;
     }
 
@@ -1905,13 +1926,14 @@
   }
 
   function enforceLoopAt(milliseconds: number) {
-    if (!isLooping || !videoElement) {
+    if ((!isLooping && !isZoomLooping) || !videoElement) {
       return false;
     }
 
     const range = activeLoopRange();
     if (!range) {
       isLooping = false;
+      isZoomLooping = false;
       return false;
     }
 
@@ -1965,6 +1987,7 @@
       return;
     }
 
+    isZoomLooping = false;
     const range = activeLoopRange();
     if (!range) {
       isLooping = false;
@@ -1977,6 +2000,24 @@
       return;
     }
 
+    const range = activeLoopRange();
+    if (range && (playerCurrentMs < range.startMs || playerCurrentMs > range.endMs)) {
+      seekPreview(range.startMs);
+    }
+  }
+
+  function toggleZoomLoop() {
+    if (!isTimelineZoomed()) {
+      isZoomLooping = false;
+      return;
+    }
+
+    isZoomLooping = !isZoomLooping;
+    if (!isZoomLooping) {
+      return;
+    }
+
+    isLooping = false;
     const range = activeLoopRange();
     if (range && (playerCurrentMs < range.startMs || playerCurrentMs > range.endMs)) {
       seekPreview(range.startMs);
@@ -2132,13 +2173,12 @@
   }
 
   function isTimelineZoomed() {
-    if (!isDraftingMove) {
-      return false;
-    }
-
     const duration = inferredTimelineDurationMs();
-    const span = timelineViewportDurationMs();
-    return duration > 0 && span > 0 && span < duration - 1;
+    return timelineZoomed({
+      startMs: timelineViewportStartMs,
+      endMs: timelineViewportEndMs,
+      durationMs: duration
+    });
   }
 
   function timelineOverviewLeft(_scaleKey = '') {
@@ -2179,20 +2219,101 @@
     return timelineRangeStyle(startMs, endMs, scaleKey);
   }
 
-  function timelineMsFromPointer(event: PointerEvent) {
+  function timelineMsFromClientX(clientX: number) {
     if (!timelineElement || !inferredTimelineDurationMs()) {
       return 0;
     }
 
     ensureTimelineViewport();
     const bounds = timelineElement.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
-    return Math.round(timelineViewportStartMs + ratio * (timelineViewportEndMs - timelineViewportStartMs));
+    const ratio = Math.max(0, Math.min(1, (clientX - bounds.left) / bounds.width));
+    return msFromTimelineRatio({
+      ratio,
+      viewportStartMs: timelineViewportStartMs,
+      viewportEndMs: timelineViewportEndMs
+    });
+  }
+
+  function timelineMsFromPointer(event: PointerEvent) {
+    return timelineMsFromClientX(event.clientX);
   }
 
   function editDraftMoveRowFromTimeline(event: MouseEvent, rowId: string) {
     event.stopPropagation();
     selectDraftMoveRow(rowId);
+  }
+
+  function resetTimelinePinch() {
+    timelineTouchPointers.clear();
+    timelinePinchActive = false;
+    timelinePinchStartDistancePx = 0;
+    timelinePinchStartViewport = null;
+    timelinePinchAnchorMs = 0;
+  }
+
+  function updateTimelineTouchPointer(event: PointerEvent) {
+    if (event.pointerType !== 'touch') {
+      return;
+    }
+
+    timelineTouchPointers.set(event.pointerId, {
+      clientX: event.clientX,
+      clientY: event.clientY
+    });
+  }
+
+  function timelineTouchPair() {
+    const pointers = Array.from(timelineTouchPointers.values());
+    if (pointers.length < 2) {
+      return null;
+    }
+
+    return [pointers[0], pointers[1]] as const;
+  }
+
+  function timelinePointerDistance(left: TimelinePointer, right: TimelinePointer) {
+    return Math.hypot(left.clientX - right.clientX, left.clientY - right.clientY);
+  }
+
+  function beginTimelinePinch() {
+    const pair = timelineTouchPair();
+    const timelineDurationMs = inferredTimelineDurationMs();
+    if (!pair || !timelineElement || !timelineDurationMs) {
+      return false;
+    }
+
+    ensureTimelineViewport();
+    const distance = timelinePointerDistance(pair[0], pair[1]);
+    if (distance <= 0) {
+      return false;
+    }
+
+    timelinePinchActive = true;
+    timelineDragTarget = null;
+    timelineDragPreviousMs = null;
+    timelineDragSnapConsumed = false;
+    resumePlaybackAfterTimelineDrag = false;
+    timelinePinchStartDistancePx = distance;
+    timelinePinchStartViewport = {
+      startMs: timelineViewportStartMs,
+      endMs: timelineViewportEndMs
+    };
+    timelinePinchAnchorMs = timelineMsFromClientX((pair[0].clientX + pair[1].clientX) / 2);
+    return true;
+  }
+
+  function updateTimelinePinch() {
+    const pair = timelineTouchPair();
+    if (!timelinePinchActive || !pair || !timelinePinchStartViewport || !timelinePinchStartDistancePx) {
+      return;
+    }
+
+    const distance = timelinePointerDistance(pair[0], pair[1]);
+    if (distance <= 0) {
+      return;
+    }
+
+    zoomTimelineAround(timelinePinchAnchorMs, timelinePinchStartDistancePx / distance, timelinePinchStartViewport);
   }
 
   function startTimelineDrag(event: PointerEvent, target?: TimelineMarker) {
@@ -2201,6 +2322,15 @@
     }
 
     event.preventDefault();
+    if (event.pointerType === 'touch') {
+      updateTimelineTouchPointer(event);
+      timelineDragCaptureElement = event.currentTarget instanceof HTMLElement ? event.currentTarget : timelineDragCaptureElement;
+      timelineDragCaptureElement?.setPointerCapture?.(event.pointerId);
+      if (!target && timelineTouchPointers.size >= 2 && beginTimelinePinch()) {
+        return;
+      }
+    }
+
     timelineDragCaptureElement = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     timelineDragPointerId = event.pointerId;
     timelineDragCaptureElement?.setPointerCapture?.(event.pointerId);
@@ -2232,6 +2362,15 @@
   }
 
   function handleTimelinePointerMove(event: PointerEvent) {
+    if (event.pointerType === 'touch' && timelineTouchPointers.has(event.pointerId)) {
+      updateTimelineTouchPointer(event);
+      if (timelinePinchActive) {
+        event.preventDefault();
+        updateTimelinePinch();
+        return;
+      }
+    }
+
     if (!timelineDragTarget) {
       return;
     }
@@ -2239,7 +2378,17 @@
     setDraftBoundary(timelineDragTarget, timelineMsFromPointer(event));
   }
 
-  function stopTimelineDrag() {
+  function stopTimelineDrag(event?: PointerEvent) {
+    if (event?.pointerType === 'touch') {
+      timelineTouchPointers.delete(event.pointerId);
+      if (timelinePinchActive) {
+        if (timelineTouchPointers.size < 2) {
+          resetTimelinePinch();
+        }
+        return;
+      }
+    }
+
     const releasedTarget = timelineDragTarget;
     const shouldResume = resumePlaybackAfterTimelineDrag;
     if (
@@ -2266,45 +2415,62 @@
     }
   }
 
-  function handleTimelineWheel(event: WheelEvent) {
-    if (!isDraftingMove) {
-      resetTimelineZoom();
+  function setTimelineViewport(nextViewport: TimelineViewport) {
+    const timelineDurationMs = inferredTimelineDurationMs();
+    const next = clampTimelineViewport({
+      startMs: nextViewport.startMs,
+      endMs: nextViewport.endMs,
+      durationMs: timelineDurationMs
+    });
+
+    timelineViewportStartMs = next.startMs;
+    timelineViewportEndMs = next.endMs;
+    hasManualTimelineZoom = timelineZoomed({
+      startMs: timelineViewportStartMs,
+      endMs: timelineViewportEndMs,
+      durationMs: timelineDurationMs
+    });
+    if (!hasManualTimelineZoom) {
+      isZoomLooping = false;
+    }
+  }
+
+  function zoomTimelineAround(anchorMs: number, scale: number, viewport: TimelineViewport | null = null) {
+    const timelineDurationMs = inferredTimelineDurationMs();
+    if (!timelineDurationMs) {
       return;
     }
 
+    ensureTimelineViewport();
+    const sourceViewport = viewport ?? {
+      startMs: timelineViewportStartMs,
+      endMs: timelineViewportEndMs
+    };
+    const next = zoomTimelineViewport({
+      viewportStartMs: sourceViewport.startMs,
+      viewportEndMs: sourceViewport.endMs,
+      durationMs: timelineDurationMs,
+      anchorMs,
+      scale
+    });
+    setTimelineViewport(next);
+  }
+
+  function handleTimelineWheel(event: WheelEvent) {
     const timelineDurationMs = inferredTimelineDurationMs();
     if (!timelineElement || !timelineDurationMs) {
       return;
     }
 
     event.preventDefault();
-    ensureTimelineViewport();
-    const pointerMs = timelineMsFromPointer(event as unknown as PointerEvent);
-    const currentSpan = timelineViewportEndMs - timelineViewportStartMs || timelineDurationMs;
-    const nextSpan = Math.max(2000, Math.min(timelineDurationMs, currentSpan * (event.deltaY < 0 ? 0.82 : 1.22)));
-    const ratio = currentSpan ? (pointerMs - timelineViewportStartMs) / currentSpan : 0.5;
-    let nextStart = pointerMs - nextSpan * ratio;
-    let nextEnd = nextStart + nextSpan;
-
-    if (nextStart < 0) {
-      nextEnd -= nextStart;
-      nextStart = 0;
-    }
-
-    if (nextEnd > timelineDurationMs) {
-      nextStart -= nextEnd - timelineDurationMs;
-      nextEnd = timelineDurationMs;
-    }
-
-    timelineViewportStartMs = Math.max(0, nextStart);
-    timelineViewportEndMs = Math.min(timelineDurationMs, nextEnd);
-    hasManualTimelineZoom = timelineViewportStartMs > 0 || timelineViewportEndMs < timelineDurationMs;
+    zoomTimelineAround(timelineMsFromClientX(event.clientX), event.deltaY < 0 ? 0.82 : 1.22);
   }
 
   function resetTimelineZoom() {
     timelineViewportStartMs = 0;
     timelineViewportEndMs = inferredTimelineDurationMs();
     hasManualTimelineZoom = false;
+    isZoomLooping = false;
   }
 
   function createDraftClipId() {
@@ -2347,7 +2513,7 @@
     clipEndContextMs = DEFAULT_CLIP_TAIL_PADDING_MS;
     isLooping = true;
     isLoopingWithPadding = true;
-    resetTimelineZoom();
+    isZoomLooping = false;
     draftInitialSnapshot = JSON.stringify([
       draftMoveRows.map((row) => [
         row.id,
@@ -2841,7 +3007,13 @@
   <title>Media | Salsa Encyclopedia</title>
 </svelte:head>
 
-<svelte:window on:pointermove={handleTimelinePointerMove} on:pointerup={stopTimelineDrag} on:keydown={handleKeydown} on:beforeunload={handleBeforeUnload} />
+<svelte:window
+  on:pointermove={handleTimelinePointerMove}
+  on:pointerup={(event) => stopTimelineDrag(event)}
+  on:pointercancel={(event) => stopTimelineDrag(event)}
+  on:keydown={handleKeydown}
+  on:beforeunload={handleBeforeUnload}
+/>
 
 <div class="stack upload-page media-page media-editor-page">
   <section class="panel upload-shell">
@@ -3070,14 +3242,14 @@
                     </span>
                   </span>
                   <span><strong>Total</strong> {formatRoundedSeconds(playerDurationMs)}s</span>
-                  {#if isDraftingMove}
+                  {#if isTimelineZoomed()}
                     <span class:timeline-zoom-active={isTimelineZoomed()}>
-                      <strong>{isTimelineZoomed() ? 'Zoomed' : 'Full view'}</strong>
+                      <strong>Zoomed</strong>
                       {formatRoundedSeconds(timelineViewportDurationMs())}s
-                      {#if isTimelineZoomed()}
-                        ({formatRoundedSeconds(timelineViewportStartMs)}s - {formatRoundedSeconds(timelineViewportEndMs)}s)
-                      {/if}
+                      ({formatRoundedSeconds(timelineViewportStartMs)}s - {formatRoundedSeconds(timelineViewportEndMs)}s)
                     </span>
+                  {/if}
+                  {#if isDraftingMove}
                     {#if activeDraftMoveRow}
                       <span class="timeline-tool-actions">
                         <button
@@ -3111,17 +3283,6 @@
                         >
                           Reset padding
                         </button>
-                        {#if isTimelineZoomed()}
-                          <button
-                            class="timeline-loop-button"
-                            type="button"
-                            aria-label="Reset timeline zoom"
-                            title="Reset timeline zoom"
-                            on:click={resetTimelineZoom}
-                          >
-                            Reset zoom
-                          </button>
-                        {/if}
                       </span>
                     {/if}
                   {/if}
@@ -3309,6 +3470,28 @@
                     {/if}
                   {:else}
                     <button class="timeline-move-action" type="button" on:click={addMoreMoves}>Edit moves</button>
+                  {/if}
+                  {#if isTimelineZoomed()}
+                    <button
+                      class="timeline-move-action"
+                      type="button"
+                      aria-label="Reset timeline zoom"
+                      title="Reset timeline zoom"
+                      on:click={resetTimelineZoom}
+                    >
+                      Reset zoom
+                    </button>
+                    <button
+                      class="timeline-move-action"
+                      class:active={isZoomLooping}
+                      type="button"
+                      aria-pressed={isZoomLooping}
+                      aria-label="Loop zoom window"
+                      title="Loop zoom window"
+                      on:click={toggleZoomLoop}
+                    >
+                      Loop zoom
+                    </button>
                   {/if}
                   {#if hasUnsavedClipRowChanges}
                     <button class="timeline-move-action primary" type="button" on:click={() => void saveClipLabelChanges()}>

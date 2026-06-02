@@ -114,7 +114,7 @@ The move editor saves clip definitions before rendering.
 - Saved clip ranges and other compact lower-lane move ranges must sit below the playhead handle instead of overlapping the playback track or playhead marker, in both playback and edit modes.
 - The saved clip range containing the current playback position must use a lighter green than other saved clip ranges.
 - The playhead handle circle must exactly fill the vertical space between the playback track bottom and the lower clip lane top, based on measured track and lane geometry rather than a guessed size.
-- Outside active move editing, saved clips must be positioned against the full source-video timeline, not a stale edit zoom or clip viewport.
+- Outside active move editing, saved clips must be positioned against the full source-video timeline unless the user has intentionally zoomed the timeline.
 - Entering move-editing mode from a source video must not create a new blank row or preselect an existing saved clip. It should open the editor surface with saved clips visible and wait for the user to explicitly click `Add move` or select a saved clip row/timeline range.
 - While the move editor is open, previously saved clips must also appear as compact rows in the editor form so they can be selected for editing from the same surface as new draft rows.
 - While the move editor is open, the row list should show only the currently clicked move plus the three other move rows closest to the video playhead, rather than every saved move row in the source video.
@@ -136,8 +136,12 @@ The move editor saves clip definitions before rendering.
 ## Timeline Zoom
 
 - The timeline must support zooming in and out.
+- Timeline zoom must be available in playback mode and move-editing mode.
+- Scrolling over the timeline should zoom around the pointer position.
+- Pinching on the timeline should zoom around the pinch midpoint.
 - When timeline zoom is active, the editor must clearly show that zoom is active.
-- When timeline zoom is active, the editor must provide a reset zoom control.
+- When timeline zoom is active, the editor must provide `Reset zoom` and `Loop zoom` controls in the main timeline action row beside `Edit moves` or `Add move`.
+- `Loop zoom` must loop playback over the visible zoom window and remain mutually exclusive with clip-range looping.
 - Timeline tracks, saved ranges, playhead lines, knobs, and drag markers must render crisply at rest; the editor must not rely on transform downscaling or fractional sizing that leaves the timeline persistently blurry.
 - Timeline and edit-row animations must be smooth, restrained, and visibly paced rather than snappy; direct marker/playhead dragging must remain immediate without trailing transitions, and reduced-motion preferences must disable nonessential motion.
 - Playback-nearest edit-row updates must settle briefly before changing the visible row window, so ordinary playback does not constantly reshuffle rows; when the settled window changes, rows should slide smoothly rather than jump.

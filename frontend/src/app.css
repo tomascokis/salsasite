@@ -3887,6 +3887,13 @@ select {
   color: #ffffff;
 }
 
+.timeline-move-action.active {
+  border-color: rgba(255, 209, 102, 0.46);
+  background: rgba(255, 209, 102, 0.16);
+  color: #ffe2a4;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
 .timeline-move-action.danger,
 .draft-edit-button.danger {
   border-color: rgba(213, 92, 92, 0.48);
