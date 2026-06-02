@@ -65,6 +65,7 @@ The editor should keep playback predictable while the user marks precise ranges.
 - The compact playback control group should look polished and intentional, with clear icon buttons, readable focus/hover states, and a refined inline volume slider.
 - The source-video fullscreen control should live in the compact playback control group and must not resize the editor grid, expand the player in-page, or consume additional timeline height.
 - Source-video playback controls and move-context boxes should stay vertically compact so they do not consume unnecessary timeline height.
+- The timeline card’s vertical buffer around the metadata/playback control row should stay compact: vertical padding and edit-mode row gap should be half of the prior spacious treatment while preserving horizontal spacing.
 - Playback move-context boxes must stay in stable left, center, and right slots at every viewport width; they must never stack vertically.
 - The play/pause icon should be small.
 - The old bottom-right play button should not be shown.
