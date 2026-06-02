@@ -3356,7 +3356,11 @@
                   </span>
                   <span><strong>Total</strong> {formatRoundedSeconds(playerDurationMs)}s</span>
                   {#if timelineIsZoomed}
-                    <span class:timeline-zoom-active={timelineIsZoomed}>
+                    <span
+                      class:timeline-zoom-active={timelineIsZoomed}
+                      in:fly={{ y: -4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                      out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                    >
                       <strong>Zoomed</strong>
                       {formatRoundedSeconds(timelineViewportDurationMs())}s
                       ({formatRoundedSeconds(timelineViewportStartMs)}s - {formatRoundedSeconds(timelineViewportEndMs)}s)
@@ -3432,7 +3436,12 @@
                   </div>
                 {/if}
                 {#if timelineIsZoomed}
-                  <div class="timeline-overview zoomed" aria-hidden="true">
+                  <div
+                    class="timeline-overview zoomed"
+                    aria-hidden="true"
+                    in:fly={{ y: -4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                    out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                  >
                     <span class="timeline-overview-track">
                       <span
                         class="timeline-overview-window"
@@ -3587,6 +3596,8 @@
                       type="button"
                       aria-label="Reset timeline zoom"
                       title="Reset timeline zoom"
+                      in:fly={{ y: -4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                      out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
                       on:click={resetTimelineZoom}
                     >
                       Reset zoom
@@ -3598,6 +3609,8 @@
                       aria-pressed={isZoomLooping}
                       aria-label="Loop zoom window"
                       title="Loop zoom window"
+                      in:fly={{ y: -4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                      out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
                       on:click={toggleZoomLoop}
                     >
                       Loop zoom

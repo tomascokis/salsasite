@@ -3424,6 +3424,11 @@ select {
   border-radius: 999px;
   background: rgba(255, 209, 102, 0.12);
   color: #ffe2a4;
+  transition:
+    border-color var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    background var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    color var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    opacity var(--media-editor-motion-short) var(--media-editor-motion-ease);
 }
 
 .timeline-zoom-active strong {
@@ -3551,11 +3556,11 @@ select {
   overflow: visible;
 }
 
-.clip-timeline-shell.zoomed::before,
-.clip-timeline-shell.zoomed::after {
+.clip-timeline-shell::before,
+.clip-timeline-shell::after {
   content: '';
   position: absolute;
-  top: calc(var(--timeline-edge-top) - 26px);
+  top: calc(var(--timeline-edge-top) - 22px);
   z-index: 30;
   display: grid;
   place-items: center;
@@ -3572,21 +3577,37 @@ select {
   font-size: 9px;
   font-weight: 900;
   line-height: 1;
+  opacity: 0;
   pointer-events: none;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
-  transition: top var(--timeline-transition);
+  transition:
+    top var(--timeline-transition),
+    opacity var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    transform var(--media-editor-motion-short) var(--media-editor-motion-ease);
+}
+
+.clip-timeline-shell::before {
+  content: '\2190';
+  left: 0;
+  transform: translate(-50%, 4px) scale(0.88);
+}
+
+.clip-timeline-shell::after {
+  content: '\2192';
+  right: 0;
+  transform: translate(50%, 4px) scale(0.88);
 }
 
 .clip-timeline-shell.zoomed::before {
-  content: '\2190';
-  left: 0;
-  transform: translateX(-50%);
+  top: calc(var(--timeline-edge-top) - 26px);
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
 }
 
 .clip-timeline-shell.zoomed::after {
-  content: '\2192';
-  right: 0;
-  transform: translateX(50%);
+  top: calc(var(--timeline-edge-top) - 26px);
+  opacity: 1;
+  transform: translate(50%, 0) scale(1);
 }
 
 .clip-timeline {
@@ -3895,7 +3916,9 @@ select {
     --timeline-transition: 0ms linear;
   }
 
+  .timeline-zoom-active,
   .timeline-context-box,
+  .timeline-move-action,
   .timeline-overview-window,
   .clip-timeline-shell::before,
   .clip-timeline-shell::after,
@@ -3930,6 +3953,12 @@ select {
   font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
+  transition:
+    border-color var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    background var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    color var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    box-shadow var(--media-editor-motion-short) var(--media-editor-motion-ease),
+    opacity var(--media-editor-motion-short) var(--media-editor-motion-ease);
 }
 
 .timeline-move-action.zoom-control {
