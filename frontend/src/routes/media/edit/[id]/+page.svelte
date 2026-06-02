@@ -206,6 +206,9 @@
   let playbackError = '';
   let playerDurationMs = 0;
   let playerCurrentMs = 0;
+  let timelineInferredDurationMs = 0;
+  let timelineIsZoomed = false;
+  let timelineZoomControlsVisible = false;
   let pendingSeekMs: number | null = null;
   let autoplayedMediaPath: string | null = null;
   let timelineViewportStartMs = 0;
@@ -323,6 +326,20 @@
       : null;
   $: showPlaybackMoveContext = Boolean(currentPlaybackMove || visiblePreviousPlaybackMove || visibleNextPlaybackMove);
   $: timelineScaleKey = `${isDraftingMove ? 'editing' : 'full'}:${playerDurationMs}:${timelineViewportStartMs}:${timelineViewportEndMs}`;
+  $: timelineInferredDurationMs = Math.max(
+    playerDurationMs,
+    playerCurrentMs,
+    draftEndMs,
+    draftActionEndMs,
+    draftMoveRows.reduce((max, row) => Math.max(max, row.startMs, row.endMs), 0),
+    clipRows.reduce((max, clip) => Math.max(max, clip.endMs, clip.actionEndMs ?? 0, clip.startMs, clip.actionStartMs ?? 0), 0)
+  );
+  $: timelineIsZoomed = timelineZoomed({
+    startMs: timelineViewportStartMs,
+    endMs: timelineViewportEndMs,
+    durationMs: timelineInferredDurationMs
+  });
+  $: timelineZoomControlsVisible = timelineIsZoomed || hasManualTimelineZoom || isZoomLooping;
 
   function motionDuration(milliseconds: number) {
     return prefersReducedMotion ? 0 : milliseconds;
@@ -1655,13 +1672,7 @@
   }
 
   function inferredTimelineDurationMs() {
-    const clipMax = clipRows.reduce(
-      (max, clip) => Math.max(max, clip.endMs, clip.actionEndMs ?? 0, clip.startMs, clip.actionStartMs ?? 0),
-      0
-    );
-    const draftMoveMax = draftMoveRows.reduce((max, row) => Math.max(max, row.startMs, row.endMs), 0);
-
-    return Math.max(playerDurationMs, playerCurrentMs, draftEndMs, draftActionEndMs, draftMoveMax, clipMax);
+    return timelineInferredDurationMs;
   }
 
   function clampMs(value: number) {
@@ -2185,16 +2196,11 @@
   }
 
   function isTimelineZoomed() {
-    const duration = inferredTimelineDurationMs();
-    return timelineZoomed({
-      startMs: timelineViewportStartMs,
-      endMs: timelineViewportEndMs,
-      durationMs: duration
-    });
+    return timelineIsZoomed;
   }
 
   function shouldShowTimelineZoomControls() {
-    return isTimelineZoomed() || hasManualTimelineZoom || isZoomLooping;
+    return timelineZoomControlsVisible;
   }
 
   function timelineOverviewLeft(_scaleKey = '') {
@@ -3349,8 +3355,8 @@
                     </span>
                   </span>
                   <span><strong>Total</strong> {formatRoundedSeconds(playerDurationMs)}s</span>
-                  {#if isTimelineZoomed()}
-                    <span class:timeline-zoom-active={isTimelineZoomed()}>
+                  {#if timelineIsZoomed}
+                    <span class:timeline-zoom-active={timelineIsZoomed}>
                       <strong>Zoomed</strong>
                       {formatRoundedSeconds(timelineViewportDurationMs())}s
                       ({formatRoundedSeconds(timelineViewportStartMs)}s - {formatRoundedSeconds(timelineViewportEndMs)}s)
@@ -3425,7 +3431,7 @@
                     </div>
                   </div>
                 {/if}
-                {#if isTimelineZoomed()}
+                {#if timelineIsZoomed}
                   <div class="timeline-overview zoomed" aria-hidden="true">
                     <span class="timeline-overview-track">
                       <span
@@ -3435,9 +3441,9 @@
                     </span>
                   </div>
                 {/if}
-                <div class="clip-timeline-shell" class:zoomed={isTimelineZoomed()}>
+                <div class="clip-timeline-shell" class:zoomed={timelineIsZoomed}>
                   <div
-                    class:zoomed={isTimelineZoomed()}
+                    class:zoomed={timelineIsZoomed}
                     class="clip-timeline"
                     class:inactive={!isDraftingMove}
                     bind:this={timelineElement}
@@ -3575,7 +3581,7 @@
                   {:else}
                     <button class="timeline-move-action" type="button" on:click={addMoreMoves}>Edit moves</button>
                   {/if}
-                  {#if shouldShowTimelineZoomControls()}
+                  {#if timelineZoomControlsVisible}
                     <button
                       class="timeline-move-action zoom-control"
                       type="button"
