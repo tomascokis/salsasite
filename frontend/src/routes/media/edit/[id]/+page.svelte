@@ -79,6 +79,16 @@
   type TimelineMarker = 'clipStart' | 'clipEnd' | 'moveStart' | 'moveEnd' | 'playhead';
   type CountModeStep = 'idle' | 'placing';
   type ClipChangeState = 'new' | 'edited';
+  type FullscreenDocument = Document & {
+    webkitFullscreenElement?: Element | null;
+    webkitExitFullscreen?: () => Promise<void> | void;
+  };
+  type FullscreenElement = HTMLElement & {
+    webkitRequestFullscreen?: () => Promise<void> | void;
+  };
+  type FullscreenVideoElement = HTMLVideoElement & {
+    webkitEnterFullscreen?: () => void;
+  };
   const MOVE_SUGGESTION_LIMIT = 8;
   const CLIP_MOVE_BUFFER_MS = 500;
   const DEFAULT_MOVE_DURATION_MS = 2500;
@@ -172,6 +182,7 @@
   let videoVolume = 1;
   let previousAudibleVideoVolume = 1;
   let isVolumeOpen = false;
+  let isVideoFullscreen = false;
   let isLooping = false;
   let isLoopingWithPadding = true;
   let playbackError = '';
@@ -1800,6 +1811,56 @@
     isVolumeOpen = !isVolumeOpen;
   }
 
+  function syncVideoFullscreenState() {
+    if (!browser || !videoElement) {
+      isVideoFullscreen = false;
+      return;
+    }
+
+    const fullscreenDocument = document as FullscreenDocument;
+    const fullscreenElement = document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement ?? null;
+    isVideoFullscreen = fullscreenElement === videoElement;
+  }
+
+  async function toggleVideoFullscreen() {
+    if (!videoElement) {
+      return;
+    }
+
+    const fullscreenDocument = document as FullscreenDocument;
+    const fullscreenElement = document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement ?? null;
+    const fullscreenVideo = videoElement as FullscreenVideoElement;
+
+    playbackError = '';
+
+    try {
+      if (fullscreenElement === videoElement) {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else {
+          await fullscreenDocument.webkitExitFullscreen?.();
+        }
+        syncVideoFullscreenState();
+        return;
+      }
+
+      if (videoElement.requestFullscreen) {
+        await videoElement.requestFullscreen();
+      } else if ((videoElement as FullscreenElement).webkitRequestFullscreen) {
+        await (videoElement as FullscreenElement).webkitRequestFullscreen?.();
+      } else if (fullscreenVideo.webkitEnterFullscreen) {
+        fullscreenVideo.webkitEnterFullscreen();
+      } else {
+        playbackError = 'Fullscreen is not available for this video.';
+        return;
+      }
+
+      syncVideoFullscreenState();
+    } catch (error) {
+      playbackError = error instanceof Error ? error.message : 'Fullscreen could not start.';
+    }
+  }
+
   function enableMoveEditorAudio() {
     if (!videoElement || hasActiveMutedVideoPreference()) {
       return;
@@ -2766,7 +2827,13 @@
 
     syncReducedMotion();
     reducedMotionQuery.addEventListener('change', syncReducedMotion);
-    return () => reducedMotionQuery.removeEventListener('change', syncReducedMotion);
+    document.addEventListener('fullscreenchange', syncVideoFullscreenState);
+    document.addEventListener('webkitfullscreenchange', syncVideoFullscreenState);
+    return () => {
+      reducedMotionQuery.removeEventListener('change', syncReducedMotion);
+      document.removeEventListener('fullscreenchange', syncVideoFullscreenState);
+      document.removeEventListener('webkitfullscreenchange', syncVideoFullscreenState);
+    };
   });
 </script>
 
@@ -2957,6 +3024,17 @@
                         <span>{isPlaying ? 'Pause' : 'Play'}</span>
                       </button>
                     {/if}
+                    <button
+                      class="editor-video-fullscreen"
+                      class:active={isVideoFullscreen}
+                      type="button"
+                      aria-label={isVideoFullscreen ? 'Exit source video fullscreen' : 'View source video fullscreen'}
+                      aria-pressed={isVideoFullscreen}
+                      title={isVideoFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                      on:click={() => void toggleVideoFullscreen()}
+                    >
+                      <span>{isVideoFullscreen ? 'Exit fullscreen' : 'Fullscreen'}</span>
+                    </button>
                     <span class="editor-video-volume-wrap" class:open={isVolumeOpen}>
                       <button
                         class="editor-video-volume-toggle"
