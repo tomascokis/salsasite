@@ -3549,7 +3549,7 @@ select {
 
 .timeline-overview.zoomed .timeline-overview-window {
   background: linear-gradient(90deg, #ffd166 0%, #6db4ff 100%);
-  box-shadow: 0 0 12px rgba(109, 180, 255, 0.28);
+  box-shadow: none;
 }
 
 .clip-timeline-shell {
@@ -3570,10 +3570,7 @@ select {
   border: 1px solid rgba(255, 225, 146, 0.92);
   border-radius: 3px;
   background: #ffd166;
-  box-shadow:
-    0 0 0 1px rgba(10, 16, 24, 0.78),
-    0 4px 9px rgba(10, 16, 24, 0.3),
-    0 0 7px rgba(255, 209, 102, 0.36);
+  box-shadow: none;
   color: #101824;
   font-size: 9px;
   font-weight: 900;
@@ -3681,17 +3678,12 @@ select {
   background:
     repeating-linear-gradient(90deg, transparent 0, transparent 38px, rgba(216, 232, 247, 0.22) 39px, transparent 40px),
     linear-gradient(180deg, #3d5064 0%, #243446 100%);
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.42),
-    0 0 0 1px rgba(220, 235, 250, 0.1),
-    0 6px 14px rgba(0, 0, 0, 0.18);
+  box-shadow: none;
 }
 
 .clip-timeline-selection {
   background: linear-gradient(90deg, #6db4ff 0%, #7d46ff 100%);
-  box-shadow:
-    0 0 0 1px rgba(202, 225, 255, 0.25),
-    0 8px 18px rgba(70, 96, 255, 0.24);
+  box-shadow: none;
 }
 
 .clip-timeline-selection.move-range {
@@ -3701,9 +3693,7 @@ select {
   overflow: hidden;
   background: linear-gradient(90deg, #ffd166 0%, #f59e0b 100%);
   opacity: 1;
-  box-shadow:
-    0 0 0 1px rgba(255, 231, 171, 0.38),
-    0 8px 18px rgba(245, 158, 11, 0.22);
+  box-shadow: none;
 }
 
 .clip-timeline-selection.move-range::after {
@@ -3721,9 +3711,7 @@ select {
   top: calc(var(--timeline-clip-top) + var(--timeline-lower-lane-offset));
   height: 10px;
   opacity: 0.78;
-  box-shadow:
-    0 0 0 1px rgba(187, 247, 208, 0.25),
-    0 6px 14px rgba(34, 197, 94, 0.18);
+  box-shadow: none;
 }
 
 .clip-timeline-selection.move-range.promoting-from-saved::after {
@@ -3736,9 +3724,7 @@ select {
   height: 10px;
   background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
   opacity: 0.78;
-  box-shadow:
-    0 0 0 1px rgba(187, 247, 208, 0.25),
-    0 6px 14px rgba(34, 197, 94, 0.18);
+  box-shadow: none;
 }
 
 .clip-timeline-selection.saved-move-range {
@@ -3753,15 +3739,13 @@ select {
   opacity: 0.78;
   -webkit-appearance: none;
   appearance: none;
-  box-shadow: 0 5px 12px rgba(34, 197, 94, 0.18);
+  box-shadow: none;
 }
 
 .clip-timeline-selection.saved-move-range.current {
   background: linear-gradient(90deg, #7ee68f 0%, #43d46e 100%);
   opacity: 1;
-  box-shadow:
-    0 0 14px rgba(126, 230, 143, 0.28),
-    0 7px 16px rgba(67, 212, 110, 0.24);
+  box-shadow: none;
 }
 
 .clip-timeline-selection.saved-move-range:hover,
@@ -3769,9 +3753,7 @@ select {
 .clip-timeline-selection.saved-move-range.active {
   opacity: 1;
   outline: none;
-  box-shadow:
-    0 0 12px rgba(126, 230, 143, 0.3),
-    0 8px 18px rgba(34, 197, 94, 0.24);
+  box-shadow: none;
 }
 
 .clip-timeline-playhead {
@@ -3784,7 +3766,7 @@ select {
   transform: translateX(-50%);
   opacity: 0.78;
   pointer-events: none;
-  box-shadow: 0 0 0 1px rgba(18, 27, 40, 0.28);
+  box-shadow: none;
   will-change: top, height;
   transition:
     top var(--timeline-transition),
@@ -3807,9 +3789,7 @@ select {
   cursor: grab;
   transform: translateX(-50%);
   transform-origin: 50% 50%;
-  box-shadow:
-    0 8px 16px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(48, 181, 255, 0.25);
+  box-shadow: none;
   -webkit-appearance: none;
   appearance: none;
   will-change: top, transform;
@@ -3863,7 +3843,7 @@ select {
   height: 18px;
   border: 0;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+  box-shadow: none;
   clip-path: polygon(0 0, 100% 0, 100% 58%, 50% 100%, 0 58%);
 }
 
