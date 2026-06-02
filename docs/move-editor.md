@@ -144,6 +144,7 @@ The move editor saves clip definitions before rendering.
 - Timeline geometry should begin animating immediately during zoom gestures, using a short direct transition rather than the slower edit-row motion pace.
 - When timeline zoom is active, the editor must clearly show that zoom is active.
 - Timeline zoom affordances, including the `Zoomed` status, overview strip, edge arrows, and `Reset zoom` / `Loop zoom` controls, should fade or gently animate in and out instead of popping abruptly.
+- The main timeline action row should animate button reflow when zoom controls appear or disappear, so existing actions glide into their new positions instead of jumping.
 - The zoomed timeline boundary lines must show compact left and right arrow indicators centered 15px above the respective orange edges, not attached to the side markers.
 - Mobile touch pinch zoom should be 10x more sensitive than the base pinch damping while mouse wheel zoom sensitivity remains unchanged.
 - When timeline zoom is active, the editor must provide `Reset zoom` and `Loop zoom` controls in the main timeline action row beside `Edit moves` or `Add move`; zoom controls should be hidden when no zoom window exists.
