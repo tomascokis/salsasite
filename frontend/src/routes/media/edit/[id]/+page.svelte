@@ -107,6 +107,9 @@
   const MEDIA_MOTION_SHORT_MS = 320;
   const MEDIA_MOTION_MEDIUM_MS = 700;
   const MEDIA_MOTION_REVEAL_DELAY_MS = 120;
+  const TIMELINE_WHEEL_ZOOM_IN_SCALE = 0.94;
+  const TIMELINE_WHEEL_ZOOM_OUT_SCALE = 1.06;
+  const TIMELINE_ZOOMING_MS = 180;
   const ROW_WINDOW_SETTLE_MS = 450;
   const ROW_MOVE_MS = 850;
   const ROW_ENTER_MS = 260;
@@ -194,6 +197,7 @@
   let isLooping = false;
   let isLoopingWithPadding = true;
   let isZoomLooping = false;
+  let isTimelineZooming = false;
   let playbackError = '';
   let playerDurationMs = 0;
   let playerCurrentMs = 0;
@@ -220,6 +224,7 @@
   let playbackAnimationFrame: number | null = null;
   let timelinePromotionFrame: number | null = null;
   let timelinePromotionTimer: ReturnType<typeof setTimeout> | null = null;
+  let timelineZoomingTimer: ReturnType<typeof setTimeout> | null = null;
   let rowWindowSettleTimer: ReturnType<typeof setTimeout> | null = null;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
   let syncingAssetKey: string | null = null;
@@ -1674,19 +1679,19 @@
       return;
     }
 
-    if (!isDraftingMove) {
-      timelineViewportStartMs = 0;
-      timelineViewportEndMs = timelineDurationMs;
-      return;
-    }
-
     if (timelineViewportEndMs <= timelineViewportStartMs) {
       timelineViewportStartMs = 0;
       timelineViewportEndMs = timelineDurationMs;
+      hasManualTimelineZoom = false;
       return;
     }
 
     if (timelineViewportEndMs > timelineDurationMs) {
+      timelineViewportEndMs = timelineDurationMs;
+    }
+
+    if (!hasManualTimelineZoom) {
+      timelineViewportStartMs = 0;
       timelineViewportEndMs = timelineDurationMs;
     }
   }
@@ -2313,7 +2318,20 @@
       return;
     }
 
-    zoomTimelineAround(timelinePinchAnchorMs, timelinePinchStartDistancePx / distance, timelinePinchStartViewport);
+    const rawScale = timelinePinchStartDistancePx / distance;
+    const dampedScale = 1 + (rawScale - 1) * 0.45;
+    zoomTimelineAround(timelinePinchAnchorMs, dampedScale, timelinePinchStartViewport);
+  }
+
+  function markTimelineZooming() {
+    isTimelineZooming = true;
+    if (timelineZoomingTimer) {
+      clearTimeout(timelineZoomingTimer);
+    }
+    timelineZoomingTimer = setTimeout(() => {
+      isTimelineZooming = false;
+      timelineZoomingTimer = null;
+    }, TIMELINE_ZOOMING_MS);
   }
 
   function startTimelineDrag(event: PointerEvent, target?: TimelineMarker) {
@@ -2441,6 +2459,7 @@
       return;
     }
 
+    markTimelineZooming();
     ensureTimelineViewport();
     const sourceViewport = viewport ?? {
       startMs: timelineViewportStartMs,
@@ -2463,7 +2482,10 @@
     }
 
     event.preventDefault();
-    zoomTimelineAround(timelineMsFromClientX(event.clientX), event.deltaY < 0 ? 0.82 : 1.22);
+    zoomTimelineAround(
+      timelineMsFromClientX(event.clientX),
+      event.deltaY < 0 ? TIMELINE_WHEEL_ZOOM_IN_SCALE : TIMELINE_WHEEL_ZOOM_OUT_SCALE
+    );
   }
 
   function resetTimelineZoom() {
@@ -2976,6 +2998,9 @@
   onDestroy(() => {
     timelineResizeObserver?.disconnect();
     clearTimelinePromotionTimers();
+    if (timelineZoomingTimer) {
+      clearTimeout(timelineZoomingTimer);
+    }
     clearRowWindowSettleTimer();
     stopPolling();
     stopPlaybackAnimation();
@@ -3177,7 +3202,12 @@
                 </div>
               </div>
 
-              <div class:expanded={isDraftingMove} class:dragging={Boolean(timelineDragTarget)} class="timeline-card">
+              <div
+                class:expanded={isDraftingMove}
+                class:dragging={Boolean(timelineDragTarget)}
+                class:zooming={isTimelineZooming}
+                class="timeline-card"
+              >
                 <div class="timeline-meta">
                   {#if activeDraftMoveRow}
                     <span><strong>Clip</strong> {formatSeconds(draftStartMs)}s - {formatSeconds(draftEndMs)}s</span>

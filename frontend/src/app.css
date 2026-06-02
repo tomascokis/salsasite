@@ -3356,6 +3356,10 @@ select {
   --timeline-transition: 0ms linear;
 }
 
+.timeline-card.zooming {
+  --timeline-transition: 120ms linear;
+}
+
 .timeline-card.expanded {
   --timeline-height: 96px;
   --timeline-track-top: 35px;
