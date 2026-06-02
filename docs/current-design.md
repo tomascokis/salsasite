@@ -259,7 +259,7 @@ Status and badge language is intended to stay shared across move pages, media br
 
 [frontend/src/lib/server/app-state.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/app-state.ts) owns the SQLite database and bootstraps migrated data-only stores from JSON sidecars. [frontend/src/lib/server/history.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/history.ts) lists and undoes supported actions.
 
-The first undo-capable slice covers metadata entries, dancer profiles/deleted-profile markers, move drafts, and published move edit overrides. Draft publishing actions are recorded but not undoable yet because they may involve media relinks. Media upload, render, publish, poster, rename, and delete operations are not part of undo in this slice.
+The current undo-capable slice covers metadata entries, dancer profiles/deleted-profile markers, move drafts, published move edit overrides, and managed source-video deletes. Managed source-video delete undo depends on the media manager trash entries still existing under `DATA_DIR/media-trash/<job-id>/`. Draft publishing actions are recorded but not undoable yet because they may involve media relinks. Media upload, render, publish, poster generation, generated cleanup, and managed media renames are observable through media-manager jobs where applicable, but they are not user-history undo actions in this slice.
 
 ## Deployment
 

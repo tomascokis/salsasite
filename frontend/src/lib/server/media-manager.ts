@@ -853,7 +853,11 @@ export async function restoreTrashedFilesForJob(jobId: string) {
   const actions = listMediaFileActionsForJob(jobId)
     .filter((action) => action.status === 'succeeded' && action.backupPath)
     .reverse();
-  const restored: string[] = [];
+  const restoreEntries: Array<{
+    filePath: string;
+    backupAbsolutePath: string;
+    destination: string;
+  }> = [];
 
   for (const action of actions) {
     const metadata = action.metadata && typeof action.metadata === 'object' ? (action.metadata as Record<string, unknown>) : {};
@@ -871,10 +875,18 @@ export async function restoreTrashedFilesForJob(jobId: string) {
     if (!backupExists) {
       throw new Error(`Missing trashed media file for ${action.filePath}.`);
     }
+    restoreEntries.push({
+      filePath: action.filePath,
+      backupAbsolutePath,
+      destination
+    });
+  }
 
-    await fsp.mkdir(path.dirname(destination), { recursive: true });
-    await fsp.rename(backupAbsolutePath, destination);
-    restored.push(action.filePath);
+  const restored: string[] = [];
+  for (const entry of restoreEntries) {
+    await fsp.mkdir(path.dirname(entry.destination), { recursive: true });
+    await fsp.rename(entry.backupAbsolutePath, entry.destination);
+    restored.push(entry.filePath);
   }
 
   return restored;

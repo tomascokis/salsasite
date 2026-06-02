@@ -10,6 +10,7 @@
       createdAt: string;
       canUndo: boolean;
       undoUnavailableReason: string | null;
+      details: Record<string, string>;
     }>;
   };
 
@@ -20,6 +21,10 @@
   function formatDate(value: string) {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  }
+
+  function detailEntries(details: Record<string, string>) {
+    return Object.entries(details).filter(([, value]) => value);
   }
 
   async function refreshHistory() {
@@ -78,6 +83,7 @@
               <th>When</th>
               <th>Action</th>
               <th>Target</th>
+              <th>Details</th>
               <th>Status</th>
               <th>Undo</th>
             </tr>
@@ -94,6 +100,15 @@
                   <span>{entry.entityType}</span>
                   <span>{entry.entityId}</span>
                 </td>
+                <td>
+                  {#if detailEntries(entry.details).length}
+                    {#each detailEntries(entry.details) as [key, value]}
+                      <span><strong>{key}</strong>: {value}</span>
+                    {/each}
+                  {:else}
+                    <span class="muted">No extra details</span>
+                  {/if}
+                </td>
                 <td>{entry.status}</td>
                 <td>
                   {#if entry.canUndo}
@@ -101,7 +116,7 @@
                       {busyActionId === entry.id ? 'Undoing' : 'Undo'}
                     </button>
                   {:else}
-                    <span class="muted">{entry.undoUnavailableReason}</span>
+                    <span class="muted">{entry.undoUnavailableReason ?? 'Undo unavailable'}</span>
                   {/if}
                 </td>
               </tr>

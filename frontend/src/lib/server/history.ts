@@ -27,9 +27,10 @@ type ActionRow = {
   undo_of_action_id: string | null;
 };
 
-export type HistoryEntry = ActionRecord & {
+export type HistoryEntry = Omit<ActionRecord, 'before' | 'after'> & {
   canUndo: boolean;
   undoUnavailableReason: string | null;
+  details: Record<string, string>;
 };
 
 const UNDOABLE_MOVE_TYPES = new Set(['moveDraft.create', 'moveDraft.update', 'moveDraft.delete', 'move.update']);
@@ -83,12 +84,46 @@ function actionUndoReason(action: ActionRecord) {
   return 'This action type is not undoable yet';
 }
 
+function normalizeHistoryLimit(limit: unknown) {
+  const value = typeof limit === 'number' ? limit : Number(limit ?? 100);
+  return Number.isFinite(value) ? Math.max(1, Math.min(250, Math.floor(value))) : 100;
+}
+
+function actionDetails(action: ActionRecord) {
+  const details: Record<string, string> = {};
+  const before = action.before && typeof action.before === 'object' ? (action.before as Record<string, unknown>) : {};
+  const after = action.after && typeof action.after === 'object' ? (action.after as Record<string, unknown>) : {};
+  const mediaJobId = typeof before.mediaJobId === 'string' ? before.mediaJobId : typeof after.mediaJobId === 'string' ? after.mediaJobId : null;
+
+  if (action.entityType === 'media:source' && mediaJobId) {
+    details.mediaJobId = mediaJobId;
+  }
+  if (action.undoneByActionId) {
+    details.undoneByActionId = action.undoneByActionId;
+  }
+  if (action.undoOfActionId) {
+    details.undoOfActionId = action.undoOfActionId;
+  }
+
+  return details;
+}
+
 function toHistoryEntry(action: ActionRecord): HistoryEntry {
   const undoUnavailableReason = actionUndoReason(action);
   return {
-    ...action,
+    id: action.id,
+    type: action.type,
+    label: action.label,
+    entityType: action.entityType,
+    entityId: action.entityId,
+    status: action.status,
+    createdAt: action.createdAt,
+    actor: action.actor,
+    undoneByActionId: action.undoneByActionId,
+    undoOfActionId: action.undoOfActionId,
     canUndo: undoUnavailableReason === null,
-    undoUnavailableReason
+    undoUnavailableReason,
+    details: actionDetails(action)
   };
 }
 
@@ -108,8 +143,8 @@ function loadAction(id: string) {
   return row ? parseActionRow(row) : null;
 }
 
-export function listHistory(limit = 100) {
-  return listActions(limit).map(toHistoryEntry);
+export function listHistory(limit: unknown = 100) {
+  return listActions(normalizeHistoryLimit(limit)).map(toHistoryEntry);
 }
 
 export async function undoAction(id: string) {

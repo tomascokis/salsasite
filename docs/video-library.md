@@ -23,7 +23,7 @@ The exported move data still defines the encyclopedia. The video catalog only de
 
 Media filesystem actions must be routed through the server-side media manager rather than being open-coded in routes or page loaders. The media manager records durable jobs in `DATA_DIR/app-state.sqlite` while the video relationships remain in `DATA_DIR/video-library.json`.
 
-Managed source deletion must move source videos, rendered outputs, and matching poster sidecars into `DATA_DIR/media-trash/<job-id>/` instead of permanently unlinking them. The source-delete action must be recorded in action history with enough catalog state and media job state to undo the delete.
+Managed source deletion must move source videos, rendered outputs, and matching poster sidecars into `DATA_DIR/media-trash/<job-id>/` instead of permanently unlinking them. The source-delete action must be recorded in action history with enough catalog state and media job state to undo the delete while those trash entries remain available.
 
 Catalog-owned generated media cleanup and managed video renames must also run through media-manager jobs. This includes stale generated legacy assets, removed source-clip outputs, obsolete render outputs, and display-ID-driven generated file renames. Temporary duplicate-upload files may be permanently removed, but the temp delete must still be recorded as a media-manager file action.
 
@@ -406,7 +406,7 @@ Deleting a source video moves these files into media-manager trash instead of pe
 - posters for those rendered move clips
 - generated low-resolution preview variants for the affected derived clips
 
-Source-delete undo restores the catalog rows and moves the trashed files back to their original managed locations when the trash files are still available.
+Source-delete undo restores the catalog rows and moves the trashed files back to their original managed locations when the trash files are still available under `DATA_DIR/media-trash/<job-id>/`. If required trash files are missing, undo must fail without restoring the catalog rows.
 
 Deleting a source does not remove unrelated legacy move videos.
 

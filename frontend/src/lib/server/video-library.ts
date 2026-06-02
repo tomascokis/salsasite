@@ -1486,17 +1486,7 @@ export async function deleteSourceAsset(assetId: string) {
     maxAttempts: 1
   });
 
-  let actionState:
-    | {
-        mediaJobId: string;
-        sourceAsset: VideoAsset;
-        outputAssets: VideoAsset[];
-        sourceClips: DerivedClip[];
-        moveLinks: MoveVideoLink[];
-        deletedAssetIds: string[];
-        deletedClipIds: string[];
-      }
-    | null = null;
+  let actionState: DeletedSourceMediaSnapshot | null = null;
 
   try {
     startMediaJob(job.id);
@@ -1588,26 +1578,72 @@ export async function deleteSourceAsset(assetId: string) {
   }
 }
 
-export async function restoreDeletedSourceMedia(state: unknown) {
+type DeletedSourceMediaSnapshot = {
+  mediaJobId: string;
+  sourceAsset: VideoAsset;
+  outputAssets: VideoAsset[];
+  sourceClips: DerivedClip[];
+  moveLinks: MoveVideoLink[];
+  deletedAssetIds?: string[];
+  deletedClipIds?: string[];
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function hasStringProperty(value: Record<string, unknown>, key: string) {
+  return typeof value[key] === 'string' && value[key].trim().length > 0;
+}
+
+function validateDeletedSourceMediaSnapshot(state: unknown): DeletedSourceMediaSnapshot {
   if (!state || typeof state !== 'object') {
     throw new Error('Missing media delete snapshot.');
   }
 
-  const snapshot = state as {
-    mediaJobId?: unknown;
-    sourceAsset?: unknown;
-    outputAssets?: unknown;
-    sourceClips?: unknown;
-    moveLinks?: unknown;
-  };
-  const mediaJobId = typeof snapshot.mediaJobId === 'string' ? snapshot.mediaJobId : null;
-  const sourceAsset = snapshot.sourceAsset as VideoAsset | undefined;
-  const outputAssets = Array.isArray(snapshot.outputAssets) ? (snapshot.outputAssets as VideoAsset[]) : [];
-  const sourceClips = Array.isArray(snapshot.sourceClips) ? (snapshot.sourceClips as DerivedClip[]) : [];
-  const moveLinks = Array.isArray(snapshot.moveLinks) ? (snapshot.moveLinks as MoveVideoLink[]) : [];
-  if (!mediaJobId || !sourceAsset?.id || sourceAsset.kind !== 'source') {
+  const snapshot = state as Record<string, unknown>;
+  if (!hasStringProperty(snapshot, 'mediaJobId') || !isRecord(snapshot.sourceAsset)) {
     throw new Error('Invalid media delete snapshot.');
   }
+  const sourceAsset = snapshot.sourceAsset;
+  if (!hasStringProperty(sourceAsset, 'id') || !hasStringProperty(sourceAsset, 'filePath') || sourceAsset.kind !== 'source') {
+    throw new Error('Invalid media delete snapshot.');
+  }
+  if (!Array.isArray(snapshot.outputAssets) || !Array.isArray(snapshot.sourceClips) || !Array.isArray(snapshot.moveLinks)) {
+    throw new Error('Invalid media delete snapshot.');
+  }
+  const outputAssets = snapshot.outputAssets;
+  const sourceClips = snapshot.sourceClips;
+  const moveLinks = snapshot.moveLinks;
+  const sourceAssetId = sourceAsset.id;
+  if (
+    outputAssets.some((asset) => !isRecord(asset) || !hasStringProperty(asset, 'id') || !hasStringProperty(asset, 'filePath')) ||
+    sourceClips.some(
+      (clip) =>
+        !isRecord(clip) ||
+        !hasStringProperty(clip, 'id') ||
+        !hasStringProperty(clip, 'sourceAssetId') ||
+        clip.sourceAssetId !== sourceAssetId
+    ) ||
+    moveLinks.some((link) => !isRecord(link) || !hasStringProperty(link, 'id') || !hasStringProperty(link, 'assetId'))
+  ) {
+    throw new Error('Invalid media delete snapshot.');
+  }
+
+  return {
+    mediaJobId: String(snapshot.mediaJobId),
+    sourceAsset: structuredClone(sourceAsset) as unknown as VideoAsset,
+    outputAssets: structuredClone(outputAssets) as unknown as VideoAsset[],
+    sourceClips: structuredClone(sourceClips) as unknown as DerivedClip[],
+    moveLinks: structuredClone(moveLinks) as unknown as MoveVideoLink[],
+    deletedAssetIds: Array.isArray(snapshot.deletedAssetIds) ? snapshot.deletedAssetIds.filter((id): id is string => typeof id === 'string') : undefined,
+    deletedClipIds: Array.isArray(snapshot.deletedClipIds) ? snapshot.deletedClipIds.filter((id): id is string => typeof id === 'string') : undefined
+  };
+}
+
+export async function restoreDeletedSourceMedia(state: unknown) {
+  const snapshot = validateDeletedSourceMediaSnapshot(state);
+  const { mediaJobId, sourceAsset, outputAssets, sourceClips, moveLinks } = snapshot;
 
   await restoreTrashedFilesForJob(mediaJobId);
 
