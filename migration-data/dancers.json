@@ -26,6 +26,35 @@
       "source": "custom",
       "createdAt": "2026-05-29T02:19:45.324Z",
       "updatedAt": "2026-05-29T02:19:45.324Z"
+    },
+    {
+      "id": "dancer:bersy-cortez",
+      "slug": "bersy-cortez",
+      "fullName": "Bersy Cortez",
+      "displayName": "Bersy",
+      "instagramHandle": "bersycortez",
+      "role": "follow",
+      "level": "world-class",
+      "region": "VE",
+      "source": "custom",
+      "createdAt": "2026-05-31T11:27:45.964Z",
+      "updatedAt": "2026-05-31T11:27:57.150Z"
+    },
+    {
+      "id": "dancer:fadi-fusion",
+      "slug": "fadi-fusion",
+      "fullName": "Fadi Fusion",
+      "displayName": "Fadi Fusion",
+      "instagramHandle": "fadifusionll",
+      "role": "lead",
+      "level": "world-class",
+      "region": "Lux",
+      "source": "custom",
+      "createdAt": "2026-05-31T11:29:40.946Z",
+      "updatedAt": "2026-05-31T11:29:40.946Z"
     }
+  ],
+  "deletedDancerSlugs": [
+    "bersy"
   ]
 }
