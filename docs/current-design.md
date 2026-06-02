@@ -156,7 +156,7 @@ The same relationship model is used in:
 
 ## Video And Media Library
 
-The media system is centered on [frontend/src/lib/server/video-library.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/video-library.ts). It manages:
+The media system is split between [frontend/src/lib/server/media-catalog.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/media-catalog.ts), which owns `video-library.json` persistence, normalization, cache handling, and serialized writes, and [frontend/src/lib/server/video-library.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/video-library.ts), which owns media workflows and read models. Together they manage:
 
 - Source video assets under `video-sources/`.
 - Move video assets under `video-moves/`.

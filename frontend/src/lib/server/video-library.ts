@@ -12,8 +12,6 @@ import type {
   MoveRecord,
   MoveVideoEntry,
   MoveVideoLink,
-  MediaHashAlgorithm,
-  MediaHashStatus,
   VideoAsset,
   VideoContentType,
   VideoEnvironment,
@@ -25,11 +23,9 @@ import {
   MOVE_VIDEO_PREFIX,
   SOURCE_VIDEO_PREFIX,
   normalizeManagedVideoPath,
-  resolveDataDir,
   resolveManagedVideoAbsolutePath,
   resolveMediaRoot,
   resolvePathInsideRoot,
-  resolvePosterRoot,
   resolveSourceRoot
 } from './paths';
 import { findPosterForVideoFile, queuePosterGeneration } from './posters';
@@ -73,36 +69,20 @@ import { moveDisplayId } from '$lib/move-id';
 import { generatedMoveIdStem } from '$lib/move-id-utils.js';
 import { publicationStatusFor } from '$lib/content-status';
 import { listMoveDrafts } from './move-editor';
+import {
+  ensureMediaCatalogRoots,
+  mutateMediaCatalog,
+  readMediaCatalog,
+  sortMediaCatalog,
+  writeMediaCatalog
+} from './media-catalog';
 
-const LIBRARY_FILENAME = 'video-library.json';
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.m4v', '.mov']);
 const CLIP_OUTPUT_EXTENSION = '.mp4';
 const FULL_QUALITY_CRF = '18';
 const LOW_QUALITY_CRF = '29';
 let renderWorkerRunning = false;
 let sourceHashWorkerRunning = false;
-
-let libraryCache:
-  | {
-      filePath: string;
-      mtimeMs: number;
-      library: VideoLibrary;
-    }
-  | null = null;
-
-let libraryWriteQueue = Promise.resolve();
-
-function defaultLibrary(): VideoLibrary {
-  return {
-    videoAssets: [],
-    moveVideoLinks: [],
-    derivedClips: []
-  };
-}
-
-function libraryFilePath() {
-  return path.join(resolveDataDir(), LIBRARY_FILENAME);
-}
 
 function nowIso() {
   return new Date().toISOString();
@@ -233,42 +213,6 @@ function generatedClipLabel(sourceAsset: VideoAsset, moveId: string, index: numb
   return [dancers, month, context].filter(Boolean).join(' ') + suffix || `${moveId} clip${suffix}`;
 }
 
-function isVideoTiming(value: unknown): value is VideoTiming {
-  return value === 'on1' || value === 'on2' || value === 'other';
-}
-
-function isVideoContentType(value: unknown): value is VideoContentType {
-  return value === 'music' || value === 'counts' || value === 'other';
-}
-
-function isVideoEnvironment(value: unknown): value is VideoEnvironment {
-  return value === 'social' || value === 'class';
-}
-
-function isVideoOriginType(value: unknown): value is VideoOriginType {
-  return value === 'self-recorded' || value === 'download';
-}
-
-function normalizeContentHash(value: unknown) {
-  const text = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  return /^sha256:[a-f0-9]{64}$/.test(text) ? text : null;
-}
-
-function normalizeHashAlgorithm(value: unknown): MediaHashAlgorithm | null {
-  return value === 'sha256' ? 'sha256' : null;
-}
-
-function normalizeHashStatus(value: unknown, contentHash: string | null): MediaHashStatus {
-  if (value === 'failed') return 'failed';
-  if (contentHash) return 'ready';
-  return 'pending';
-}
-
-function normalizeContentSizeBytes(value: unknown) {
-  const numberValue = Number(value);
-  return Number.isSafeInteger(numberValue) && numberValue >= 0 ? numberValue : null;
-}
-
 function isCountOverlayPlacement(value: unknown): value is CountOverlayPlacement {
   return value === 'top-left' || value === 'top-right' || value === 'bottom-left' || value === 'bottom-right';
 }
@@ -345,204 +289,6 @@ function countMarkersEqual(left: ClipCountMarker[], right: ClipCountMarker[]) {
     const other = right[index];
     return other && marker.count === other.count && marker.ms === other.ms && marker.clear === other.clear;
   });
-}
-
-function inferMetadataFromText(value: string) {
-  const text = value.toLowerCase();
-  const timing: VideoTiming = /\bon\s*1\b|\[on1\b| on1[,\]]/.test(text)
-    ? 'on1'
-    : /\bon\s*2\b|\[on2\b| on2[,\]]/.test(text)
-      ? 'on2'
-      : 'other';
-  const contentType: VideoContentType = text.includes('count') ? 'counts' : text.includes('music') ? 'music' : 'other';
-  const environment: VideoEnvironment = text.includes('social') ? 'social' : 'class';
-  return { timing, contentType, environment };
-}
-
-function normalizeLegacyMetadata(raw: Partial<VideoAsset> & { sourceType?: string }) {
-  const sourceType = raw.sourceType;
-  const inferred = inferMetadataFromText(`${raw.displayName ?? ''} ${raw.originalFilename ?? ''}`);
-  return {
-    timing: isVideoTiming(raw.timing) ? raw.timing : inferred.timing,
-    contentType: isVideoContentType(raw.contentType)
-      ? raw.contentType
-      : sourceType === 'music' || sourceType === 'counts'
-        ? sourceType
-        : inferred.contentType,
-    environment: isVideoEnvironment(raw.environment)
-      ? raw.environment
-      : sourceType === 'social-dance'
-        ? 'social'
-        : inferred.environment
-  };
-}
-
-function normalizeVideoAsset(raw: Partial<VideoAsset> & { sourceType?: string }): VideoAsset | null {
-  if (!raw.id || !raw.kind || !raw.filePath || !raw.originalFilename) {
-    return null;
-  }
-
-  const metadata = normalizeLegacyMetadata(raw);
-  const originType = isVideoOriginType(raw.originType) ? raw.originType : 'self-recorded';
-  const contentHash = normalizeContentHash(raw.contentHash);
-  return {
-    id: String(raw.id),
-    kind: raw.kind,
-    filePath: normalizeManagedVideoPath(String(raw.filePath)),
-    displayName: String(raw.displayName || safeDisplayName(String(raw.originalFilename))),
-    originalFilename: String(raw.originalFilename),
-    dancers: Array.isArray(raw.dancers) ? raw.dancers.map(String).filter(Boolean) : [],
-    timing: metadata.timing,
-    contentType: metadata.contentType,
-    environment: metadata.environment,
-    originType,
-    sourceUrl: originType === 'download' ? normalizeOptionalText(raw.sourceUrl) : null,
-    recordDate: normalizeDateString(raw.recordDate),
-    classWorkshop: normalizeOptionalText(raw.classWorkshop),
-    tags: normalizeTags(raw.tags),
-    notes: raw.notes ? String(raw.notes) : null,
-    contentHash,
-    contentHashAlgorithm: contentHash ? normalizeHashAlgorithm(raw.contentHashAlgorithm) ?? 'sha256' : null,
-    contentSizeBytes: normalizeContentSizeBytes(raw.contentSizeBytes),
-    hashStatus: normalizeHashStatus(raw.hashStatus, contentHash),
-    createdAt: String(raw.createdAt || nowIso())
-  };
-}
-
-function isDerivedClipStatus(value: unknown): DerivedClip['status'] {
-  if (value === 'rendering' || value === 'ready' || value === 'failed') {
-    return value;
-  }
-
-  return 'pending';
-}
-
-function normalizeDerivedClip(raw: Partial<DerivedClip>, library: { moveVideoLinks?: MoveVideoLink[] }): DerivedClip | null {
-  if (!raw.id || !raw.sourceAssetId || !raw.moveId) {
-    return null;
-  }
-
-  const outputAssetId = raw.outputAssetId ? String(raw.outputAssetId) : null;
-  const linkedOutput = outputAssetId
-    ? library.moveVideoLinks?.some((link) => link.assetId === outputAssetId && link.moveId === String(raw.moveId).trim().toUpperCase())
-    : false;
-  const publishedAssetId = raw.publishedAssetId
-    ? String(raw.publishedAssetId)
-    : linkedOutput
-      ? outputAssetId
-      : null;
-  const createdAt = String(raw.createdAt || nowIso());
-
-  return {
-    id: String(raw.id),
-    sourceAssetId: String(raw.sourceAssetId),
-    moveId: String(raw.moveId).trim().toUpperCase(),
-    moveDisplayId: raw.moveDisplayId ? String(raw.moveDisplayId).trim().toUpperCase() : null,
-    isKeyVideo: Boolean(raw.isKeyVideo),
-    label: raw.label ? String(raw.label) : null,
-    descriptorLabel: normalizeOptionalText(raw.descriptorLabel),
-    startPositionId: normalizeOptionalText(raw.startPositionId),
-    endPositionId: normalizeOptionalText(raw.endPositionId),
-    timingGroupId: normalizeOptionalText(raw.timingGroupId),
-    manuallyNamed: Boolean(raw.manuallyNamed),
-    startMs: Math.max(0, Math.floor(Number(raw.startMs ?? 0))),
-    endMs: Math.max(0, Math.floor(Number(raw.endMs ?? 0))),
-    actionStartMs: raw.actionStartMs === null || raw.actionStartMs === undefined ? null : Math.max(0, Math.floor(Number(raw.actionStartMs))),
-    actionEndMs: raw.actionEndMs === null || raw.actionEndMs === undefined ? null : Math.max(0, Math.floor(Number(raw.actionEndMs))),
-    cropRect: normalizeCropRect(raw.cropRect),
-    countMarkers: normalizeCountMarkers(raw.countMarkers),
-    countOverlayPlacement: isCountOverlayPlacement(raw.countOverlayPlacement) ? raw.countOverlayPlacement : 'top-left',
-    countTimingPreset: isCountTimingPreset(raw.countTimingPreset) ? raw.countTimingPreset : 'on2-default',
-    outputAssetId,
-    actionOutputFilePath: raw.actionOutputFilePath ? normalizeManagedVideoPath(String(raw.actionOutputFilePath)) : null,
-    lowResOutputFilePath: raw.lowResOutputFilePath ? normalizeManagedVideoPath(String(raw.lowResOutputFilePath)) : null,
-    lowResPaddedOutputFilePath: raw.lowResPaddedOutputFilePath ? normalizeManagedVideoPath(String(raw.lowResPaddedOutputFilePath)) : null,
-    publishedAssetId,
-    publishedActionOutputFilePath: raw.publishedActionOutputFilePath
-      ? normalizeManagedVideoPath(String(raw.publishedActionOutputFilePath))
-      : null,
-    publishedLowResFilePath: raw.publishedLowResFilePath ? normalizeManagedVideoPath(String(raw.publishedLowResFilePath)) : null,
-    publishedLowResPaddedFilePath: raw.publishedLowResPaddedFilePath
-      ? normalizeManagedVideoPath(String(raw.publishedLowResPaddedFilePath))
-      : null,
-    publishedAt: raw.publishedAt ? String(raw.publishedAt) : publishedAssetId ? createdAt : null,
-    status: isDerivedClipStatus(raw.status),
-    error: raw.error ? String(raw.error) : null,
-    createdAt,
-    updatedAt: String(raw.updatedAt || createdAt)
-  };
-}
-
-async function ensureRoots() {
-  await Promise.all([
-    fs.mkdir(resolveDataDir(), { recursive: true }),
-    fs.mkdir(resolveMediaRoot(), { recursive: true }),
-    fs.mkdir(resolveSourceRoot(), { recursive: true }),
-    fs.mkdir(resolvePosterRoot(), { recursive: true })
-  ]);
-}
-
-async function readLibraryFromDisk() {
-  const filePath = libraryFilePath();
-
-  try {
-    const stat = await fs.stat(filePath);
-    if (libraryCache && libraryCache.filePath === filePath && libraryCache.mtimeMs === stat.mtimeMs) {
-      return structuredClone(libraryCache.library);
-    }
-
-    const contents = await fs.readFile(filePath, 'utf-8');
-    const parsed = JSON.parse(contents) as Partial<VideoLibrary>;
-    const library: VideoLibrary = {
-      videoAssets: Array.isArray(parsed.videoAssets)
-        ? parsed.videoAssets.map((asset) => normalizeVideoAsset(asset)).filter((asset): asset is VideoAsset => Boolean(asset))
-        : [],
-      moveVideoLinks: Array.isArray(parsed.moveVideoLinks) ? parsed.moveVideoLinks : [],
-      derivedClips: Array.isArray(parsed.derivedClips)
-        ? parsed.derivedClips.map((clip) => normalizeDerivedClip(clip, parsed)).filter((clip): clip is DerivedClip => Boolean(clip))
-        : []
-    };
-
-    libraryCache = {
-      filePath,
-      mtimeMs: stat.mtimeMs,
-      library
-    };
-
-    return structuredClone(library);
-  } catch {
-    return defaultLibrary();
-  }
-}
-
-async function writeLibraryToDisk(library: VideoLibrary) {
-  await ensureRoots();
-
-  const filePath = libraryFilePath();
-  const serialized = JSON.stringify(library, null, 2);
-  await fs.writeFile(filePath, `${serialized}\n`, 'utf-8');
-  const stat = await fs.stat(filePath);
-  libraryCache = {
-    filePath,
-    mtimeMs: stat.mtimeMs,
-    library: structuredClone(library)
-  };
-}
-
-async function mutateLibrary<T>(mutator: (library: VideoLibrary) => Promise<T> | T) {
-  const next = libraryWriteQueue.then(async () => {
-    const library = await readLibraryFromDisk();
-    const result = await mutator(library);
-    await writeLibraryToDisk(library);
-    return result;
-  });
-
-  libraryWriteQueue = next.then(
-    () => undefined,
-    () => undefined
-  );
-
-  return next;
 }
 
 async function walkVideoFiles(root: string, prefix: string) {
@@ -880,14 +626,14 @@ async function bootstrapLegacyMoveAssets(library: VideoLibrary, moves: MoveRecor
 }
 
 export async function getVideoLibrary(moves?: MoveRecord[]) {
-  const library = await readLibraryFromDisk();
+  const library = await readMediaCatalog();
 
   if (moves) {
     let changed = await pruneMissingDerivedVariantPaths(library);
     changed = (await bootstrapLegacyMoveAssets(library, moves)) || changed;
     changed = (await relinkOrphanedGeneratedDraftMoveIds(library, moves)) || changed;
     if (changed) {
-      await writeLibraryToDisk(library);
+      await writeMediaCatalog(library);
       return structuredClone(library);
     }
   }
@@ -931,7 +677,7 @@ async function relinkOrphanedGeneratedDraftMoveIds(library: VideoLibrary, moves:
     library.derivedClips = relinked.derivedClips as DerivedClip[];
     library.moveVideoLinks = relinked.moveVideoLinks as MoveVideoLink[];
     await syncDerivedClipDisplayIdForMoveInLibrary(library, move.id, moveDisplayId(move));
-    sortLibrary(library);
+    sortMediaCatalog(library);
     changed = true;
   }
 
@@ -1216,9 +962,9 @@ export async function syncDerivedClipDisplayIdForMove(moveId: string, moveDispla
     return;
   }
 
-  await mutateLibrary(async (library) => {
+  await mutateMediaCatalog(async (library) => {
     await syncDerivedClipDisplayIdForMoveInLibrary(library, normalizedMoveId, normalizedDisplayId);
-    sortLibrary(library);
+    sortMediaCatalog(library);
   });
 }
 
@@ -1230,7 +976,7 @@ export async function relinkDerivedClipsForPublishedMove(previousMoveId: string,
     return;
   }
 
-  await mutateLibrary(async (library) => {
+  await mutateMediaCatalog(async (library) => {
     const relinked = rekeyClipMoveAssociations(
       {
         derivedClips: library.derivedClips,
@@ -1247,23 +993,7 @@ export async function relinkDerivedClipsForPublishedMove(previousMoveId: string,
     }
 
     await syncDerivedClipDisplayIdForMoveInLibrary(library, normalizedNextMoveId, normalizedNextMoveDisplayId);
-    sortLibrary(library);
-  });
-}
-
-function sortLibrary(library: VideoLibrary) {
-  library.videoAssets.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
-  library.moveVideoLinks.sort((left, right) => {
-    if (left.moveId !== right.moveId) {
-      return left.moveId.localeCompare(right.moveId);
-    }
-    return left.order - right.order;
-  });
-  library.derivedClips.sort((left, right) => {
-    if (left.sourceAssetId !== right.sourceAssetId) {
-      return left.sourceAssetId.localeCompare(right.sourceAssetId);
-    }
-    return left.startMs - right.startMs;
+    sortMediaCatalog(library);
   });
 }
 
@@ -1299,8 +1029,8 @@ export async function createSourceAsset(input: {
   fileBuffer?: Buffer;
   fileStream?: ReadableStream<Uint8Array>;
 }) {
-  const result = await mutateLibrary(async (library) => {
-    await ensureRoots();
+  const result = await mutateMediaCatalog(async (library) => {
+    await ensureMediaCatalogRoots();
 
     const takenPaths = new Set(
       library.videoAssets
@@ -1388,7 +1118,7 @@ export async function createSourceAsset(input: {
     };
 
     library.videoAssets.push(asset);
-    sortLibrary(library);
+    sortMediaCatalog(library);
 
     return {
       asset,
@@ -1454,7 +1184,7 @@ export async function updateSourceAsset(input: {
   tags?: string[] | string | null;
   notes: string | null;
 }) {
-  const result = await mutateLibrary(async (library) => {
+  const result = await mutateMediaCatalog(async (library) => {
     const asset = library.videoAssets.find((entry) => entry.id === input.assetId && entry.kind === 'source');
     if (!asset) {
       throw new Error('Source asset not found');
@@ -1484,7 +1214,7 @@ export async function updateSourceAsset(input: {
       }
       clip.updatedAt = nowIso();
     });
-    sortLibrary(library);
+    sortMediaCatalog(library);
 
     return {
       asset: structuredClone(asset),
@@ -1563,7 +1293,7 @@ function dateOnlyFromText(value: string | null) {
 }
 
 export async function detectSourceAssetFields(assetId: string, input?: { originType?: VideoOriginType | null }) {
-  const library = await readLibraryFromDisk();
+  const library = await readMediaCatalog();
   const asset = library.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
   if (!asset) {
     throw new Error('Source asset not found');
@@ -1610,7 +1340,7 @@ export async function deleteSourceAsset(assetId: string) {
 
   try {
     startMediaJob(job.id);
-    const result = await mutateLibrary(async (library) => {
+    const result = await mutateMediaCatalog(async (library) => {
       const sourceAsset = library.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
       if (!sourceAsset) {
         throw new Error('Source asset not found');
@@ -1662,7 +1392,7 @@ export async function deleteSourceAsset(assetId: string) {
       library.derivedClips = library.derivedClips.filter((clip) => clip.sourceAssetId !== sourceAsset.id);
       library.moveVideoLinks = library.moveVideoLinks.filter((link) => !assetIdsToDelete.has(link.assetId));
       library.videoAssets = library.videoAssets.filter((asset) => !assetIdsToDelete.has(asset.id));
-      sortLibrary(library);
+      sortMediaCatalog(library);
 
       return {
         deletedAssetIds,
@@ -1767,7 +1497,7 @@ export async function restoreDeletedSourceMedia(state: unknown) {
 
   await restoreTrashedFilesForJob(mediaJobId);
 
-  return mutateLibrary((library) => {
+  return mutateMediaCatalog((library) => {
     const assetIds = new Set([sourceAsset.id, ...outputAssets.map((asset) => asset.id)]);
     const clipIds = new Set(sourceClips.map((clip) => clip.id));
     const linkIds = new Set(moveLinks.map((link) => link.id));
@@ -1778,7 +1508,7 @@ export async function restoreDeletedSourceMedia(state: unknown) {
     library.videoAssets.push(structuredClone(sourceAsset), ...structuredClone(outputAssets));
     library.derivedClips.push(...structuredClone(sourceClips));
     library.moveVideoLinks.push(...structuredClone(moveLinks));
-    sortLibrary(library);
+    sortMediaCatalog(library);
 
     return {
       restoredAssetIds: [...assetIds],
@@ -1791,7 +1521,7 @@ async function runSourceHashJob(job: MediaJob) {
   const assetId = job.targetId;
   try {
     startMediaJob(job.id);
-    const library = await readLibraryFromDisk();
+    const library = await readMediaCatalog();
     const sourceAsset = library.videoAssets.find((asset) => asset.id === assetId && asset.kind === 'source');
     if (!sourceAsset) {
       throw new Error('Source asset not found.');
@@ -1799,7 +1529,7 @@ async function runSourceHashJob(job: MediaJob) {
 
     const absolutePath = resolveManagedVideoAbsolutePath(sourceAsset.filePath);
     const fingerprint = await hashFile(absolutePath);
-    await mutateLibrary((mutableLibrary) => {
+    await mutateMediaCatalog((mutableLibrary) => {
       const asset = mutableLibrary.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
       if (!asset) {
         throw new Error('Source asset not found.');
@@ -1808,7 +1538,7 @@ async function runSourceHashJob(job: MediaJob) {
       asset.contentHashAlgorithm = fingerprint.contentHashAlgorithm;
       asset.contentSizeBytes = fingerprint.contentSizeBytes;
       asset.hashStatus = 'ready';
-      sortLibrary(mutableLibrary);
+      sortMediaCatalog(mutableLibrary);
     });
 
     completeMediaJob(job.id);
@@ -1824,7 +1554,7 @@ async function runSourceHashJob(job: MediaJob) {
     });
   } catch (error) {
     failMediaJob(job.id, error);
-    await mutateLibrary((library) => {
+    await mutateMediaCatalog((library) => {
       const asset = library.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
       if (asset) {
         asset.hashStatus = 'failed';
@@ -1853,13 +1583,13 @@ async function drainSourceHashQueue() {
 }
 
 export async function queueSourceHash(assetId: string) {
-  const library = await readLibraryFromDisk();
+  const library = await readMediaCatalog();
   const asset = library.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
   if (!asset) {
     throw new Error('Source asset not found.');
   }
 
-  await mutateLibrary((mutableLibrary) => {
+  await mutateMediaCatalog((mutableLibrary) => {
     const mutableAsset = mutableLibrary.videoAssets.find((entry) => entry.id === assetId && entry.kind === 'source');
     if (mutableAsset) {
       mutableAsset.hashStatus = 'pending';
@@ -1881,7 +1611,7 @@ export async function queueSourceHash(assetId: string) {
 }
 
 export async function queueSourceHashBackfill() {
-  const library = await readLibraryFromDisk();
+  const library = await readMediaCatalog();
   const assets = library.videoAssets.filter(
     (asset) => asset.kind === 'source' && (!asset.contentHash || asset.hashStatus !== 'ready')
   );
@@ -1943,7 +1673,7 @@ export async function saveSourceClips(input: {
     countTimingPreset?: CountTimingPreset;
   }>;
 }) {
-  const result = await mutateLibrary(async (library) => {
+  const result = await mutateMediaCatalog(async (library) => {
     const sourceAsset = library.videoAssets.find((asset) => asset.id === input.sourceAssetId && asset.kind === 'source');
     if (!sourceAsset) {
       throw new Error('Source asset not found');
@@ -2086,7 +1816,7 @@ export async function saveSourceClips(input: {
         publishClipToMove(library, clip, publishedAt);
       }
     });
-    sortLibrary(library);
+    sortMediaCatalog(library);
     const cleanupFilePaths = [...removedAssets.map((asset) => asset.filePath), ...removedFilePaths];
     const cleanupJobIds: string[] = [];
     if (cleanupFilePaths.length) {
@@ -2145,7 +1875,7 @@ export async function saveSourceClips(input: {
 }
 
 export async function setClipKeyVideo(input: { clipId: string; isKeyVideo: boolean }) {
-  const result = await mutateLibrary(async (library) => {
+  const result = await mutateMediaCatalog(async (library) => {
     const clip = library.derivedClips.find((entry) => entry.id === input.clipId);
     if (!clip) {
       throw new Error('Clip not found');
@@ -2160,7 +1890,7 @@ export async function setClipKeyVideo(input: { clipId: string; isKeyVideo: boole
     };
     clip.isKeyVideo = Boolean(input.isKeyVideo);
     clip.updatedAt = nowIso();
-    sortLibrary(library);
+    sortMediaCatalog(library);
     return {
       clip: { ...clip },
       before,
@@ -2286,7 +2016,7 @@ export async function cleanupObsoleteRenderedClipFiles(input: {
 }
 
 async function renderClip(clipId: string, jobId: string) {
-  const library = await readLibraryFromDisk();
+  const library = await readMediaCatalog();
   const clip = library.derivedClips.find((entry) => entry.id === clipId);
   if (!clip) {
     throw new Error('Clip not found');
@@ -2334,7 +2064,7 @@ async function renderClip(clipId: string, jobId: string) {
   const lowResPaddedOutputAbsolutePath = resolveManagedVideoAbsolutePath(lowResPaddedOutputRelativePath);
   const inputAbsolutePath = resolveManagedVideoAbsolutePath(sourceAsset.filePath);
 
-  await mutateLibrary((mutableLibrary) => {
+  await mutateMediaCatalog((mutableLibrary) => {
     const mutableClip = mutableLibrary.derivedClips.find((entry) => entry.id === clipId);
     if (mutableClip) {
       mutableClip.status = 'rendering';
@@ -2355,7 +2085,7 @@ async function renderClip(clipId: string, jobId: string) {
     lowResOutputRelativePath,
     lowResPaddedOutputRelativePath
   ];
-  await mutateLibrary((mutableLibrary) => {
+  await mutateMediaCatalog((mutableLibrary) => {
     const mutableClip = mutableLibrary.derivedClips.find((entry) => entry.id === clipId);
     const source = mutableLibrary.videoAssets.find((entry) => entry.id === clip?.sourceAssetId);
     if (!mutableClip || !source) {
@@ -2435,7 +2165,7 @@ async function renderClip(clipId: string, jobId: string) {
     previousVariantPaths.forEach((filePath) => replacedRenderedFilePaths.add(filePath));
     mutableLibrary.moveVideoLinks = mutableLibrary.moveVideoLinks.filter((link) => !replacedAssetIds.has(link.assetId));
     mutableLibrary.videoAssets = mutableLibrary.videoAssets.filter((asset) => !replacedAssetIds.has(asset.id));
-    sortLibrary(mutableLibrary);
+    sortMediaCatalog(mutableLibrary);
   });
 
   const deletedFilePaths = await cleanupObsoleteRenderedClipFiles({
@@ -2475,7 +2205,7 @@ async function runRenderJob(job: MediaJob) {
     });
   } catch (error) {
     failMediaJob(job.id, error);
-    await mutateLibrary((library) => {
+    await mutateMediaCatalog((library) => {
       const clip = library.derivedClips.find((entry) => entry.id === clipId);
       if (clip) {
         clip.status = 'failed';
@@ -2547,7 +2277,7 @@ export async function publishClipsToMoves(clipIds: string[]) {
     return [];
   }
 
-  const result = await mutateLibrary((library) => {
+  const result = await mutateMediaCatalog((library) => {
     const publishedAt = nowIso();
     const publishedClips: DerivedClip[] = [];
     const beforeClips = library.derivedClips
@@ -2571,7 +2301,7 @@ export async function publishClipsToMoves(clipIds: string[]) {
       publishedClips.push({ ...publishClipToMove(library, clip, publishedAt) });
     });
 
-    sortLibrary(library);
+    sortMediaCatalog(library);
     const afterAssetIds = new Set(
       publishedClips
         .flatMap((clip) => [clip.outputAssetId, clip.publishedAssetId])
@@ -2723,7 +2453,7 @@ export async function getMediaLibraryPage(moves: MoveRecord[], input?: MediaLibr
 }
 
 export async function getRenderStatuses(clipIds: string[]) {
-  const library = await readLibraryFromDisk();
+  const library = await readMediaCatalog();
   return clipIds.map((clipId) => {
     const clip = library.derivedClips.find((entry) => entry.id === clipId) ?? null;
     return {
