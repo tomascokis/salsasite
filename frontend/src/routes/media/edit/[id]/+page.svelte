@@ -3437,10 +3437,6 @@
                   </div>
                 {/if}
                 <div class="clip-timeline-shell" class:zoomed={isTimelineZoomed()}>
-                  {#if isTimelineZoomed()}
-                    <span class="timeline-zoom-boundary-arrow left" aria-hidden="true"></span>
-                    <span class="timeline-zoom-boundary-arrow right" aria-hidden="true"></span>
-                  {/if}
                   <div
                     class:zoomed={isTimelineZoomed()}
                     class="clip-timeline"

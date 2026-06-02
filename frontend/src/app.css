@@ -3548,25 +3548,28 @@ select {
 
 .clip-timeline-shell {
   position: relative;
+  overflow: visible;
 }
 
-.timeline-zoom-boundary-arrow {
+.clip-timeline-shell.zoomed::before,
+.clip-timeline-shell.zoomed::after {
+  content: '';
   position: absolute;
-  top: max(0px, calc(var(--timeline-edge-top) - 25px));
+  top: calc(var(--timeline-edge-top) - 11px);
   z-index: 30;
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 22px;
+  width: 12px;
+  height: 11px;
   border: 1px solid rgba(255, 225, 146, 0.92);
-  border-radius: 6px;
+  border-radius: 3px;
   background: #ffd166;
   box-shadow:
-    0 0 0 2px rgba(10, 16, 24, 0.78),
-    0 8px 18px rgba(10, 16, 24, 0.34),
-    0 0 14px rgba(255, 209, 102, 0.4);
+    0 0 0 1px rgba(10, 16, 24, 0.78),
+    0 4px 9px rgba(10, 16, 24, 0.3),
+    0 0 7px rgba(255, 209, 102, 0.36);
   color: #101824;
-  font-size: 18px;
+  font-size: 9px;
   font-weight: 900;
   line-height: 1;
   pointer-events: none;
@@ -3574,22 +3577,16 @@ select {
   transition: top var(--timeline-transition);
 }
 
-.timeline-zoom-boundary-arrow.left {
-  left: 0;
-  transform: translateX(4px);
-}
-
-.timeline-zoom-boundary-arrow.left::before {
+.clip-timeline-shell.zoomed::before {
   content: '\2190';
+  left: 0;
+  transform: translateX(-50%);
 }
 
-.timeline-zoom-boundary-arrow.right {
-  right: 0;
-  transform: translateX(-4px);
-}
-
-.timeline-zoom-boundary-arrow.right::before {
+.clip-timeline-shell.zoomed::after {
   content: '\2192';
+  right: 0;
+  transform: translateX(50%);
 }
 
 .clip-timeline {
@@ -3900,7 +3897,8 @@ select {
 
   .timeline-context-box,
   .timeline-overview-window,
-  .timeline-zoom-boundary-arrow,
+  .clip-timeline-shell::before,
+  .clip-timeline-shell::after,
   .clip-timeline,
   .clip-timeline::before,
   .clip-timeline::after,
