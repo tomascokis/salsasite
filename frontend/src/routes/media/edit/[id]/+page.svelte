@@ -3575,13 +3575,12 @@
                   {:else}
                     <button class="timeline-move-action" type="button" on:click={addMoreMoves}>Edit moves</button>
                   {/if}
-                  {#if inferredTimelineDurationMs()}
+                  {#if shouldShowTimelineZoomControls()}
                     <button
                       class="timeline-move-action zoom-control"
                       type="button"
                       aria-label="Reset timeline zoom"
                       title="Reset timeline zoom"
-                      disabled={!shouldShowTimelineZoomControls()}
                       on:click={resetTimelineZoom}
                     >
                       Reset zoom
@@ -3593,7 +3592,6 @@
                       aria-pressed={isZoomLooping}
                       aria-label="Loop zoom window"
                       title="Loop zoom window"
-                      disabled={!shouldShowTimelineZoomControls()}
                       on:click={toggleZoomLoop}
                     >
                       Loop zoom
