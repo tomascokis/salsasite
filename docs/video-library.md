@@ -414,6 +414,22 @@ Removing clips, re-rendering clips, legacy generated cleanup, and move display-I
 
 The `/settings/media` file-action drilldown is for visibility and debugging. It does not make generated cleanup user-history undoable.
 
+## Mutation Audit Classification
+
+Media/catalog mutations must be classified before implementation:
+
+| Workflow | History classification | File-operation classification |
+| --- | --- | --- |
+| Metadata, dancer, move draft, and move edit saves | Undoable action history | Not applicable |
+| Managed source-video delete | Undoable action history while media trash exists | Media-manager trash-backed file actions |
+| New source upload | Audit-only action history | `source.hash` media job records the source write |
+| Source metadata update | Audit-only action history | Not applicable |
+| Source clip definition save and key-video toggle | Audit-only action history | Removed generated clips are media-manager cleanup actions |
+| Clip render queue and clip publish | Audit-only action history | Render outputs and posters are media-manager jobs/file actions |
+| Duplicate-upload temp cleanup, poster generation, source hash backfill, media job retry, generated cleanup, obsolete-render cleanup, and display-ID renames | No action-history row | Media-manager operational jobs/file actions |
+
+Audit-only media history rows are listed in `/settings/history` for review but are intentionally non-undoable. Generated cleanup and managed renames remain observable through `/settings/media` instead of becoming user-history undo workflows.
+
 ## What Requires A Container Rebuild
 
 With the live-mounted setup, these do not require rebuilding the Docker image:

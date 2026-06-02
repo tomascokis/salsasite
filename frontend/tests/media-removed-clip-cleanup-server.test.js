@@ -72,6 +72,7 @@ test('saveSourceClips trashes generated files for removed clips', async () => {
 
   const { saveSourceClips } = await import('../src/lib/server/video-library.ts');
   const { listMediaJobsWithFileActions } = await import('../src/lib/server/media-manager.ts');
+  const { listHistory } = await import('../src/lib/server/history.ts');
 
   await saveSourceClips({
     sourceAssetId: 'source-asset',
@@ -119,4 +120,9 @@ test('saveSourceClips trashes generated files for removed clips', async () => {
     await exists(path.join(env.dataDir, 'media-trash', cleanupJob.id, 'video-posters', 'video-moves', 'RT000001 Removed Clip 22222222.jpg')),
     true
   );
+
+  const saveAction = listHistory(20).find((entry) => entry.type === 'media.clips.save');
+  assert.ok(saveAction);
+  assert.equal(saveAction.canUndo, false);
+  assert.equal(saveAction.undoUnavailableReason, 'This action type is not undoable yet');
 });

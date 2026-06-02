@@ -108,6 +108,90 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function recordVideoAuditAction(input: {
+  type: string;
+  label: string;
+  entityType: string;
+  entityId: string;
+  before: unknown;
+  after: unknown;
+}) {
+  runInTransaction((db) => {
+    recordAction(db, input);
+  });
+}
+
+function sourceAssetAuditSnapshot(asset: VideoAsset | null | undefined) {
+  if (!asset) {
+    return null;
+  }
+  return {
+    id: asset.id,
+    filePath: asset.filePath,
+    displayName: asset.displayName,
+    originalFilename: asset.originalFilename,
+    dancers: [...asset.dancers],
+    timing: asset.timing,
+    contentType: asset.contentType,
+    environment: asset.environment,
+    originType: asset.originType,
+    sourceUrl: asset.sourceUrl,
+    recordDate: asset.recordDate,
+    classWorkshop: asset.classWorkshop,
+    tags: [...asset.tags],
+    notes: asset.notes,
+    contentHash: asset.contentHash,
+    contentSizeBytes: asset.contentSizeBytes,
+    hashStatus: asset.hashStatus,
+    createdAt: asset.createdAt
+  };
+}
+
+function derivedClipAuditSnapshot(clip: DerivedClip | null | undefined) {
+  if (!clip) {
+    return null;
+  }
+  return {
+    id: clip.id,
+    sourceAssetId: clip.sourceAssetId,
+    moveId: clip.moveId,
+    moveDisplayId: clip.moveDisplayId ?? null,
+    isKeyVideo: clip.isKeyVideo,
+    label: clip.label,
+    descriptorLabel: clip.descriptorLabel,
+    startPositionId: clip.startPositionId,
+    endPositionId: clip.endPositionId,
+    timingGroupId: clip.timingGroupId,
+    manuallyNamed: clip.manuallyNamed,
+    startMs: clip.startMs,
+    endMs: clip.endMs,
+    actionStartMs: clip.actionStartMs,
+    actionEndMs: clip.actionEndMs,
+    cropRect: clip.cropRect,
+    countMarkerCount: clip.countMarkers.length,
+    countOverlayPlacement: clip.countOverlayPlacement,
+    countTimingPreset: clip.countTimingPreset,
+    outputAssetId: clip.outputAssetId,
+    actionOutputFilePath: clip.actionOutputFilePath,
+    lowResOutputFilePath: clip.lowResOutputFilePath,
+    lowResPaddedOutputFilePath: clip.lowResPaddedOutputFilePath,
+    publishedAssetId: clip.publishedAssetId,
+    publishedAt: clip.publishedAt,
+    status: clip.status,
+    updatedAt: clip.updatedAt
+  };
+}
+
+function moveVideoLinkAuditSnapshot(link: MoveVideoLink) {
+  return {
+    id: link.id,
+    moveId: link.moveId,
+    assetId: link.assetId,
+    order: link.order,
+    createdAt: link.createdAt
+  };
+}
+
 function safeDisplayName(filename: string) {
   return path.parse(filename).name.replace(/[_-]+/g, ' ').trim() || path.parse(filename).name;
 }
@@ -1336,6 +1420,17 @@ export async function createSourceAsset(input: {
         contentSizeBytes: fingerprint.contentSizeBytes
       }
     });
+    recordVideoAuditAction({
+      type: 'media.source.create',
+      label: `Uploaded source video: ${result.asset.displayName}`,
+      entityType: 'media:source',
+      entityId: result.asset.id,
+      before: null,
+      after: {
+        asset: sourceAssetAuditSnapshot(result.asset),
+        mediaJobIds: [hashJob.id]
+      }
+    });
   }
 
   return {
@@ -1359,11 +1454,15 @@ export async function updateSourceAsset(input: {
   tags?: string[] | string | null;
   notes: string | null;
 }) {
-  return mutateLibrary(async (library) => {
+  const result = await mutateLibrary(async (library) => {
     const asset = library.videoAssets.find((entry) => entry.id === input.assetId && entry.kind === 'source');
     if (!asset) {
       throw new Error('Source asset not found');
     }
+    const beforeAsset = sourceAssetAuditSnapshot(asset);
+    const beforeAutoClipLabels = library.derivedClips
+      .filter((clip) => clip.sourceAssetId === asset.id && !clip.manuallyNamed)
+      .map((clip) => ({ id: clip.id, label: clip.label, updatedAt: clip.updatedAt }));
 
     asset.displayName = input.displayName.trim() || asset.displayName;
     asset.dancers = normalizeDancers(input.dancers);
@@ -1387,8 +1486,29 @@ export async function updateSourceAsset(input: {
     });
     sortLibrary(library);
 
-    return asset;
+    return {
+      asset: structuredClone(asset),
+      before: {
+        asset: beforeAsset,
+        autoClipLabels: beforeAutoClipLabels
+      },
+      after: {
+        asset: sourceAssetAuditSnapshot(asset),
+        autoClipLabels: library.derivedClips
+          .filter((clip) => clip.sourceAssetId === asset.id && !clip.manuallyNamed)
+          .map((clip) => ({ id: clip.id, label: clip.label, updatedAt: clip.updatedAt }))
+      }
+    };
   });
+  recordVideoAuditAction({
+    type: 'media.source.update',
+    label: `Updated source video: ${result.asset.displayName}`,
+    entityType: 'media:source',
+    entityId: result.asset.id,
+    before: result.before,
+    after: result.after
+  });
+  return result.asset;
 }
 
 function runFfprobeCreationTime(filePath: string): Promise<string | null> {
@@ -1787,7 +1907,7 @@ export async function retryMediaManagerJob(jobId: string) {
   }
 
   if (job.type === 'clip.render') {
-    return queueClipRender(job.targetId);
+    return queueClipRender(job.targetId, { audit: false });
   }
   if (job.type === 'poster.generate') {
     await queuePosterGeneration(job.targetId);
@@ -1823,7 +1943,7 @@ export async function saveSourceClips(input: {
     countTimingPreset?: CountTimingPreset;
   }>;
 }) {
-  return mutateLibrary(async (library) => {
+  const result = await mutateLibrary(async (library) => {
     const sourceAsset = library.videoAssets.find((asset) => asset.id === input.sourceAssetId && asset.kind === 'source');
     if (!sourceAsset) {
       throw new Error('Source asset not found');
@@ -1832,6 +1952,7 @@ export async function saveSourceClips(input: {
     const existingById = new Map(
       library.derivedClips.filter((clip) => clip.sourceAssetId === input.sourceAssetId).map((clip) => [clip.id, clip])
     );
+    const beforeClips = Array.from(existingById.values()).map(derivedClipAuditSnapshot);
 
     const nextClipsWithoutKeyDefaults = input.clips.map((clipInput, index) => {
       const existing = clipInput.id ? existingById.get(clipInput.id) ?? null : null;
@@ -1967,6 +2088,7 @@ export async function saveSourceClips(input: {
     });
     sortLibrary(library);
     const cleanupFilePaths = [...removedAssets.map((asset) => asset.filePath), ...removedFilePaths];
+    const cleanupJobIds: string[] = [];
     if (cleanupFilePaths.length) {
       const cleanupJob = createMediaCleanupJob({
         targetType: 'sourceAsset',
@@ -1978,6 +2100,7 @@ export async function saveSourceClips(input: {
           filePaths: cleanupFilePaths
         }
       });
+      cleanupJobIds.push(cleanupJob.id);
       startMediaJob(cleanupJob.id);
       try {
         await trashManagedVideoFileSet({
@@ -1995,22 +2118,70 @@ export async function saveSourceClips(input: {
         throw error;
       }
     }
-    return nextClips;
+    return {
+      clips: nextClips,
+      before: {
+        sourceAssetId: input.sourceAssetId,
+        clips: beforeClips
+      },
+      after: {
+        sourceAssetId: input.sourceAssetId,
+        clips: nextClips.map(derivedClipAuditSnapshot),
+        removedClipIds: removedClips.map((clip) => clip.id),
+        removedAssetIds: [...removedAssetIds],
+        cleanupJobIds
+      }
+    };
   });
+  recordVideoAuditAction({
+    type: 'media.clips.save',
+    label: `Saved source clips: ${input.sourceAssetId}`,
+    entityType: 'media:source',
+    entityId: input.sourceAssetId,
+    before: result.before,
+    after: result.after
+  });
+  return result.clips;
 }
 
 export async function setClipKeyVideo(input: { clipId: string; isKeyVideo: boolean }) {
-  return mutateLibrary(async (library) => {
+  const result = await mutateLibrary(async (library) => {
     const clip = library.derivedClips.find((entry) => entry.id === input.clipId);
     if (!clip) {
       throw new Error('Clip not found');
     }
 
+    const before = {
+      clipId: clip.id,
+      sourceAssetId: clip.sourceAssetId,
+      moveId: clip.moveId,
+      isKeyVideo: clip.isKeyVideo,
+      updatedAt: clip.updatedAt
+    };
     clip.isKeyVideo = Boolean(input.isKeyVideo);
     clip.updatedAt = nowIso();
     sortLibrary(library);
-    return { ...clip };
+    return {
+      clip: { ...clip },
+      before,
+      after: {
+        clipId: clip.id,
+        sourceAssetId: clip.sourceAssetId,
+        moveId: clip.moveId,
+        isKeyVideo: clip.isKeyVideo,
+        updatedAt: clip.updatedAt
+      }
+    };
   });
+  recordVideoAuditAction({
+    type: 'media.clip.key.update',
+    label: `Updated key video: ${input.clipId}`,
+    entityType: 'media:clip',
+    entityId: input.clipId,
+    before: result.before,
+    after: result.after
+  });
+  return result.clip;
 }
 
 function clipOutputRelativePath(moveId: string, sourceDisplayName: string, clipId: string, suffix = '') {
@@ -2334,7 +2505,7 @@ async function drainRenderQueue() {
   }
 }
 
-export function queueClipRender(clipId: string) {
+export function queueClipRender(clipId: string, options: { audit?: boolean } = {}) {
   const job = upsertMediaJob({
     type: 'clip.render',
     targetType: 'derivedClip',
@@ -2344,6 +2515,23 @@ export function queueClipRender(clipId: string) {
     retryFailed: true,
     retryCompleted: true
   });
+
+  if (options.audit !== false) {
+    recordVideoAuditAction({
+      type: 'media.clip.render.queue',
+      label: `Queued clip render: ${clipId}`,
+      entityType: 'media:clip',
+      entityId: clipId,
+      before: {
+        clipId
+      },
+      after: {
+        clipId,
+        jobId: job.id,
+        jobStatus: job.status
+      }
+    });
+  }
 
   void drainRenderQueue();
   return job;
@@ -2359,9 +2547,21 @@ export async function publishClipsToMoves(clipIds: string[]) {
     return [];
   }
 
-  return mutateLibrary((library) => {
+  const result = await mutateLibrary((library) => {
     const publishedAt = nowIso();
     const publishedClips: DerivedClip[] = [];
+    const beforeClips = library.derivedClips
+      .filter((clip) => requestedIds.has(clip.id))
+      .map(derivedClipAuditSnapshot);
+    const beforeAssetIds = new Set(
+      library.derivedClips
+        .filter((clip) => requestedIds.has(clip.id))
+        .flatMap((clip) => [clip.outputAssetId, clip.publishedAssetId])
+        .filter((id): id is string => Boolean(id))
+    );
+    const beforeLinks = library.moveVideoLinks
+      .filter((link) => beforeAssetIds.has(link.assetId))
+      .map(moveVideoLinkAuditSnapshot);
 
     library.derivedClips.forEach((clip) => {
       if (!requestedIds.has(clip.id)) {
@@ -2372,8 +2572,37 @@ export async function publishClipsToMoves(clipIds: string[]) {
     });
 
     sortLibrary(library);
-    return publishedClips;
+    const afterAssetIds = new Set(
+      publishedClips
+        .flatMap((clip) => [clip.outputAssetId, clip.publishedAssetId])
+        .filter((id): id is string => Boolean(id))
+    );
+    return {
+      clips: publishedClips,
+      before: {
+        requestedClipIds: [...requestedIds],
+        clips: beforeClips,
+        moveVideoLinks: beforeLinks
+      },
+      after: {
+        requestedClipIds: [...requestedIds],
+        publishedClipIds: publishedClips.map((clip) => clip.id),
+        clips: publishedClips.map(derivedClipAuditSnapshot),
+        moveVideoLinks: library.moveVideoLinks
+          .filter((link) => afterAssetIds.has(link.assetId))
+          .map(moveVideoLinkAuditSnapshot)
+      }
+    };
   });
+  recordVideoAuditAction({
+    type: 'media.clips.publish',
+    label: `Published clips: ${result.clips.length}`,
+    entityType: 'media:clips',
+    entityId: [...requestedIds].sort().join(','),
+    before: result.before,
+    after: result.after
+  });
+  return result.clips;
 }
 
 export async function getSourceAssets(moves?: MoveRecord[]) {
