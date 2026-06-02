@@ -212,6 +212,7 @@
   let isLooping = false;
   let isLoopingWithPadding = true;
   let isZoomLooping = false;
+  let isLoopSuppressedByTimelineSeek = false;
   let isTimelineZooming = false;
   let playbackError = '';
   let playerDurationMs = 0;
@@ -595,6 +596,7 @@
 
   $: if (!isDraftingMove && isLooping) {
     isLooping = false;
+    isLoopSuppressedByTimelineSeek = false;
   }
 
   $: if (browser) {
@@ -659,6 +661,7 @@
       timelineViewportEndMs = 0;
       hasManualTimelineZoom = false;
       isZoomLooping = false;
+      isLoopSuppressedByTimelineSeek = false;
       resetTimelinePinch();
       void tick().then(initializeSelectedVideo);
     }
@@ -1233,6 +1236,7 @@
     isLooping = true;
     isLoopingWithPadding = true;
     isZoomLooping = false;
+    isLoopSuppressedByTimelineSeek = false;
     countMode = 'idle';
     countModeIndex = 0;
     isCroppingClip = false;
@@ -2029,8 +2033,18 @@
     return { startMs, endMs };
   }
 
+  function isInsideLoopRange(milliseconds: number, range: { startMs: number; endMs: number }) {
+    return milliseconds >= range.startMs && milliseconds < range.endMs;
+  }
+
+  function markLoopSuppressionForTimelineSeek(milliseconds: number) {
+    const range = activeLoopRange();
+    isLoopSuppressedByTimelineSeek = Boolean(range && !isInsideLoopRange(milliseconds, range));
+  }
+
   function enforceLoopAt(milliseconds: number) {
     if ((!isLooping && !isZoomLooping) || !videoElement) {
+      isLoopSuppressedByTimelineSeek = false;
       return false;
     }
 
@@ -2038,7 +2052,16 @@
     if (!range) {
       isLooping = false;
       isZoomLooping = false;
+      isLoopSuppressedByTimelineSeek = false;
       return false;
+    }
+
+    if (isLoopSuppressedByTimelineSeek) {
+      if (isInsideLoopRange(milliseconds, range)) {
+        isLoopSuppressedByTimelineSeek = false;
+      } else {
+        return false;
+      }
     }
 
     if (milliseconds >= range.endMs) {
@@ -2083,10 +2106,12 @@
   function toggleLoop() {
     if (!isDraftingMove) {
       isLooping = false;
+      isLoopSuppressedByTimelineSeek = false;
       return;
     }
 
     isLooping = !isLooping;
+    isLoopSuppressedByTimelineSeek = false;
     if (!isLooping) {
       return;
     }
@@ -2113,10 +2138,12 @@
   function toggleZoomLoop() {
     if (!isTimelineZoomed()) {
       isZoomLooping = false;
+      isLoopSuppressedByTimelineSeek = false;
       return;
     }
 
     isZoomLooping = !isZoomLooping;
+    isLoopSuppressedByTimelineSeek = false;
     if (!isZoomLooping) {
       return;
     }
@@ -2141,6 +2168,7 @@
     const nextValue = clampMs(snap ? snapTimelineMoveBoundaryForDrag(target, valueMs) : valueMs);
     lastDraftBoundaryTarget = target;
     if (target === 'playhead') {
+      markLoopSuppressionForTimelineSeek(nextValue);
       seekPreview(nextValue);
       return;
     }
@@ -2558,6 +2586,7 @@
     });
     if (!hasManualTimelineZoom) {
       isZoomLooping = false;
+      isLoopSuppressedByTimelineSeek = false;
     }
   }
 
@@ -2656,6 +2685,7 @@
     timelineViewportEndMs = inferredTimelineDurationMs();
     hasManualTimelineZoom = false;
     isZoomLooping = false;
+    isLoopSuppressedByTimelineSeek = false;
   }
 
   function createDraftClipId() {
@@ -2699,6 +2729,7 @@
     isLooping = true;
     isLoopingWithPadding = true;
     isZoomLooping = false;
+    isLoopSuppressedByTimelineSeek = false;
     draftInitialSnapshot = JSON.stringify([
       draftMoveRows.map((row) => [
         row.id,
@@ -2729,6 +2760,7 @@
     activeDraftMoveRowId = null;
     isLooping = false;
     isLoopingWithPadding = true;
+    isLoopSuppressedByTimelineSeek = false;
     countMode = 'idle';
     countModeIndex = 0;
     isCroppingClip = false;
@@ -2748,6 +2780,7 @@
     isDraftingMove = false;
     isLooping = false;
     isLoopingWithPadding = true;
+    isLoopSuppressedByTimelineSeek = false;
     draftMoveRows = [];
     activeDraftMoveRowId = null;
     draftInitialSnapshot = '';

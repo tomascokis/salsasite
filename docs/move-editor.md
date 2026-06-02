@@ -144,13 +144,14 @@ The move editor saves clip definitions before rendering.
 - Wheel zoom should accumulate into a smooth target viewport and ease continuously toward it rather than stepping/chunking per wheel event.
 - Timeline geometry should begin animating immediately during zoom gestures, using a short direct transition rather than the slower edit-row motion pace.
 - When timeline zoom is active, the editor must clearly show that zoom is active.
-- Timeline zoom affordances, including the `Zoomed` status, overview strip, edge arrows, and `Reset zoom` / `Loop zoom` controls, should fade or gently animate in and out instead of popping abruptly.
+- Timeline zoom affordances, including the `Zoomed` status, overview strip, and `Reset zoom` / `Loop zoom` controls, should fade or gently animate in and out instead of popping abruptly.
 - The main timeline action row should animate button reflow when zoom controls appear or disappear, so existing actions glide into their new positions instead of jumping.
-- The zoomed timeline boundary lines must show compact left and right arrow indicators centered 15px above the respective orange edges, not attached to the side markers.
+- The zoomed timeline boundary lines should remain visible without arrow badges above them.
 - Mobile touch pinch zoom should be 10x more sensitive than the base pinch damping while mouse wheel zoom sensitivity remains unchanged.
 - When timeline zoom is active, the editor must provide `Reset zoom` and `Loop zoom` controls in the main timeline action row beside `Edit moves` or `Add move`; zoom controls should be hidden when no zoom window exists.
 - Zoom controls must remain visibly grouped with the main timeline action on narrow screens rather than wrapping or disappearing out of view.
 - `Loop zoom` must loop playback over the visible zoom window and remain mutually exclusive with clip-range looping.
+- Clip-range and zoom loops should enforce looping during ordinary playback, but a user-initiated timeline playhead seek outside the active loop range must be respected and must not immediately snap playback back into the loop; loop enforcement resumes once playback re-enters the active loop range or the loop mode changes.
 - Timeline tracks, saved ranges, playhead lines, knobs, and drag markers must render crisply at rest; the editor must not rely on transform downscaling or fractional sizing that leaves the timeline persistently blurry.
 - Saved clip range markers in the timeline should not use visible border or outline rings, and their corners should stay modestly rounded rather than pill-shaped.
 - The timeline play tracker handle should be 4px shorter vertically than its original square size while staying centered on the same vertical midpoint.

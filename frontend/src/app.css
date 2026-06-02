@@ -3557,57 +3557,6 @@ select {
   overflow: visible;
 }
 
-.clip-timeline-shell::before,
-.clip-timeline-shell::after {
-  content: '';
-  position: absolute;
-  top: calc(var(--timeline-edge-top) - 22px);
-  z-index: 30;
-  display: grid;
-  place-items: center;
-  width: 12px;
-  height: 11px;
-  border: 1px solid rgba(255, 225, 146, 0.92);
-  border-radius: 3px;
-  background: #ffd166;
-  box-shadow: none;
-  color: #101824;
-  font-size: 9px;
-  font-weight: 900;
-  line-height: 1;
-  opacity: 0;
-  pointer-events: none;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
-  transition:
-    top var(--timeline-transition),
-    opacity var(--media-editor-motion-short) var(--media-editor-motion-ease),
-    transform var(--media-editor-motion-short) var(--media-editor-motion-ease);
-}
-
-.clip-timeline-shell::before {
-  content: '\2190';
-  left: 0;
-  transform: translate(-50%, 4px) scale(0.88);
-}
-
-.clip-timeline-shell::after {
-  content: '\2192';
-  right: 0;
-  transform: translate(50%, 4px) scale(0.88);
-}
-
-.clip-timeline-shell.zoomed::before {
-  top: calc(var(--timeline-edge-top) - 26px);
-  opacity: 1;
-  transform: translate(-50%, 0) scale(1);
-}
-
-.clip-timeline-shell.zoomed::after {
-  top: calc(var(--timeline-edge-top) - 26px);
-  opacity: 1;
-  transform: translate(50%, 0) scale(1);
-}
-
 .clip-timeline {
   position: relative;
   width: 100%;
@@ -3898,8 +3847,6 @@ select {
   .timeline-context-box,
   .timeline-move-action,
   .timeline-overview-window,
-  .clip-timeline-shell::before,
-  .clip-timeline-shell::after,
   .clip-timeline,
   .clip-timeline::before,
   .clip-timeline::after,
