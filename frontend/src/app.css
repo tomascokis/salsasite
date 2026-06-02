@@ -3588,6 +3588,53 @@ select {
   background: linear-gradient(270deg, rgba(255, 209, 102, 0.16), transparent);
 }
 
+.timeline-zoom-edge-arrow {
+  position: absolute;
+  top: calc(var(--timeline-edge-top) - 6px);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255, 209, 102, 0.52);
+  border-radius: 999px;
+  background: rgba(16, 24, 36, 0.86);
+  box-shadow:
+    0 0 0 1px rgba(16, 24, 36, 0.75),
+    0 0 12px rgba(255, 209, 102, 0.22);
+  pointer-events: none;
+  transition:
+    top var(--timeline-transition),
+    opacity var(--media-editor-motion-short) var(--media-editor-motion-ease);
+}
+
+.timeline-zoom-edge-arrow.left {
+  left: 0;
+  transform: translateX(-2px);
+}
+
+.timeline-zoom-edge-arrow.right {
+  right: 0;
+  transform: translateX(2px);
+}
+
+.timeline-zoom-edge-arrow::before {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
+
+.timeline-zoom-edge-arrow.left::before {
+  border-right: 7px solid #ffd166;
+}
+
+.timeline-zoom-edge-arrow.right::before {
+  border-left: 7px solid #ffd166;
+}
+
 .clip-timeline.inactive {
   opacity: 1;
 }
@@ -3857,6 +3904,7 @@ select {
   .clip-timeline,
   .clip-timeline::before,
   .clip-timeline::after,
+  .timeline-zoom-edge-arrow,
   .clip-timeline-selection,
   .clip-timeline-playhead,
   .clip-timeline-playhead-handle,
