@@ -22,7 +22,7 @@ The repository currently contains two generations of the system:
 
 The SvelteKit app is the active migration target. The R pipeline remains the source for exporting the existing workbook/RDS data into JSON.
 
-Media catalog reads are split from media catalog repair. Ordinary media read models load the SQLite media catalog without mutating it; legacy move-video bootstrap, missing generated-variant pruning, generated cleanup repair, orphan draft relinking, and point-in-time JSON catalog export are explicit operator actions exposed from `/settings/media`. Production catalog mutations go through the serialized media catalog repository, and public catalog reads wait for queued writes before returning. This keeps live page/API reads predictable while preserving the current one-Docker, live-edit architecture.
+Media catalog reads are split from media catalog repair. Ordinary media read models load the SQLite media catalog without mutating it; legacy move-video bootstrap, missing generated-variant pruning, generated cleanup repair, orphan draft relinking, point-in-time JSON catalog export, and read-only catalog diagnostics are explicit operator actions exposed from `/settings/media`. Production catalog mutations go through the serialized media catalog repository, and public catalog reads wait for queued writes before returning. This keeps live page/API reads predictable while preserving the current one-Docker, live-edit architecture.
 
 ## High-Level Architecture
 
@@ -158,7 +158,7 @@ The same relationship model is used in:
 
 ## Video And Media Library
 
-The media system is split between [frontend/src/lib/server/media-catalog.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/media-catalog.ts), which owns SQLite catalog persistence, legacy `video-library.json` bootstrap, normalization, and serialized writes; source, clip, render, bootstrap, repair, read-model, and job workflow services, which own catalog/media behavior; and [frontend/src/lib/server/video-library.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/video-library.ts), which is the stable public facade for route imports. Detailed media module boundary rules live in [docs/video-library.md](/Volumes/fastdata/server/salsasite-dev/docs/video-library.md). Together they manage:
+The media system is split between [frontend/src/lib/server/media-catalog.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/media-catalog.ts), which owns SQLite catalog persistence, legacy `video-library.json` bootstrap, normalization, serialized writes, and snapshot export; catalog diagnostics, which owns read-only SQLite catalog health visibility; source, clip, render, bootstrap, repair, read-model, and job workflow services, which own catalog/media behavior; and [frontend/src/lib/server/video-library.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/video-library.ts), which is the stable public facade for route imports. Detailed media module boundary rules live in [docs/video-library.md](/Volumes/fastdata/server/salsasite-dev/docs/video-library.md). Together they manage:
 
 - Source video assets under `video-sources/`.
 - Move video assets under `video-moves/`.

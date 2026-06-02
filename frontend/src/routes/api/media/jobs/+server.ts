@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { getMoves } from '$lib/server/data';
 import {
   exportMediaCatalogSnapshot,
+  getMediaCatalogDiagnostics,
   listMediaManagerJobs,
   queueSourceHashBackfill,
   runMediaCatalogRepairs,
@@ -49,6 +50,13 @@ export const POST: RequestHandler = async ({ request }) => {
           filePath: exported.filePath,
           counts: exported.counts
         }
+      });
+    }
+
+    if (payload?.action === 'catalog.diagnostics.scan') {
+      return json({
+        ok: true,
+        diagnostics: await getMediaCatalogDiagnostics()
       });
     }
 

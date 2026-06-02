@@ -35,6 +35,8 @@ Media catalog repair is an explicit operator workflow on `/settings/media`. Repa
 
 Media catalog JSON export is an explicit operator workflow on `/settings/media`. Export writes a point-in-time snapshot under `DATA_DIR/media-catalog-exports/` for backup, debugging, or comparison. Exported JSON is not watched, not re-imported automatically, not a second source of truth, and not an undo workflow.
 
+Media catalog diagnostics are read-only operator visibility on `/settings/media`. Diagnostics may report SQLite bootstrap state, catalog counts, latest export, missing files, missing references, invalid managed paths, and duplicate normalized asset paths. Diagnostics must not repair catalog rows, write exports, create media jobs, record action history, move files, or expose absolute filesystem paths in browser/API responses.
+
 Production catalog mutations must go through `mutateMediaCatalog()` so SQLite catalog writes are serialized. Public `readMediaCatalog()` calls wait for any queued catalog write before returning a snapshot. Direct `writeMediaCatalog()` usage is reserved for the repository implementation and focused repository tests.
 
 ## Runtime Setup

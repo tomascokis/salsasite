@@ -121,6 +121,19 @@ test('media jobs API exports a JSON snapshot of the SQLite catalog', async () =>
   assert.equal(Array.isArray(exported.derivedClips), true);
 });
 
+test('media jobs API returns read-only catalog diagnostics', async () => {
+  const { POST } = await import('../src/routes/api/media/jobs/+server.ts');
+  const response = await POST({ request: requestFor('catalog.diagnostics.scan') });
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.diagnostics.database.pathLabel, 'DATA_DIR/app-state.sqlite');
+  assert.equal(typeof payload.diagnostics.counts.videoAssets, 'number');
+  assert.equal(Array.isArray(payload.diagnostics.findings), true);
+  assert.equal(JSON.stringify(payload.diagnostics).includes(env.tempRoot), false);
+});
+
 test('media jobs API still returns clear 400 for unsupported actions', async () => {
   const { POST } = await import('../src/routes/api/media/jobs/+server.ts');
   const response = await POST({ request: requestFor('unsupported.action') });

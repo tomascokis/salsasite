@@ -14,6 +14,10 @@ export {
 } from './media-catalog';
 
 export {
+  getMediaCatalogDiagnostics
+} from './media-catalog-diagnostics';
+
+export {
   createSourceAsset,
   deleteSourceAsset,
   detectSourceAssetFields,

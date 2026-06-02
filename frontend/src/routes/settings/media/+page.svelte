@@ -58,10 +58,50 @@
     };
   };
 
+  type MediaCatalogDiagnosticFinding = {
+    severity: 'warning' | 'error';
+    type: string;
+    entityType: string;
+    entityId: string;
+    message: string;
+    filePath?: string;
+    relatedId?: string;
+  };
+
+  type MediaCatalogDiagnostics = {
+    checkedAt: string;
+    database: {
+      pathLabel: string;
+      bootstrapStatus: 'complete' | 'incomplete';
+      bootstrapMetaValue: string | null;
+    };
+    counts: {
+      videoAssets: number;
+      sourceAssets: number;
+      moveAssets: number;
+      moveVideoLinks: number;
+      derivedClips: number;
+      clipsByStatus: Record<'pending' | 'rendering' | 'ready' | 'failed', number>;
+    };
+    latestExport: {
+      filePath: string;
+      exportedAt: string | null;
+    } | null;
+    integritySummary: {
+      total: number;
+      errors: number;
+      warnings: number;
+      byType: Record<string, number>;
+    };
+    findings: MediaCatalogDiagnosticFinding[];
+  };
+
   export let data: {
+    catalogDiagnostics: MediaCatalogDiagnostics;
     jobs: MediaJob[];
   };
 
+  let catalogDiagnostics = data.catalogDiagnostics;
   let jobs = data.jobs;
   let statusMessage = '';
   let busyJobId: string | null = null;
@@ -69,6 +109,7 @@
   let repairScanBusy = false;
   let repairRunBusy = false;
   let exportBusy = false;
+  let diagnosticsBusy = false;
   let repairResult: MediaRepairResult | null = null;
   let exportResult: MediaCatalogExportResult | null = null;
   let expandedJobIds = new Set<string>();
@@ -145,6 +186,13 @@
     return Object.values(result.summary).reduce((total, count) => total + count, 0);
   }
 
+  function diagnosticsTypeSummary(diagnostics: MediaCatalogDiagnostics) {
+    return Object.entries(diagnostics.integritySummary.byType)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([type, count]) => `${type}: ${count}`)
+      .join(', ');
+  }
+
   async function postMediaJobAction(action: string) {
     const response = await fetch('/api/media/jobs', {
       method: 'POST',
@@ -211,6 +259,22 @@
     }
   }
 
+  async function refreshCatalogDiagnostics() {
+    diagnosticsBusy = true;
+    statusMessage = '';
+    try {
+      const payload = await postMediaJobAction('catalog.diagnostics.scan');
+      catalogDiagnostics = payload.diagnostics;
+      statusMessage = catalogDiagnostics.integritySummary.total === 0
+        ? 'Catalog diagnostics found no integrity findings.'
+        : `Catalog diagnostics found ${catalogDiagnostics.integritySummary.total} finding${catalogDiagnostics.integritySummary.total === 1 ? '' : 's'}.`;
+    } catch (error) {
+      statusMessage = error instanceof Error ? error.message : 'Could not refresh catalog diagnostics.';
+    } finally {
+      diagnosticsBusy = false;
+    }
+  }
+
   async function exportCatalogSnapshot() {
     exportBusy = true;
     statusMessage = '';
@@ -267,6 +331,91 @@
     </p>
     {#if statusMessage}
       <p class="muted settings-status">{statusMessage}</p>
+    {/if}
+  </section>
+
+  <section class="settings-panel">
+    <div class="settings-header">
+      <h3>Catalog status</h3>
+      <span class="settings-header-actions">
+        <button type="button" disabled={diagnosticsBusy} on:click={refreshCatalogDiagnostics}>
+          {diagnosticsBusy ? 'Refreshing' : 'Refresh diagnostics'}
+        </button>
+      </span>
+    </div>
+    <div class="repair-summary">
+      <strong>SQLite catalog</strong>
+      <span>Database: {catalogDiagnostics.database.pathLabel}</span>
+      <span>Bootstrap: {catalogDiagnostics.database.bootstrapStatus}</span>
+      <span>Checked: {formatDate(catalogDiagnostics.checkedAt)}</span>
+      <span>Video assets: {catalogDiagnostics.counts.videoAssets}</span>
+      <span>Sources: {catalogDiagnostics.counts.sourceAssets}</span>
+      <span>Move assets: {catalogDiagnostics.counts.moveAssets}</span>
+      <span>Move links: {catalogDiagnostics.counts.moveVideoLinks}</span>
+      <span>Derived clips: {catalogDiagnostics.counts.derivedClips}</span>
+      <span>
+        Clip status:
+        pending {catalogDiagnostics.counts.clipsByStatus.pending},
+        rendering {catalogDiagnostics.counts.clipsByStatus.rendering},
+        ready {catalogDiagnostics.counts.clipsByStatus.ready},
+        failed {catalogDiagnostics.counts.clipsByStatus.failed}
+      </span>
+      {#if catalogDiagnostics.latestExport}
+        <span>
+          Latest export: {catalogDiagnostics.latestExport.filePath}
+          {catalogDiagnostics.latestExport.exportedAt ? ` (${formatDate(catalogDiagnostics.latestExport.exportedAt)})` : ''}
+        </span>
+      {:else}
+        <span>Latest export: None</span>
+      {/if}
+      <span>
+        Findings: {catalogDiagnostics.integritySummary.total}
+        ({catalogDiagnostics.integritySummary.errors} errors, {catalogDiagnostics.integritySummary.warnings} warnings)
+      </span>
+      {#if diagnosticsTypeSummary(catalogDiagnostics)}
+        <span>{diagnosticsTypeSummary(catalogDiagnostics)}</span>
+      {/if}
+    </div>
+
+    {#if catalogDiagnostics.findings.length === 0}
+      <p class="muted settings-status">No catalog integrity findings.</p>
+    {:else}
+      <div class="media-jobs-table-wrap catalog-findings-wrap">
+        <table class="media-file-actions-table catalog-findings-table">
+          <thead>
+            <tr>
+              <th>Severity</th>
+              <th>Type</th>
+              <th>Entity</th>
+              <th>Path</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each catalogDiagnostics.findings as finding}
+              <tr>
+                <td><strong>{finding.severity}</strong></td>
+                <td>{finding.type}</td>
+                <td>
+                  <span>{finding.entityType}</span>
+                  <span>{finding.entityId}</span>
+                  {#if finding.relatedId}
+                    <span>Related: {finding.relatedId}</span>
+                  {/if}
+                </td>
+                <td>
+                  {#if finding.filePath}
+                    <span>{finding.filePath}</span>
+                  {:else}
+                    <span class="muted">None</span>
+                  {/if}
+                </td>
+                <td><span>{finding.message}</span></td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     {/if}
   </section>
 
@@ -519,5 +668,9 @@
     width: 100%;
     border-collapse: collapse;
     min-width: 920px;
+  }
+
+  .catalog-findings-table {
+    min-width: 1040px;
   }
 </style>
