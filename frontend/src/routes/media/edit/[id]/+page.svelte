@@ -111,6 +111,9 @@
   const TIMELINE_SMOOTH_ZOOM_EASE = 0.28;
   const TIMELINE_SMOOTH_ZOOM_SETTLE_MS = 2;
   const TIMELINE_PINCH_ZOOM_DAMPING = 0.22;
+  const TIMELINE_TOUCH_PINCH_ZOOM_DAMPING = TIMELINE_PINCH_ZOOM_DAMPING * 10;
+  const TIMELINE_PINCH_SCALE_MIN = 0.05;
+  const TIMELINE_PINCH_SCALE_MAX = 20;
   const TIMELINE_ZOOMING_MS = 180;
   const ROW_WINDOW_SETTLE_MS = 450;
   const ROW_MOVE_MS = 850;
@@ -2324,7 +2327,8 @@
     }
 
     const rawScale = timelinePinchStartDistancePx / distance;
-    const dampedScale = 1 + (rawScale - 1) * TIMELINE_PINCH_ZOOM_DAMPING;
+    const touchScale = 1 + (rawScale - 1) * TIMELINE_TOUCH_PINCH_ZOOM_DAMPING;
+    const dampedScale = Math.max(TIMELINE_PINCH_SCALE_MIN, Math.min(TIMELINE_PINCH_SCALE_MAX, touchScale));
     zoomTimelineAround(timelinePinchAnchorMs, dampedScale, timelinePinchStartViewport);
   }
 
@@ -3432,20 +3436,25 @@
                     </span>
                   </div>
                 {/if}
-                <div
-                  class:zoomed={isTimelineZoomed()}
-                  class="clip-timeline"
-                  class:inactive={!isDraftingMove}
-                  bind:this={timelineElement}
-                  role="slider"
-                  tabindex="0"
-                  aria-label="Clip range timeline"
-                  aria-valuemin="0"
-                  aria-valuemax={playerDurationMs}
-                  aria-valuenow={playerCurrentMs}
-                  on:pointerdown={(event) => startTimelineDrag(event)}
-                  on:wheel={handleTimelineWheel}
-                >
+                <div class="clip-timeline-shell" class:zoomed={isTimelineZoomed()}>
+                  {#if isTimelineZoomed()}
+                    <span class="timeline-zoom-boundary-arrow left" aria-hidden="true"></span>
+                    <span class="timeline-zoom-boundary-arrow right" aria-hidden="true"></span>
+                  {/if}
+                  <div
+                    class:zoomed={isTimelineZoomed()}
+                    class="clip-timeline"
+                    class:inactive={!isDraftingMove}
+                    bind:this={timelineElement}
+                    role="slider"
+                    tabindex="0"
+                    aria-label="Clip range timeline"
+                    aria-valuemin="0"
+                    aria-valuemax={playerDurationMs}
+                    aria-valuenow={playerCurrentMs}
+                    on:pointerdown={(event) => startTimelineDrag(event)}
+                    on:wheel={handleTimelineWheel}
+                  >
                   <div class="clip-timeline-track"></div>
                   {#each visibleSavedTimelineClips as clip (clip.id)}
                     <button
@@ -3554,6 +3563,7 @@
                       <span class="clip-timeline-marker-stem" aria-hidden="true"></span>
                     </button>
                   {/if}
+                  </div>
                 </div>
                 <div class="timeline-move-actions">
                   {#if isDraftingMove}
