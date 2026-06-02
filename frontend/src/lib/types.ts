@@ -165,9 +165,11 @@ export interface DerivedClip {
   countOverlayPlacement: CountOverlayPlacement;
   countTimingPreset: CountTimingPreset;
   outputAssetId: string | null;
+  actionOutputFilePath: string | null;
   lowResOutputFilePath: string | null;
   lowResPaddedOutputFilePath: string | null;
   publishedAssetId: string | null;
+  publishedActionOutputFilePath: string | null;
   publishedLowResFilePath: string | null;
   publishedLowResPaddedFilePath: string | null;
   publishedAt: string | null;
@@ -186,6 +188,7 @@ export interface VideoLibrary {
 export interface MoveVideoEntry {
   assetId: string;
   filePath: string;
+  actionFilePath: string | null;
   lowResFilePath: string | null;
   lowResPaddedFilePath: string | null;
   displayName: string;

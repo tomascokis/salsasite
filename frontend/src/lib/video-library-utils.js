@@ -92,7 +92,7 @@ export function visibleMoveRowKeys(rows = [], currentMs = 0, activeKey = null) {
 
 const GENERATED_MOVE_VIDEO_PREFIX = 'video-moves/';
 const GENERATED_CLIP_FILENAME_PATTERN =
-  /^([A-Za-z0-9][A-Za-z0-9:/_-]*)\s+(.+)\s+([0-9a-f]{8})(?:\s+draft\s+([a-z0-9]+))?(?:\s+(padded low|low))?\.mp4$/i;
+  /^([A-Za-z0-9][A-Za-z0-9:/_-]*)\s+(.+)\s+([0-9a-f]{8})(?:\s+draft\s+([a-z0-9]+))?(?:\s+(action|padded low|low))?\.mp4$/i;
 
 function generatedClipFilenamePart(value) {
   return String(value ?? '')
@@ -119,7 +119,8 @@ export function generatedDerivedClipFileInfo(filePath = '') {
   }
 
   const variantLabel = match[5]?.toLocaleLowerCase();
-  const variant = variantLabel === 'padded low' ? 'padded-low' : variantLabel === 'low' ? 'low' : 'full';
+  const variant =
+    variantLabel === 'padded low' ? 'padded-low' : variantLabel === 'low' ? 'low' : variantLabel === 'action' ? 'action' : 'full';
   return {
     moveDisplayId: match[1],
     sourceDisplayName: match[2],

@@ -568,9 +568,11 @@
           clip.countOverlayPlacement,
           clip.countTimingPreset,
           clip.outputAssetId ?? '',
+          clip.actionOutputFilePath ?? '',
           clip.lowResOutputFilePath ?? '',
           clip.lowResPaddedOutputFilePath ?? '',
           clip.publishedAssetId ?? '',
+          clip.publishedActionOutputFilePath ?? '',
           clip.publishedLowResFilePath ?? '',
           clip.publishedLowResPaddedFilePath ?? '',
           clip.publishedAt ?? '',
@@ -2448,9 +2450,11 @@
           countOverlayPlacement: reusableClip?.countOverlayPlacement ?? 'top-left',
           countTimingPreset: reusableClip?.countTimingPreset ?? 'on2-default',
           outputAssetId: reusableClip?.outputAssetId ?? null,
+          actionOutputFilePath: reusableClip?.actionOutputFilePath ?? null,
           lowResOutputFilePath: reusableClip?.lowResOutputFilePath ?? null,
           lowResPaddedOutputFilePath: reusableClip?.lowResPaddedOutputFilePath ?? null,
           publishedAssetId: reusableClip?.publishedAssetId ?? null,
+          publishedActionOutputFilePath: reusableClip?.publishedActionOutputFilePath ?? null,
           publishedLowResFilePath: reusableClip?.publishedLowResFilePath ?? null,
           publishedLowResPaddedFilePath: reusableClip?.publishedLowResPaddedFilePath ?? null,
           publishedAt: reusableClip?.publishedAt ?? null,
@@ -2662,7 +2666,18 @@
   }
 
   function applyRenderStatuses(
-    statuses: Array<{ clipId: string; status: DerivedClip['status']; error: string | null; outputAssetId: string | null }>
+    statuses: Array<{
+      clipId: string;
+      status: DerivedClip['status'];
+      error: string | null;
+      outputAssetId: string | null;
+      actionOutputFilePath?: string | null;
+      lowResOutputFilePath?: string | null;
+      lowResPaddedOutputFilePath?: string | null;
+      publishedActionOutputFilePath?: string | null;
+      publishedLowResFilePath?: string | null;
+      publishedLowResPaddedFilePath?: string | null;
+    }>
   ) {
     const byId = new Map(statuses.map((entry) => [entry.clipId, entry]));
     clipRows = clipRows.map((clip) => {
@@ -2675,7 +2690,13 @@
         ...clip,
         status: status.status,
         error: status.error,
-        outputAssetId: status.outputAssetId
+        outputAssetId: status.outputAssetId,
+        actionOutputFilePath: status.actionOutputFilePath ?? clip.actionOutputFilePath,
+        lowResOutputFilePath: status.lowResOutputFilePath ?? clip.lowResOutputFilePath,
+        lowResPaddedOutputFilePath: status.lowResPaddedOutputFilePath ?? clip.lowResPaddedOutputFilePath,
+        publishedActionOutputFilePath: status.publishedActionOutputFilePath ?? clip.publishedActionOutputFilePath,
+        publishedLowResFilePath: status.publishedLowResFilePath ?? clip.publishedLowResFilePath,
+        publishedLowResPaddedFilePath: status.publishedLowResPaddedFilePath ?? clip.publishedLowResPaddedFilePath
       };
     });
   }

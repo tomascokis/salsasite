@@ -38,7 +38,7 @@
 
   let videos = data.videos;
   let selectedVideo = 0;
-  let selectedVideoVariant: 'full' | 'low' | 'padded-low' = 'full';
+  let selectedVideoVariant: 'padded' | 'action' | 'low' | 'padded-low' = 'padded';
   let videoElement: HTMLVideoElement | null = null;
   let posterPollTimeout: ReturnType<typeof setTimeout> | null = null;
   let posterPollTarget: string | null = null;
@@ -380,10 +380,11 @@
   function videoVariantOptions(entry: MoveVideoEntry | null) {
     if (!entry) return [];
     return [
-      { id: 'full', label: 'Full', filePath: entry.filePath },
+      { id: 'padded', label: 'Padded', filePath: entry.filePath },
+      entry.actionFilePath ? { id: 'action', label: 'Action', filePath: entry.actionFilePath } : null,
       entry.lowResFilePath ? { id: 'low', label: 'Low-res action', filePath: entry.lowResFilePath } : null,
       entry.lowResPaddedFilePath ? { id: 'padded-low', label: 'Low-res padded', filePath: entry.lowResPaddedFilePath } : null
-    ].filter((option): option is { id: 'full' | 'low' | 'padded-low'; label: string; filePath: string } => Boolean(option));
+    ].filter((option): option is { id: 'padded' | 'action' | 'low' | 'padded-low'; label: string; filePath: string } => Boolean(option));
   }
 
   function selectedVideoFile(entry: MoveVideoEntry | null) {
@@ -462,7 +463,7 @@
     entry: MoveVideoEntry | null,
     currentMs: number,
     enabled: boolean,
-    variant: 'full' | 'low' | 'padded-low'
+    variant: 'padded' | 'action' | 'low' | 'padded-low'
   ) {
     if (!entry || !enabled) {
       return null;
@@ -479,8 +480,8 @@
     return visible;
   }
 
-  function countMarkerSourceOffset(entry: MoveVideoEntry, variant: 'full' | 'low' | 'padded-low') {
-    if (variant === 'low') {
+  function countMarkerSourceOffset(entry: MoveVideoEntry, variant: 'padded' | 'action' | 'low' | 'padded-low') {
+    if (variant === 'action' || variant === 'low') {
       return entry.clipActionStartMs ?? entry.clipStartMs ?? 0;
     }
 
@@ -583,7 +584,7 @@
   $: overflowVideos = videoLayout.overflow;
   $: selectedVideoVariants = videoVariantOptions(selectedVideoEntry);
   $: if (selectedVideoEntry && !selectedVideoVariants.some((option) => option.id === selectedVideoVariant)) {
-    selectedVideoVariant = 'full';
+    selectedVideoVariant = 'padded';
   }
   $: selectedClipEditUrl = selectedVideoEntry ? clipEditUrl(selectedVideoEntry) : null;
   $: selectedCountMarker = visibleCountMarker(selectedVideoEntry, currentVideoMs, showCountOverlay, selectedVideoVariant);
@@ -622,7 +623,7 @@
                 aria-label={`${videoTabLabel(video)} video details`}
                 on:click={() => {
                   selectedVideo = index;
-                  selectedVideoVariant = 'full';
+                  selectedVideoVariant = 'padded';
                   showCountOverlay = false;
                   currentVideoMs = 0;
                 }}
@@ -664,7 +665,7 @@
                     const nextIndex = Number(rawValue);
                     if (Number.isFinite(nextIndex)) {
                       selectedVideo = nextIndex;
-                      selectedVideoVariant = 'full';
+                      selectedVideoVariant = 'padded';
                       showCountOverlay = false;
                       currentVideoMs = 0;
                     }

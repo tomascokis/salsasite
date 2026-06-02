@@ -104,6 +104,7 @@ Each derived clip stores both the rendered clip range and the actual move range:
 - `actionStartMs` and `actionEndMs` define where the move itself happens inside that clip.
 - `sourceAssetId` points to the uploaded source video.
 - `outputAssetId` points to the rendered move video after render succeeds.
+- `actionOutputFilePath` points to the high-quality unpadded/action output after render succeeds.
 - `status` is `pending`, `rendering`, `ready`, or `failed`.
 
 ## Legacy Move Video Import
@@ -253,19 +254,26 @@ Default draft timing:
 
 Saved clip definitions do not create move videos until they are rendered.
 
-Rendering is handled by the app server with `ffmpeg`. This is currently an in-process queue designed for the single-container Unraid setup. Future render scheduling should move through the media manager job model before changing output or publish semantics.
+Rendering is handled by the app server with `ffmpeg` through durable media-manager `clip.render` jobs. The queue still runs inside the single live Docker container, but job state is stored in SQLite so interrupted render jobs can be retried after restart.
 
 The render command is effectively:
 
 ```text
-ffmpeg -ss <start> -t <duration> -i <source> -c:v libx264 -preset veryfast -crf 23 -c:a aac -movflags +faststart <output>
+ffmpeg -ss <start> -t <duration> -i <source> -c:v libx264 -preset <profile> -crf <quality> -c:a aac -movflags +faststart <output>
 ```
 
-Output files are written to:
+High-quality outputs use the full-quality render profile. Low-resolution preview outputs may use a lower-quality profile and scale down for preview use only.
+
+High-quality output files are written to:
 
 ```text
 video-moves/<moveId> <source display name> <clip-id-prefix>.mp4
+video-moves/<moveId> <source display name> <clip-id-prefix> action.mp4
 ```
+
+The first file is the padded/full-context clip from `startMs` to `endMs`. The `action` file is the high-quality unpadded move-action clip from `actionStartMs` to `actionEndMs`, falling back to `startMs` and `endMs` when action timing is absent.
+
+Low-resolution `low` and `padded low` files may also be generated for previews or fallbacks, but move pages must use high-quality clips for normal playback and expose both high-quality padded and high-quality action versions.
 
 When render succeeds:
 
@@ -273,7 +281,8 @@ When render succeeds:
 - A `move` video asset is created or updated.
 - The rendered clip is automatically published to the target move.
 - A `moveVideoLinks` row links the output asset to the target move.
-- Smaller-resolution move video outputs must be generated for later use.
+- A high-quality action-range output is saved alongside the padded output.
+- Smaller-resolution preview outputs may be generated for later use.
 - Poster generation is queued.
 
 When render fails:
@@ -282,7 +291,7 @@ When render fails:
 - The failure message is stored on the clip.
 - The clip can be rendered again after fixing the cause.
 
-If the container restarts while a job is rendering, the in-memory job is lost. The saved clip definition remains in `video-library.json`, and the clip can be rendered again from the Media page.
+If the container restarts while a job is rendering, the media manager recovers the interrupted job to `queued` so it can be retried. The saved clip definition remains in `video-library.json`.
 
 ## Move Page Resolution
 

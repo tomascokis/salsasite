@@ -114,6 +114,36 @@ export function getMediaJobByIdempotencyKey(idempotencyKey: string) {
   return row ? mediaJobFromRow(row) : null;
 }
 
+export function getMediaJobByTarget(type: MediaJobType, targetType: string, targetId: string) {
+  recoverInterruptedJobs();
+  const row = getAppDatabase()
+    .prepare(
+      `
+        SELECT * FROM media_jobs
+        WHERE type = ? AND target_type = ? AND target_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+      `
+    )
+    .get(type, targetType, targetId) as MediaJobRow | undefined;
+  return row ? mediaJobFromRow(row) : null;
+}
+
+export function listQueuedMediaJobs(type: MediaJobType, limit = 10) {
+  recoverInterruptedJobs();
+  const rows = getAppDatabase()
+    .prepare(
+      `
+        SELECT * FROM media_jobs
+        WHERE type = ? AND status = ?
+        ORDER BY created_at ASC
+        LIMIT ?
+      `
+    )
+    .all(type, 'queued', Math.max(1, Math.min(50, Math.floor(limit)))) as MediaJobRow[];
+  return rows.map(mediaJobFromRow);
+}
+
 export function upsertMediaJob(input: {
   type: MediaJobType;
   targetType: string;
@@ -237,6 +267,11 @@ export function failMediaJob(jobId: string, error: unknown) {
 
 export function isMediaJobPending(idempotencyKey: string) {
   const job = getMediaJobByIdempotencyKey(idempotencyKey);
+  return job?.status === 'queued' || job?.status === 'running';
+}
+
+export function isMediaJobTargetPending(type: MediaJobType, targetType: string, targetId: string) {
+  const job = getMediaJobByTarget(type, targetType, targetId);
   return job?.status === 'queued' || job?.status === 'running';
 }
 

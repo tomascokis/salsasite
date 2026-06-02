@@ -172,6 +172,7 @@ test('generated derived clip files are recognized from exact generated filenames
     generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e draft abc123.mp4', clips),
     true
   );
+  assert.equal(generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e action.mp4', clips), true);
   assert.equal(generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e low.mp4', clips), true);
   assert.equal(
     generatedDerivedClipFileMatches('video-moves/SPR00001 Fadi & Bersy 7fa2dc2e draft abc123 padded low.mp4', clips),
@@ -210,6 +211,12 @@ test('generated derived clip info recognizes old orphan low-res variants without
       'video-moves/FRG00001 Alicia and Timothe at Budapest Live 2 Mambo 8c5042c5 padded low.mp4'
     )?.variant,
     'padded-low'
+  );
+  assert.equal(
+    generatedDerivedClipFileInfo(
+      'video-moves/FRG00001 Alicia and Timothe at Budapest Live 2 Mambo 8c5042c5 action.mp4'
+    )?.variant,
+    'action'
   );
 });
 

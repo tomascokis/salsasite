@@ -36,9 +36,16 @@ import {
 import { findPosterForVideoFile, queuePosterGeneration } from './posters';
 import {
   completedMediaJob,
+  completeMediaJob,
+  failMediaJob,
+  isMediaJobTargetPending,
+  listQueuedMediaJobs,
   recordMediaFileAction,
+  startMediaJob,
+  upsertMediaJob,
   writeBufferAndHash,
   writeStreamAndHash,
+  type MediaJob,
   type MediaFingerprint
 } from './media-manager';
 import { getPositionOptions, positionLabelById } from './positions';
@@ -65,7 +72,7 @@ const POSTER_EXTENSIONS = ['.jpg', '.jpeg', '.webp', '.png', '.avif'];
 const CLIP_OUTPUT_EXTENSION = '.mp4';
 const FULL_QUALITY_CRF = '18';
 const LOW_QUALITY_CRF = '29';
-const renderJobs = new Map<string, Promise<void>>();
+let renderWorkerRunning = false;
 
 let libraryCache:
   | {
@@ -355,9 +362,13 @@ function normalizeDerivedClip(raw: Partial<DerivedClip>, library: { moveVideoLin
     countOverlayPlacement: isCountOverlayPlacement(raw.countOverlayPlacement) ? raw.countOverlayPlacement : 'top-left',
     countTimingPreset: isCountTimingPreset(raw.countTimingPreset) ? raw.countTimingPreset : 'on2-default',
     outputAssetId,
+    actionOutputFilePath: raw.actionOutputFilePath ? normalizeManagedVideoPath(String(raw.actionOutputFilePath)) : null,
     lowResOutputFilePath: raw.lowResOutputFilePath ? normalizeManagedVideoPath(String(raw.lowResOutputFilePath)) : null,
     lowResPaddedOutputFilePath: raw.lowResPaddedOutputFilePath ? normalizeManagedVideoPath(String(raw.lowResPaddedOutputFilePath)) : null,
     publishedAssetId,
+    publishedActionOutputFilePath: raw.publishedActionOutputFilePath
+      ? normalizeManagedVideoPath(String(raw.publishedActionOutputFilePath))
+      : null,
     publishedLowResFilePath: raw.publishedLowResFilePath ? normalizeManagedVideoPath(String(raw.publishedLowResFilePath)) : null,
     publishedLowResPaddedFilePath: raw.publishedLowResPaddedFilePath
       ? normalizeManagedVideoPath(String(raw.publishedLowResPaddedFilePath))
@@ -546,6 +557,7 @@ function publishClipToMove(library: VideoLibrary, clip: DerivedClip, publishedAt
 
   ensureMoveLink(library, clip.moveId, outputAsset.id);
   clip.publishedAssetId = outputAsset.id;
+  clip.publishedActionOutputFilePath = clip.actionOutputFilePath;
   clip.publishedLowResFilePath = clip.lowResOutputFilePath;
   clip.publishedLowResPaddedFilePath = clip.lowResPaddedOutputFilePath;
   clip.publishedAt = publishedAt;
@@ -557,8 +569,10 @@ function derivedClipVariantPaths(library: VideoLibrary) {
   const paths = new Set<string>();
   for (const clip of library.derivedClips) {
     [
+      clip.actionOutputFilePath,
       clip.lowResOutputFilePath,
       clip.lowResPaddedOutputFilePath,
+      clip.publishedActionOutputFilePath,
       clip.publishedLowResFilePath,
       clip.publishedLowResPaddedFilePath
     ].forEach((filePath) => {
@@ -573,8 +587,10 @@ function derivedClipVariantPaths(library: VideoLibrary) {
 async function pruneMissingDerivedVariantPaths(library: VideoLibrary) {
   let changed = false;
   const variantKeys = [
+    'actionOutputFilePath',
     'lowResOutputFilePath',
     'lowResPaddedOutputFilePath',
+    'publishedActionOutputFilePath',
     'publishedLowResFilePath',
     'publishedLowResPaddedFilePath'
   ] as const;
@@ -840,6 +856,7 @@ export async function getResolvedMoveVideos(moveId: string, moves: MoveRecord[])
     result.push({
       assetId: asset.id,
       filePath: asset.filePath,
+      actionFilePath: clip?.publishedAssetId === asset.id ? clip.publishedActionOutputFilePath : null,
       lowResFilePath: clip?.publishedAssetId === asset.id ? clip.publishedLowResFilePath : null,
       lowResPaddedFilePath: clip?.publishedAssetId === asset.id ? clip.publishedLowResPaddedFilePath : null,
       displayName: asset.displayName,
@@ -1041,6 +1058,12 @@ async function syncDerivedClipDisplayIdForMoveInLibrary(
           clipOutputRelativePath(normalizedDisplayId, sourceAsset.displayName, clip.id, clipSuffixFromPath(clip.lowResOutputFilePath, clip.id))
         )
       : null;
+    const actionPath = clip.actionOutputFilePath
+      ? path.posix.join(
+          MOVE_VIDEO_PREFIX,
+          clipOutputRelativePath(normalizedDisplayId, sourceAsset.displayName, clip.id, clipSuffixFromPath(clip.actionOutputFilePath, clip.id))
+        )
+      : null;
     const lowResPaddedPath = clip.lowResPaddedOutputFilePath
       ? path.posix.join(
           MOVE_VIDEO_PREFIX,
@@ -1063,6 +1086,8 @@ async function syncDerivedClipDisplayIdForMoveInLibrary(
 
     queueRename(outputAsset?.filePath ?? null, outputPath);
     queueRename(publishedAsset?.filePath ?? null, outputPath);
+    queueRename(clip.actionOutputFilePath, actionPath);
+    queueRename(clip.publishedActionOutputFilePath, actionPath);
     queueRename(clip.lowResOutputFilePath, lowResPath);
     queueRename(clip.lowResPaddedOutputFilePath, lowResPaddedPath);
     queueRename(clip.publishedLowResFilePath, lowResPath);
@@ -1078,6 +1103,10 @@ async function syncDerivedClipDisplayIdForMoveInLibrary(
     }
 
     clip.moveDisplayId = normalizedDisplayId;
+    if (actionPath) {
+      clip.actionOutputFilePath = actionPath;
+      clip.publishedActionOutputFilePath = actionPath;
+    }
     if (lowResPath) {
       clip.lowResOutputFilePath = lowResPath;
       clip.publishedLowResFilePath = lowResPath;
@@ -1444,8 +1473,10 @@ export async function deleteSourceAsset(assetId: string) {
     await Promise.all(
       sourceClips
         .flatMap((clip) => [
+          clip.actionOutputFilePath,
           clip.lowResOutputFilePath,
           clip.lowResPaddedOutputFilePath,
+          clip.publishedActionOutputFilePath,
           clip.publishedLowResFilePath,
           clip.publishedLowResPaddedFilePath
         ])
@@ -1551,9 +1582,11 @@ export async function saveSourceClips(input: {
         countOverlayPlacement,
         countTimingPreset,
         outputAssetId: existing?.outputAssetId ?? null,
+        actionOutputFilePath: existing?.actionOutputFilePath ?? null,
         lowResOutputFilePath: existing?.lowResOutputFilePath ?? null,
         lowResPaddedOutputFilePath: existing?.lowResPaddedOutputFilePath ?? null,
         publishedAssetId: existing?.publishedAssetId ?? null,
+        publishedActionOutputFilePath: existing?.publishedActionOutputFilePath ?? null,
         publishedLowResFilePath: existing?.publishedLowResFilePath ?? null,
         publishedLowResPaddedFilePath: existing?.publishedLowResPaddedFilePath ?? null,
         publishedAt: existing?.publishedAt ?? null,
@@ -1605,8 +1638,10 @@ export async function saveSourceClips(input: {
     const removedAssets = library.videoAssets.filter((asset) => removedAssetIds.has(asset.id));
     const removedFilePaths = removedClips
       .flatMap((clip) => [
+        clip.actionOutputFilePath,
         clip.lowResOutputFilePath,
         clip.lowResPaddedOutputFilePath,
+        clip.publishedActionOutputFilePath,
         clip.publishedLowResFilePath,
         clip.publishedLowResPaddedFilePath
       ])
@@ -1738,17 +1773,22 @@ async function renderClip(clipId: string) {
   const actionEndMs = clip.actionEndMs ?? clip.endMs;
   const actionDurationMs = Math.max(1, actionEndMs - actionStartMs);
   const needsDraftAsset = Boolean(clip.publishedAssetId && clip.outputAssetId === clip.publishedAssetId);
+  const draftSuffix = needsDraftAsset ? `draft ${Date.now().toString(36)}` : '';
   const clipDisplayId = clip.moveDisplayId?.trim() || clip.moveId;
   const outputFilename = clipOutputRelativePath(
     clipDisplayId,
     sourceAsset.displayName,
     clip.id,
-    needsDraftAsset ? `draft ${Date.now().toString(36)}` : ''
+    draftSuffix
   );
   const outputRelativePath = path.posix.join(MOVE_VIDEO_PREFIX, outputFilename);
+  const actionOutputRelativePath = path.posix.join(
+    MOVE_VIDEO_PREFIX,
+    clipOutputRelativePath(clipDisplayId, sourceAsset.displayName, clip.id, `${draftSuffix ? `${draftSuffix} ` : ''}action`)
+  );
   const lowResOutputRelativePath = path.posix.join(
     MOVE_VIDEO_PREFIX,
-    clipOutputRelativePath(clipDisplayId, sourceAsset.displayName, clip.id, `${needsDraftAsset ? `draft ${Date.now().toString(36)} ` : ''}low`)
+    clipOutputRelativePath(clipDisplayId, sourceAsset.displayName, clip.id, `${draftSuffix ? `${draftSuffix} ` : ''}low`)
   );
   const lowResPaddedOutputRelativePath = path.posix.join(
     MOVE_VIDEO_PREFIX,
@@ -1756,10 +1796,11 @@ async function renderClip(clipId: string) {
       clipDisplayId,
       sourceAsset.displayName,
       clip.id,
-      `${needsDraftAsset ? `draft ${Date.now().toString(36)} ` : ''}padded low`
+      `${draftSuffix ? `${draftSuffix} ` : ''}padded low`
     )
   );
   const outputAbsolutePath = resolveManagedVideoAbsolutePath(outputRelativePath);
+  const actionOutputAbsolutePath = resolveManagedVideoAbsolutePath(actionOutputRelativePath);
   const lowResOutputAbsolutePath = resolveManagedVideoAbsolutePath(lowResOutputRelativePath);
   const lowResPaddedOutputAbsolutePath = resolveManagedVideoAbsolutePath(lowResPaddedOutputRelativePath);
   const inputAbsolutePath = resolveManagedVideoAbsolutePath(sourceAsset.filePath);
@@ -1774,11 +1815,17 @@ async function renderClip(clipId: string) {
   });
 
   await renderVideoSegment(inputAbsolutePath, outputAbsolutePath, clip.startMs, durationMs, false, clip.cropRect);
+  await renderVideoSegment(inputAbsolutePath, actionOutputAbsolutePath, actionStartMs, actionDurationMs, false, clip.cropRect);
   await renderVideoSegment(inputAbsolutePath, lowResPaddedOutputAbsolutePath, clip.startMs, durationMs, true, clip.cropRect);
   await renderVideoSegment(inputAbsolutePath, lowResOutputAbsolutePath, actionStartMs, actionDurationMs, true, clip.cropRect);
 
   const replacedRenderedFilePaths = new Set<string>();
-  const currentRenderedFilePaths = [outputRelativePath, lowResOutputRelativePath, lowResPaddedOutputRelativePath];
+  const currentRenderedFilePaths = [
+    outputRelativePath,
+    actionOutputRelativePath,
+    lowResOutputRelativePath,
+    lowResPaddedOutputRelativePath
+  ];
   await mutateLibrary((mutableLibrary) => {
     const mutableClip = mutableLibrary.derivedClips.find((entry) => entry.id === clipId);
     const source = mutableLibrary.videoAssets.find((entry) => entry.id === clip?.sourceAssetId);
@@ -1790,8 +1837,10 @@ async function renderClip(clipId: string) {
       [mutableClip.outputAssetId, mutableClip.publishedAssetId].filter((id): id is string => Boolean(id))
     );
     const previousVariantPaths = [
+      mutableClip.actionOutputFilePath,
       mutableClip.lowResOutputFilePath,
       mutableClip.lowResPaddedOutputFilePath,
+      mutableClip.publishedActionOutputFilePath,
       mutableClip.publishedLowResFilePath,
       mutableClip.publishedLowResPaddedFilePath
     ].filter((filePath): filePath is string => Boolean(filePath));
@@ -1844,6 +1893,7 @@ async function renderClip(clipId: string) {
     const publishedAt = nowIso();
     mutableClip.status = 'ready';
     mutableClip.error = null;
+    mutableClip.actionOutputFilePath = actionOutputRelativePath;
     mutableClip.lowResOutputFilePath = lowResOutputRelativePath;
     mutableClip.lowResPaddedOutputFilePath = lowResPaddedOutputRelativePath;
     mutableClip.updatedAt = publishedAt;
@@ -1859,41 +1909,94 @@ async function renderClip(clipId: string) {
     sortLibrary(mutableLibrary);
   });
 
-  await Promise.all(
-    obsoleteGeneratedClipFilePaths([...replacedRenderedFilePaths], currentRenderedFilePaths).map((filePath) =>
-      deleteManagedVideoFiles(filePath)
-    )
-  );
+  const deletedFilePaths = obsoleteGeneratedClipFilePaths([...replacedRenderedFilePaths], currentRenderedFilePaths);
+  await Promise.all(deletedFilePaths.map((filePath) => deleteManagedVideoFiles(filePath)));
   void queuePosterGeneration(outputRelativePath);
+  return {
+    outputRelativePath,
+    actionOutputRelativePath,
+    lowResOutputRelativePath,
+    lowResPaddedOutputRelativePath,
+    deletedFilePaths
+  };
+}
+
+async function runRenderJob(job: MediaJob) {
+  const clipId = job.targetId;
+  try {
+    startMediaJob(job.id);
+    const result = await renderClip(clipId);
+    completeMediaJob(job.id);
+    [
+      ['render-full-quality-padded', result.outputRelativePath],
+      ['render-full-quality-action', result.actionOutputRelativePath],
+      ['render-preview-action', result.lowResOutputRelativePath],
+      ['render-preview-padded', result.lowResPaddedOutputRelativePath]
+    ].forEach(([actionType, filePath]) => {
+      recordMediaFileAction({
+        jobId: job.id,
+        actionType,
+        status: 'succeeded',
+        filePath
+      });
+    });
+    result.deletedFilePaths.forEach((filePath) => {
+      recordMediaFileAction({
+        jobId: job.id,
+        actionType: 'delete-obsolete-render',
+        status: 'succeeded',
+        filePath
+      });
+    });
+  } catch (error) {
+    failMediaJob(job.id, error);
+    await mutateLibrary((library) => {
+      const clip = library.derivedClips.find((entry) => entry.id === clipId);
+      if (clip) {
+        clip.status = 'failed';
+        clip.error = error instanceof Error ? error.message : 'Render failed';
+        clip.updatedAt = nowIso();
+      }
+    });
+  }
+}
+
+async function drainRenderQueue() {
+  if (renderWorkerRunning) {
+    return;
+  }
+
+  renderWorkerRunning = true;
+  try {
+    while (true) {
+      const job = listQueuedMediaJobs('clip.render', 1)[0] ?? null;
+      if (!job) {
+        return;
+      }
+      await runRenderJob(job);
+    }
+  } finally {
+    renderWorkerRunning = false;
+  }
 }
 
 export function queueClipRender(clipId: string) {
-  const existing = renderJobs.get(clipId);
-  if (existing) {
-    return existing;
-  }
+  const job = upsertMediaJob({
+    type: 'clip.render',
+    targetType: 'derivedClip',
+    targetId: clipId,
+    idempotencyKey: `clip.render:${clipId}`,
+    payload: { clipId },
+    retryFailed: true,
+    retryCompleted: true
+  });
 
-  const job = renderClip(clipId)
-    .catch(async (error) => {
-      await mutateLibrary((library) => {
-        const clip = library.derivedClips.find((entry) => entry.id === clipId);
-        if (clip) {
-          clip.status = 'failed';
-          clip.error = error instanceof Error ? error.message : 'Render failed';
-          clip.updatedAt = nowIso();
-        }
-      });
-    })
-    .finally(() => {
-      renderJobs.delete(clipId);
-    });
-
-  renderJobs.set(clipId, job);
+  void drainRenderQueue();
   return job;
 }
 
 export function isClipRenderPending(clipId: string) {
-  return renderJobs.has(clipId);
+  return isMediaJobTargetPending('clip.render', 'derivedClip', clipId);
 }
 
 export async function publishClipsToMoves(clipIds: string[]) {
@@ -2045,6 +2148,12 @@ export async function getRenderStatuses(clipIds: string[]) {
       status: clip?.status ?? 'failed',
       error: clip?.error ?? null,
       outputAssetId: clip?.outputAssetId ?? null,
+      actionOutputFilePath: clip?.actionOutputFilePath ?? null,
+      lowResOutputFilePath: clip?.lowResOutputFilePath ?? null,
+      lowResPaddedOutputFilePath: clip?.lowResPaddedOutputFilePath ?? null,
+      publishedActionOutputFilePath: clip?.publishedActionOutputFilePath ?? null,
+      publishedLowResFilePath: clip?.publishedLowResFilePath ?? null,
+      publishedLowResPaddedFilePath: clip?.publishedLowResPaddedFilePath ?? null,
       pending: isClipRenderPending(clipId)
     };
   });
