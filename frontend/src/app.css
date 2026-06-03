@@ -4562,6 +4562,44 @@ select {
   gap: 0.8rem;
 }
 
+.entity-picker-field-compact {
+  gap: 0.55rem;
+}
+
+.entity-picker-field-compact .entity-picker-field-header {
+  gap: 0.16rem;
+}
+
+.entity-picker-field-compact .entity-picker-field-header h3 {
+  font-size: 0.92rem;
+}
+
+.entity-picker-field-compact .entity-picker-field-header p {
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.entity-picker-field-compact .move-picker,
+.entity-picker-field-compact .searchable-picker {
+  --picker-control-font-size: 0.78rem;
+  --picker-chip-font-size: 0.72rem;
+  --picker-secondary-font-size: 0.68rem;
+}
+
+.entity-picker-field-compact .move-picker-input-inline,
+.entity-picker-field-compact .searchable-picker-input-inline,
+.entity-picker-field-compact .move-picker input,
+.entity-picker-field-compact .searchable-picker input {
+  min-height: 2rem;
+}
+
+.entity-picker-field-compact .move-picker-input-inline,
+.entity-picker-field-compact .searchable-picker-input-inline {
+  height: 2rem;
+  padding-top: 0.18rem;
+  padding-bottom: 0.18rem;
+}
+
 .entity-picker-field-header {
   display: grid;
   gap: 0.24rem;

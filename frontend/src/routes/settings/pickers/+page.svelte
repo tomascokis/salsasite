@@ -19,6 +19,12 @@
     lastAction: string;
   };
 
+  type SearchOption = {
+    id: string;
+    label: string;
+    secondary?: string | null;
+  };
+
   export let data: {
     families: MetadataEntry[];
     dancers: DancerProfile[];
@@ -27,46 +33,90 @@
 
   const templates: EntityPickerTemplate[] = [
     {
-      key: 'family',
+      key: 'browse',
       kind: 'searchable',
-      title: 'Move family',
-      description: 'Shared searchable picker with create support for family fields.',
-      placeholder: 'Search families',
-      addPlaceholder: 'Add family',
-      ariaLabel: 'Search families',
-      allowCreate: true,
-      createLabel: 'Use family',
-      selectedPlacement: 'inside',
-      floatingDropdown: true,
-      limit: 24,
-      maxSelected: 1
-    },
-    {
-      key: 'dancer',
-      kind: 'searchable',
-      title: 'Dancers',
-      description: 'Same wrapper, but populated with dancer profiles and richer secondary text.',
+      mode: 'browse',
+      createPolicy: 'none',
+      valueSource: 'id',
+      density: 'default',
+      title: 'Browse dancers',
+      description: 'Search-only picker for navigation lists and sidebars.',
       placeholder: 'Search dancers',
-      addPlaceholder: 'Add dancer',
+      addPlaceholder: 'Search dancers',
       ariaLabel: 'Search dancers',
-      allowCreate: true,
-      createLabel: 'Use dancer',
-      selectedPlacement: 'inside',
-      floatingDropdown: true,
       limit: 24
     },
     {
-      key: 'move',
+      key: 'filter',
+      kind: 'searchable',
+      mode: 'filter',
+      createPolicy: 'none',
+      valueSource: 'id',
+      density: 'default',
+      title: 'Filter dancers',
+      description: 'Multi-select filter picker with creation disabled.',
+      placeholder: 'Search dancers',
+      addPlaceholder: 'Filter another dancer',
+      ariaLabel: 'Filter dancers',
+      limit: 24
+    },
+    {
+      key: 'family',
+      kind: 'searchable',
+      mode: 'singleEdit',
+      createPolicy: 'persistMetadata',
+      valueSource: 'label',
+      density: 'default',
+      title: 'Move family',
+      description: 'Single-value editor that emits labels and can persist metadata.',
+      placeholder: 'Search families',
+      addPlaceholder: 'Change family',
+      ariaLabel: 'Search families',
+      createLabel: 'Use family',
+      limit: 24
+    },
+    {
+      key: 'tags',
+      kind: 'searchable',
+      mode: 'multiEdit',
+      createPolicy: 'local',
+      valueSource: 'label',
+      density: 'default',
+      title: 'Move tags',
+      description: 'Multi-value editor for local freeform entries.',
+      placeholder: 'Add tags',
+      addPlaceholder: 'Add tags',
+      ariaLabel: 'Tags',
+      createLabel: 'Add tag',
+      limit: 24
+    },
+    {
+      key: 'position',
+      kind: 'searchable',
+      mode: 'strict',
+      createPolicy: 'none',
+      valueSource: 'id',
+      density: 'compact',
+      title: 'Start position',
+      description: 'Compact strict picker that only accepts known options.',
+      placeholder: 'Start',
+      addPlaceholder: 'Start',
+      ariaLabel: 'Start position',
+      limit: 24
+    },
+    {
+      key: 'draft-move',
       kind: 'move',
-      title: 'Moves',
-      description: 'Same template surface routed into the move-aware picker with posters and move scoring.',
+      mode: 'singleEdit',
+      createPolicy: 'draftMove',
+      valueSource: 'id',
+      density: 'compact',
+      title: 'Draft move',
+      description: 'Compact move picker that can create a draft move.',
       placeholder: 'Search moves by id or name',
       addPlaceholder: 'Add move',
       ariaLabel: 'Search moves by id or name',
-      allowCreate: true,
       createText: 'Create draft move',
-      selectedPlacement: 'inside',
-      floatingDropdown: true,
       showPoster: true,
       showId: true,
       showName: true,
@@ -90,13 +140,25 @@
       .filter(Boolean)
       .join(' · ')
   }));
+  const positionOptions: SearchOption[] = [
+    { id: 'open', label: 'Open position', secondary: 'Known position' },
+    { id: 'closed', label: 'Closed position', secondary: 'Known position' },
+    { id: 'shadow', label: 'Shadow position', secondary: 'Known position' },
+    { id: 'hammerlock', label: 'Hammerlock', secondary: 'Known position' }
+  ];
+  const tagOptions: SearchOption[] = [
+    { id: 'social', label: 'social', secondary: 'Existing tag' },
+    { id: 'class', label: 'class', secondary: 'Existing tag' },
+    { id: 'beginner', label: 'beginner', secondary: 'Existing tag' },
+    { id: 'musicality', label: 'musicality', secondary: 'Existing tag' }
+  ];
 
   function optionKey(value: string) {
     return value.trim().toLocaleLowerCase();
   }
 
-  function mergeCreatedSearchOptions(baseOptions: typeof familyOptions, createdValues: string[]) {
-    const seen = new Set(baseOptions.map((option) => optionKey(option.id)));
+  function mergeCreatedSearchOptions(baseOptions: SearchOption[], createdValues: string[]) {
+    const seen = new Set(baseOptions.flatMap((option) => [optionKey(option.id), optionKey(option.label)]));
     const createdOptions = createdValues
       .filter((value) => {
         const key = optionKey(value);
@@ -139,19 +201,37 @@
   }
 
   let pickerStates: Record<string, PickerState> = {
-    family: {
+    browse: {
       query: '',
-      selectedIds: familyOptions[0] ? [familyOptions[0].id] : [],
+      selectedIds: [],
       createdValues: [],
       lastAction: 'Ready'
     },
-    dancer: {
+    filter: {
       query: '',
       selectedIds: dancerOptions[0] ? [dancerOptions[0].id] : [],
       createdValues: [],
       lastAction: 'Ready'
     },
-    move: {
+    family: {
+      query: '',
+      selectedIds: familyOptions[0] ? [familyOptions[0].label] : [],
+      createdValues: [],
+      lastAction: 'Ready'
+    },
+    tags: {
+      query: '',
+      selectedIds: tagOptions[0] ? [tagOptions[0].label] : [],
+      createdValues: [],
+      lastAction: 'Ready'
+    },
+    position: {
+      query: '',
+      selectedIds: positionOptions[0] ? [positionOptions[0].id] : [],
+      createdValues: [],
+      lastAction: 'Ready'
+    },
+    'draft-move': {
       query: '',
       selectedIds: data.moves[0] ? [data.moves[0].id] : [],
       createdValues: [],
@@ -160,8 +240,10 @@
   };
 
   function optionsFor(template: EntityPickerTemplate, state: PickerState) {
+    if (template.key === 'browse' || template.key === 'filter') return mergeCreatedSearchOptions(dancerOptions, state.createdValues);
     if (template.key === 'family') return mergeCreatedSearchOptions(familyOptions, state.createdValues);
-    if (template.key === 'dancer') return mergeCreatedSearchOptions(dancerOptions, state.createdValues);
+    if (template.key === 'tags') return mergeCreatedSearchOptions(tagOptions, state.createdValues);
+    if (template.key === 'position') return positionOptions;
     return mergeCreatedMoveOptions(data.moves, state.createdValues);
   }
 
@@ -170,7 +252,12 @@
   }
 
   function labelFor(template: EntityPickerTemplate, state: PickerState, value: string) {
-    const match = optionsFor(template, state).find((option) => option.id === value);
+    const match = optionsFor(template, state).find((option) => {
+      if ('label' in option) {
+        return option.id === value || option.label === value;
+      }
+      return option.id === value || option.displayId === value || option.name === value;
+    });
     if (!match) {
       return value;
     }
@@ -198,8 +285,10 @@
       return;
     }
 
+    const template = templates.find((candidate) => candidate.key === key);
+    const singleValue = template?.mode === 'singleEdit' || template?.mode === 'strict';
     updateState(key, {
-      selectedIds: [...state.selectedIds, value],
+      selectedIds: singleValue ? [value] : [...state.selectedIds, value],
       lastAction: `Selected ${value}`
     });
   }
@@ -211,8 +300,14 @@
     }
 
     const state = stateFor(key);
+    const template = templates.find((candidate) => candidate.key === key);
+    const singleValue = template?.mode === 'singleEdit' || template?.mode === 'strict';
     updateState(key, {
-      selectedIds: state.selectedIds.includes(normalized) ? state.selectedIds : [...state.selectedIds, normalized],
+      selectedIds: state.selectedIds.includes(normalized)
+        ? state.selectedIds
+        : singleValue
+          ? [normalized]
+          : [...state.selectedIds, normalized],
       createdValues: state.createdValues.includes(normalized) ? state.createdValues : [...state.createdValues, normalized],
       lastAction: `Created ${normalized}`
     });

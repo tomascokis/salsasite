@@ -16,43 +16,41 @@ export type EntityPickerMoveOption = {
   isDraft?: boolean;
 };
 
+export type EntityPickerMode = 'browse' | 'filter' | 'singleEdit' | 'multiEdit' | 'strict';
+export type EntityPickerCreatePolicy = 'none' | 'local' | 'persistMetadata' | 'draftMove';
+export type EntityPickerValueSource = 'id' | 'label';
+export type EntityPickerDensity = 'default' | 'compact';
+
+type EntityPickerBaseTemplate = {
+  key: string;
+  title: string;
+  description: string;
+  placeholder: string;
+  addPlaceholder: string;
+  ariaLabel: string;
+  emptyText?: string;
+  moreText?: string;
+  limit?: number;
+  mode?: EntityPickerMode;
+  createPolicy?: EntityPickerCreatePolicy;
+  valueSource?: EntityPickerValueSource;
+  density?: EntityPickerDensity;
+  allowCreate?: boolean;
+  selectedPlacement?: 'before' | 'after' | 'inside';
+  floatingDropdown?: boolean;
+  showSelected?: boolean;
+  maxSelected?: number | null;
+};
+
 export type EntityPickerTemplate =
-  | {
-      key: string;
+  | (EntityPickerBaseTemplate & {
       kind: 'searchable';
-      title: string;
-      description: string;
-      placeholder: string;
-      addPlaceholder: string;
-      ariaLabel: string;
-      emptyText?: string;
-      moreText?: string;
-      limit?: number;
-      allowCreate?: boolean;
       createLabel?: string;
-      selectedPlacement?: 'before' | 'after' | 'inside';
-      floatingDropdown?: boolean;
-      showSelected?: boolean;
-      maxSelected?: number | null;
-    }
-  | {
-      key: string;
+    })
+  | (EntityPickerBaseTemplate & {
       kind: 'move';
-      title: string;
-      description: string;
-      placeholder: string;
-      addPlaceholder: string;
-      ariaLabel: string;
-      emptyText?: string;
-      moreText?: string;
-      limit?: number;
-      allowCreate?: boolean;
       createText?: string;
-      selectedPlacement?: 'before' | 'after' | 'inside';
-      floatingDropdown?: boolean;
-      showSelected?: boolean;
-      maxSelected?: number | null;
       showId?: boolean;
       showName?: boolean;
       showPoster?: boolean;
-    };
+    });
