@@ -276,6 +276,7 @@
   let timelineZoomTargetViewport: TimelineViewport | null = null;
   let hasManualTimelineZoom = false;
   let timelineDragTarget: TimelineMarker | null = null;
+  $: isDraggingTimelineMarker = Boolean(timelineDragTarget && timelineDragTarget !== 'playhead');
   let timelineDragPreviousMs: number | null = null;
   let timelineDragSnapConsumed = false;
   let timelineDragCaptureElement: HTMLElement | null = null;
@@ -3462,18 +3463,19 @@
                     <span><strong>Move</strong> {formatSeconds(draftActionStartMs)}s - {formatSeconds(draftActionEndMs)}s</span>
                     <span><strong>Length</strong> {formatSeconds(Math.max(0, draftEndMs - draftStartMs))}s</span>
                   {/if}
-                  <span class="editor-video-controls" on:click={(event) => event.stopPropagation()}>
-                    {#if !timelineDragTarget}
-                      <button
-                        class="editor-video-play"
-                        class:playing={isPlaying}
-                        type="button"
-                        aria-label={isPlaying ? 'Pause source video' : 'Play source video'}
-                        on:click={() => void togglePlayback()}
-                      >
-                        <span>{isPlaying ? 'Pause' : 'Play'}</span>
-                      </button>
-                    {/if}
+                  <span class="editor-video-controls" class:marker-dragging={isDraggingTimelineMarker} on:click={(event) => event.stopPropagation()}>
+                    <button
+                      class="editor-video-play"
+                      class:playing={isPlaying}
+                      type="button"
+                      aria-label={isPlaying ? 'Pause source video' : 'Play source video'}
+                      disabled={isDraggingTimelineMarker}
+                      aria-hidden={isDraggingTimelineMarker}
+                      tabindex={isDraggingTimelineMarker ? -1 : undefined}
+                      on:click={() => void togglePlayback()}
+                    >
+                      <span>{isPlaying ? 'Pause' : 'Play'}</span>
+                    </button>
                     <button
                       class="editor-video-fullscreen"
                       class:active={isVideoFullscreen}

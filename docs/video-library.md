@@ -267,6 +267,7 @@ Playback behavior:
 - Previous and next move boxes in the playback move-context strip must be visibly shorter than the center current-move box.
 - The center current-move box must replace move names without rendering the outgoing and incoming names at the same time, so transitions never change the strip height.
 - The source-video playback controls must stay compact but visually polished, with clear icon affordances and a refined volume treatment.
+- Dragging the source-video timeline playhead or trim/move markers must not shift the compact playback controls or the `Total` duration label.
 - The source-video playback controls and move-context boxes must stay vertically compact so they do not consume unnecessary timeline height.
 - The editor attempts playback from `0.00s` when a source video loads, using the shared site mute preference. On a fresh site load the player should default to unmuted, while browser autoplay policy can still reject autoplay so manual play remains available.
 - The source-video mute button must directly toggle muted/unmuted audio and persist that choice through the shared site mute preference.

@@ -67,6 +67,7 @@ The editor should keep playback predictable while the user marks precise ranges.
 - Source-video playback controls and move-context boxes should stay vertically compact so they do not consume unnecessary timeline height.
 - The timeline card’s vertical buffer around the metadata/playback control row should stay compact: vertical padding and edit-mode row gap should be half of the prior spacious treatment while preserving horizontal spacing.
 - Playback move-context boxes must stay in stable left, center, and right slots at every viewport width; they must never stack vertically.
+- Dragging the timeline playhead or trim/move markers must not change the timeline metadata row layout; playback controls and the `Total` duration label must keep their positions stable without wriggling.
 - The play/pause icon should be small.
 - The old bottom-right play button should not be shown.
 
@@ -95,6 +96,7 @@ Dragging trim or move markers is a precision-editing interaction and must not un
 - If the video was paused before the marker drag began, keep it paused after the marker is dropped.
 - When a marker is dropped, seek back to the move start preview position before resuming if resuming is required.
 - Dragging the playhead is separate from dragging trim/move markers and should remain a direct seek interaction.
+- Dragging the playhead should not hide, remove, or move the compact playback controls.
 
 ## Saving Clips
 

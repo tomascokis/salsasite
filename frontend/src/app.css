@@ -3139,6 +3139,11 @@ select {
   margin: 0;
 }
 
+.editor-video-controls.marker-dragging .editor-video-play {
+  pointer-events: none;
+  visibility: hidden;
+}
+
 .editor-video-fullscreen::before {
   content: '';
   position: absolute;
