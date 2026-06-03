@@ -52,6 +52,7 @@
   let activeSuggestionIndex = 0;
   let lastQuery = '';
   let inputWrapElement: HTMLDivElement;
+  let dropdownElement: HTMLDivElement;
   let floatingDropdownStyle = '';
 
   $: normalizedQuery = query.trim();
@@ -146,6 +147,25 @@
     ].join('; ');
   }
 
+  async function scrollActiveSuggestionIntoView() {
+    await tick();
+    if (!dropdownElement) return;
+
+    const activeOption = dropdownElement.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!activeOption) return;
+
+    const activeTop = activeOption.offsetTop;
+    const activeBottom = activeTop + activeOption.offsetHeight;
+    const visibleTop = dropdownElement.scrollTop;
+    const visibleBottom = visibleTop + dropdownElement.clientHeight;
+
+    if (activeTop < visibleTop) {
+      dropdownElement.scrollTop = activeTop;
+    } else if (activeBottom > visibleBottom) {
+      dropdownElement.scrollTop = activeBottom - dropdownElement.clientHeight;
+    }
+  }
+
   function moveLabel(moveId: string) {
     const move = findMove(moveId);
     if (!move) return moveId;
@@ -228,11 +248,15 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && hasQuery && optionCount) {
+    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && hasQuery && !selectionFull) {
       event.preventDefault();
+      if (!optionCount) {
+        return;
+      }
       const delta = event.key === 'ArrowDown' ? 1 : -1;
       activeSuggestionIndex =
         (activeSuggestionIndex + delta + optionCount) % optionCount;
+      void scrollActiveSuggestionIntoView();
       return;
     }
 
@@ -332,6 +356,7 @@
         style={useFloatingDropdown ? floatingDropdownStyle : undefined}
         role="listbox"
         aria-label="Matching moves"
+        bind:this={dropdownElement}
       >
         {#if hasCreateOption}
           <button
