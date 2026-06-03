@@ -133,10 +133,10 @@
     { id: 'hammerlock', label: 'Hammerlock', secondary: 'Known position' }
   ];
   const tagOptions: SearchOption[] = [
-    { id: 'social', label: 'social', secondary: 'Existing tag' },
-    { id: 'class', label: 'class', secondary: 'Existing tag' },
-    { id: 'beginner', label: 'beginner', secondary: 'Existing tag' },
-    { id: 'musicality', label: 'musicality', secondary: 'Existing tag' }
+    { id: 'social', label: 'social' },
+    { id: 'class', label: 'class' },
+    { id: 'beginner', label: 'beginner' },
+    { id: 'musicality', label: 'musicality' }
   ];
 
   function optionKey(value: string) {
