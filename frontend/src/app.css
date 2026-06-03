@@ -4071,8 +4071,8 @@ select {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-right: 0.28rem;
-  scrollbar-gutter: stable;
+  padding-right: 0;
+  scrollbar-gutter: auto;
 }
 
 .draft-move-row-window::-webkit-scrollbar {
@@ -4147,6 +4147,7 @@ select {
   background: #ffffff;
   color: #2f3943;
   font-size: var(--clip-row-font-size);
+  line-height: 1.2;
 }
 
 .saved-editor-cell {
@@ -4174,6 +4175,13 @@ select {
   max-width: min(18rem, 70%);
 }
 
+.saved-editor-move .saved-editor-chip {
+  max-width: 100%;
+  min-height: 1.45rem;
+  padding-top: 0.12rem;
+  padding-bottom: 0.12rem;
+}
+
 .saved-editor-placeholder {
   min-width: 7rem;
   overflow: hidden;
@@ -4183,7 +4191,7 @@ select {
   white-space: nowrap;
 }
 
-.editor-draft-form input {
+.editor-draft-form .draft-descriptor-field input {
   height: 2.2rem;
   border-color: rgba(194, 213, 233, 0.24);
   background: rgba(255, 255, 255, 0.94);
@@ -4620,9 +4628,12 @@ select {
 
 .entity-picker-field-compact .move-picker-input-inline input,
 .entity-picker-field-compact .searchable-picker-input-inline input {
+  box-sizing: border-box;
   height: 1.4rem;
   min-height: 1.4rem;
   min-width: 0;
+  padding-top: 0;
+  padding-bottom: 0;
   flex: 1 1 0;
 }
 
