@@ -16,6 +16,7 @@
     query: string;
     selectedIds: string[];
     createdValues: string[];
+    browsedValue?: string;
     lastAction: string;
   };
 
@@ -284,6 +285,7 @@
     const template = templates.find((candidate) => candidate.key === key);
     if (template?.mode === 'browse') {
       updateState(key, {
+        browsedValue: value,
         lastAction: `Browsed ${labelFor(template, state, value)}`
       });
       return;
@@ -365,8 +367,14 @@
 
         <div class="picker-lab-state">
           <div>
-            <span class="picker-lab-state-label">Selected</span>
-            <p>{state.selectedIds.length ? state.selectedIds.map((value) => labelFor(template, state, value)).join(', ') : 'Nothing selected'}</p>
+            <span class="picker-lab-state-label">{template.mode === 'browse' ? 'Browsed' : 'Selected'}</span>
+            <p>
+              {#if template.mode === 'browse'}
+                {state.browsedValue ? labelFor(template, state, state.browsedValue) : 'Nothing browsed yet'}
+              {:else}
+                {state.selectedIds.length ? state.selectedIds.map((value) => labelFor(template, state, value)).join(', ') : 'Nothing selected'}
+              {/if}
+            </p>
           </div>
           <div>
             <span class="picker-lab-state-label">Created on page</span>

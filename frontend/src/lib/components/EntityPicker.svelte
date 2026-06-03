@@ -77,7 +77,7 @@
       floatingDropdown: true,
       maxSelected: mode === 'singleEdit' || mode === 'strict' ? 1 : null,
       allowCreate: createPolicy !== 'none' && mode !== 'browse' && mode !== 'filter' && mode !== 'strict',
-      clearQueryOnSelect: mode !== 'browse'
+      clearQueryOnSelect: true
     };
 
     return {
