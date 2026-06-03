@@ -45,6 +45,7 @@
   let inputWrapElement: HTMLDivElement;
   let dropdownElement: HTMLDivElement;
   let floatingDropdownStyle = '';
+  let dismissedQueryAfterSelect = '';
 
   $: normalizedQuery = normalizeSearchText(query);
   $: unavailableIds = new Set([...selectedIds, ...excludedIds].map(normalizeId));
@@ -63,6 +64,8 @@
   $: inputPlaceholder = hasVisibleSelection ? addPlaceholder : placeholder;
   $: inputAriaLabel = hasVisibleSelection && addPlaceholder ? addPlaceholder : ariaLabel;
   $: useFloatingDropdown = floatingDropdown || selectedPlacement === 'inside';
+  $: suggestionsDismissed = !clearQueryOnSelect && hasQuery && dismissedQueryAfterSelect === query;
+  $: showSuggestions = hasQuery && !selectionFull && !suggestionsDismissed;
 
   $: if (query !== lastQuery) {
     lastQuery = query;
@@ -73,7 +76,7 @@
     activeSuggestionIndex = Math.max(0, suggestionCount - 1);
   }
 
-  $: if (useFloatingDropdown && hasQuery && !selectionFull) {
+  $: if (useFloatingDropdown && showSuggestions) {
     void scheduleFloatingDropdownUpdate();
   }
 
@@ -154,6 +157,9 @@
   }
 
   function setQuery(value: string) {
+    if (value !== query) {
+      dismissedQueryAfterSelect = '';
+    }
     query = value;
     const detail = { query };
     dispatch('query', detail);
@@ -217,6 +223,8 @@
     onselect?.(detail);
     if (clearQueryOnSelect) {
       setQuery('');
+    } else {
+      dismissedQueryAfterSelect = query;
     }
   }
 
@@ -247,6 +255,11 @@
   function handleKeydown(event: KeyboardEvent) {
     if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && hasQuery && !selectionFull) {
       event.preventDefault();
+      if (suggestionsDismissed) {
+        dismissedQueryAfterSelect = '';
+        void scheduleFloatingDropdownUpdate();
+        return;
+      }
       if (!suggestionCount) {
         return;
       }
@@ -259,6 +272,9 @@
     if (event.key === 'Enter') {
       event.preventDefault();
       if (selectionFull) {
+        return;
+      }
+      if (suggestionsDismissed) {
         return;
       }
 
@@ -335,7 +351,7 @@
       />
     {/if}
 
-    {#if hasQuery && !selectionFull}
+    {#if showSuggestions}
       <div
         class="searchable-picker-dropdown"
         class:searchable-picker-dropdown-floating={useFloatingDropdown}

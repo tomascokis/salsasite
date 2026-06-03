@@ -54,6 +54,7 @@
   let inputWrapElement: HTMLDivElement;
   let dropdownElement: HTMLDivElement;
   let floatingDropdownStyle = '';
+  let dismissedQueryAfterSelect = '';
 
   $: normalizedQuery = query.trim();
   $: excludedMoveIds = [...selectedIds, ...excludedIds].filter(Boolean);
@@ -74,6 +75,8 @@
   $: selectionFull = maxSelected !== null && selectedIds.length >= maxSelected;
   $: inputPlaceholder = hasVisibleSelection ? addPlaceholder : placeholder;
   $: useFloatingDropdown = floatingDropdown || selectedPlacement === 'inside';
+  $: suggestionsDismissed = !clearQueryOnSelect && hasQuery && dismissedQueryAfterSelect === query;
+  $: showSuggestions = hasQuery && !selectionFull && !suggestionsDismissed;
 
   $: if (query !== lastQuery) {
     lastQuery = query;
@@ -84,7 +87,7 @@
     activeSuggestionIndex = Math.max(0, optionCount - 1);
   }
 
-  $: if (useFloatingDropdown && hasQuery && !selectionFull) {
+  $: if (useFloatingDropdown && showSuggestions) {
     void scheduleFloatingDropdownUpdate();
   }
 
@@ -114,6 +117,9 @@
   }
 
   function setQuery(value: string) {
+    if (value !== query) {
+      dismissedQueryAfterSelect = '';
+    }
     query = value;
     const detail = { query };
     dispatch('query', detail);
@@ -217,6 +223,8 @@
     onselect?.(detail);
     if (clearQueryOnSelect) {
       setQuery('');
+    } else {
+      dismissedQueryAfterSelect = query;
     }
   }
 
@@ -250,6 +258,11 @@
   function handleKeydown(event: KeyboardEvent) {
     if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && hasQuery && !selectionFull) {
       event.preventDefault();
+      if (suggestionsDismissed) {
+        dismissedQueryAfterSelect = '';
+        void scheduleFloatingDropdownUpdate();
+        return;
+      }
       if (!optionCount) {
         return;
       }
@@ -262,6 +275,9 @@
 
     if (event.key === 'Enter') {
       event.preventDefault();
+      if (suggestionsDismissed) {
+        return;
+      }
       if (hasCreateOption && activeSuggestionIndex === 0) {
         createMove();
         return;
@@ -349,7 +365,7 @@
         onkeydown={handleKeydown}
       />
     {/if}
-    {#if hasQuery && !selectionFull}
+    {#if showSuggestions}
       <div
         class="move-picker-dropdown"
         class:move-picker-dropdown-floating={useFloatingDropdown}
