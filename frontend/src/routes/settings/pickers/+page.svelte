@@ -16,7 +16,6 @@
     query: string;
     selectedIds: string[];
     createdValues: string[];
-    browsedValue?: string;
     lastAction: string;
   };
 
@@ -33,20 +32,6 @@
   };
 
   const templates: EntityPickerTemplate[] = [
-    {
-      key: 'browse',
-      kind: 'searchable',
-      mode: 'browse',
-      createPolicy: 'none',
-      valueSource: 'id',
-      density: 'default',
-      title: 'Browse dancers',
-      description: 'Search-only picker for navigation lists and sidebars.',
-      placeholder: 'Search dancers',
-      addPlaceholder: 'Search dancers',
-      ariaLabel: 'Search dancers',
-      limit: 24
-    },
     {
       key: 'filter',
       kind: 'searchable',
@@ -202,12 +187,6 @@
   }
 
   let pickerStates: Record<string, PickerState> = {
-    browse: {
-      query: '',
-      selectedIds: [],
-      createdValues: [],
-      lastAction: 'Ready'
-    },
     filter: {
       query: '',
       selectedIds: dancerOptions[0] ? [dancerOptions[0].id] : [],
@@ -241,7 +220,7 @@
   };
 
   function optionsFor(template: EntityPickerTemplate, state: PickerState) {
-    if (template.key === 'browse' || template.key === 'filter') return mergeCreatedSearchOptions(dancerOptions, state.createdValues);
+    if (template.key === 'filter') return mergeCreatedSearchOptions(dancerOptions, state.createdValues);
     if (template.key === 'family') return mergeCreatedSearchOptions(familyOptions, state.createdValues);
     if (template.key === 'tags') return mergeCreatedSearchOptions(tagOptions, state.createdValues);
     if (template.key === 'position') return positionOptions;
@@ -283,13 +262,6 @@
   function selectValue(key: string, value: string) {
     const state = stateFor(key);
     const template = templates.find((candidate) => candidate.key === key);
-    if (template?.mode === 'browse') {
-      updateState(key, {
-        browsedValue: value,
-        lastAction: `Browsed ${labelFor(template, state, value)}`
-      });
-      return;
-    }
 
     if (state.selectedIds.includes(value)) {
       return;
@@ -367,14 +339,8 @@
 
         <div class="picker-lab-state">
           <div>
-            <span class="picker-lab-state-label">{template.mode === 'browse' ? 'Browsed' : 'Selected'}</span>
-            <p>
-              {#if template.mode === 'browse'}
-                {state.browsedValue ? labelFor(template, state, state.browsedValue) : 'Nothing browsed yet'}
-              {:else}
-                {state.selectedIds.length ? state.selectedIds.map((value) => labelFor(template, state, value)).join(', ') : 'Nothing selected'}
-              {/if}
-            </p>
+            <span class="picker-lab-state-label">Selected</span>
+            <p>{state.selectedIds.length ? state.selectedIds.map((value) => labelFor(template, state, value)).join(', ') : 'Nothing selected'}</p>
           </div>
           <div>
             <span class="picker-lab-state-label">Created on page</span>
