@@ -19,7 +19,7 @@ The source of truth for video relationships is the media catalog tables in the a
 DATA_DIR/app-state.sqlite
 ```
 
-`DATA_DIR/video-library.json` is a one-time bootstrap seed and backup/export artifact. After the first successful SQLite bootstrap, it is not a live-edited catalog and changes to that JSON file are not picked up by ordinary media reads.
+`DATA_DIR/bootstrap/app-state/video-library.json` is a one-time bootstrap seed. After the first successful SQLite bootstrap, it is not a live-edited catalog and changes to that JSON file are not picked up by ordinary media reads.
 
 The exported move data still defines the encyclopedia. The video catalog only defines media assets, move-to-video links, and clip definitions.
 
@@ -45,18 +45,18 @@ In the live Unraid setup the repo is mounted once at `/server/live`. All video p
 
 | Purpose | Env var | Container path | Host path |
 | --- | --- | --- | --- |
-| App-managed SQLite/JSON state | `DATA_DIR` | `/server/live/migration-data` | `/mnt/user/fastdata/server/salsasite-dev/migration-data` |
-| Playable move clips | `MEDIA_ROOT` | `/server/live/video-moves` | `/mnt/user/fastdata/server/salsasite-dev/video-moves` |
-| Uploaded source videos | `SOURCE_ROOT` | `/server/live/video-sources` | `/mnt/user/fastdata/server/salsasite-dev/video-sources` |
-| Poster images | `POSTER_ROOT` | `/server/live/video-posters` | `/mnt/user/fastdata/server/salsasite-dev/video-posters` |
+| App-managed SQLite state and bootstrap seeds | `DATA_DIR` | `/server/live/data/live` | `/mnt/user/fastdata/server/salsasite-dev/data/live` |
+| Playable move clips | `MEDIA_ROOT` | `/server/live/data/live/media/video-moves` | `/mnt/user/fastdata/server/salsasite-dev/data/live/media/video-moves` |
+| Uploaded source videos | `SOURCE_ROOT` | `/server/live/data/live/media/video-sources` | `/mnt/user/fastdata/server/salsasite-dev/data/live/media/video-sources` |
+| Poster images | `POSTER_ROOT` | `/server/live/data/live/media/video-posters` | `/mnt/user/fastdata/server/salsasite-dev/data/live/media/video-posters` |
 
 The live container command should include:
 
 ```sh
--e DATA_DIR=/server/live/migration-data \
--e MEDIA_ROOT=/server/live/video-moves \
--e SOURCE_ROOT=/server/live/video-sources \
--e POSTER_ROOT=/server/live/video-posters \
+-e DATA_DIR=/server/live/data/live \
+-e MEDIA_ROOT=/server/live/data/live/media/video-moves \
+-e SOURCE_ROOT=/server/live/data/live/media/video-sources \
+-e POSTER_ROOT=/server/live/data/live/media/video-posters \
 -v /mnt/user/fastdata/server/salsasite-dev:/server/live
 ```
 
@@ -64,7 +64,7 @@ The dev image includes `ffmpeg`. Rendering clips and generating posters should n
 
 ## Catalog Model
 
-The SQLite media catalog represents the same three logical collections that the legacy `video-library.json` seed contains.
+The SQLite media catalog represents the same three logical collections that the legacy `bootstrap/app-state/video-library.json` seed contains.
 
 | Array | Purpose |
 | --- | --- |
@@ -369,8 +369,8 @@ Bulk-generate move posters on Unraid:
 
 ```sh
 docker exec salsasite-dev bash /server/live/scripts/generate_video_posters.sh \
-  /server/live/video-moves \
-  /server/live/video-posters/video-moves \
+  /server/live/data/live/media/video-moves \
+  /server/live/data/live/media/video-posters/video-moves \
   1.0
 ```
 
@@ -378,8 +378,8 @@ Bulk-generate source posters on Unraid:
 
 ```sh
 docker exec salsasite-dev bash /server/live/scripts/generate_video_posters.sh \
-  /server/live/video-sources \
-  /server/live/video-posters/video-sources \
+  /server/live/data/live/media/video-sources \
+  /server/live/data/live/media/video-posters/video-sources \
   1.0
 ```
 
@@ -498,17 +498,17 @@ Confirm the single live mount exists:
 Confirm env vars point inside `/server/live`:
 
 ```text
-DATA_DIR=/server/live/migration-data
-MEDIA_ROOT=/server/live/video-moves
-SOURCE_ROOT=/server/live/video-sources
-POSTER_ROOT=/server/live/video-posters
+DATA_DIR=/server/live/data/live
+MEDIA_ROOT=/server/live/data/live/media/video-moves
+SOURCE_ROOT=/server/live/data/live/media/video-sources
+POSTER_ROOT=/server/live/data/live/media/video-posters
 ```
 
 ## Important Files
 
 | File | Purpose |
 | --- | --- |
-| `frontend/src/lib/server/media-catalog.ts` | SQLite media catalog persistence, legacy `video-library.json` bootstrap, normalization, and serialized writes. |
+| `frontend/src/lib/server/media-catalog.ts` | SQLite media catalog persistence, legacy `bootstrap/app-state/video-library.json` bootstrap, normalization, and serialized writes. |
 | `frontend/src/lib/server/media-source-service.ts` | Source upload, metadata update, delete/restore, duplicate cleanup, and source hash workflows. |
 | `frontend/src/lib/server/media-clip-service.ts` | Clip save, key-video update, publication, display-ID rename, and clip catalog mutation workflows. |
 | `frontend/src/lib/server/media-render-service.ts` | Clip render queueing, ffmpeg orchestration, render file actions, obsolete render cleanup, and render status mutation. |
@@ -532,7 +532,7 @@ POSTER_ROOT=/server/live/video-posters
 
 Media routes should import server media APIs through `frontend/src/lib/server/video-library.ts`. That file is a compatibility facade and should remain re-export-only.
 
-Media domain modules must not import the `video-library.ts` facade. They should import the specific peer service or lower-level module they need. `media-catalog.ts` owns SQLite catalog persistence and the one-time legacy JSON bootstrap; source, clip, render, bootstrap, repair, read-model, and job services own their named workflow areas; `media-manager.ts` owns durable media jobs and file-action rows.
+Media domain modules must not import the `video-library.ts` facade. They should import the specific peer service or lower-level module they need. `media-catalog.ts` owns SQLite catalog persistence and the one-time `data/live/bootstrap/app-state/video-library.json` seed import; source, clip, render, bootstrap, repair, read-model, and job services own their named workflow areas; `media-manager.ts` owns durable media jobs and file-action rows.
 
 Ordinary page/API read models must use the no-write media catalog path. Legacy bootstrap and repair routines that can mutate the SQLite media catalog must be invoked explicitly through the media repair service or the compatibility bootstrap repair path, not hidden inside read-model assembly. The compatibility `getVideoLibrary(moves)` export preserves the existing repair-capable behavior for callers that intentionally need it, while `readVideoLibrary()` is the side-effect-free catalog read.
 

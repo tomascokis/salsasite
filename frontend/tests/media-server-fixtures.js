@@ -5,6 +5,8 @@ import path from 'node:path';
 export async function setupMediaTestEnvironment(testName) {
   const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), `salsa-${testName}-`));
   const dataDir = path.join(tempRoot, 'data');
+  const appStateBootstrapDir = path.join(dataDir, 'bootstrap', 'app-state');
+  const catalogBootstrapDir = path.join(dataDir, 'bootstrap', 'catalog');
   const mediaRoot = path.join(tempRoot, 'video-moves');
   const sourceRoot = path.join(tempRoot, 'video-sources');
   const posterRoot = path.join(tempRoot, 'video-posters');
@@ -14,15 +16,23 @@ export async function setupMediaTestEnvironment(testName) {
   process.env.SOURCE_ROOT = sourceRoot;
   process.env.POSTER_ROOT = posterRoot;
 
-  await Promise.all([fs.mkdir(dataDir), fs.mkdir(mediaRoot), fs.mkdir(sourceRoot), fs.mkdir(posterRoot)]);
+  await Promise.all([
+    fs.mkdir(appStateBootstrapDir, { recursive: true }),
+    fs.mkdir(catalogBootstrapDir, { recursive: true }),
+    fs.mkdir(mediaRoot),
+    fs.mkdir(sourceRoot),
+    fs.mkdir(posterRoot)
+  ]);
 
   return {
     tempRoot,
     dataDir,
+    appStateBootstrapDir,
+    catalogBootstrapDir,
     mediaRoot,
     sourceRoot,
     posterRoot,
-    libraryPath: path.join(dataDir, 'video-library.json')
+    libraryPath: path.join(appStateBootstrapDir, 'video-library.json')
   };
 }
 

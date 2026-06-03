@@ -45,12 +45,12 @@ Thumbs.db
 .cache/
 cache/
 videomoves/
-migration-data/app-state.sqlite*
+data/live/app-state.sqlite*
 
 # Local media libraries
-video-moves/
-video-posters/
-video-sources/
+data/live/media/
+data/live/media-trash/
+data/live/media-catalog-exports/
 
 # Node modules (if needed for npm packages)
 node_modules/

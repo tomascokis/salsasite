@@ -8,6 +8,7 @@ import path from 'node:path';
 
 const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'salsa-media-manager-'));
 const dataDir = path.join(tempRoot, 'data');
+const appStateBootstrapDir = path.join(dataDir, 'bootstrap', 'app-state');
 const mediaRoot = path.join(tempRoot, 'video-moves');
 const sourceRoot = path.join(tempRoot, 'video-sources');
 const posterRoot = path.join(tempRoot, 'video-posters');
@@ -17,7 +18,12 @@ process.env.MEDIA_ROOT = mediaRoot;
 process.env.SOURCE_ROOT = sourceRoot;
 process.env.POSTER_ROOT = posterRoot;
 
-await Promise.all([fs.mkdir(dataDir), fs.mkdir(mediaRoot), fs.mkdir(sourceRoot), fs.mkdir(posterRoot)]);
+await Promise.all([
+  fs.mkdir(appStateBootstrapDir, { recursive: true }),
+  fs.mkdir(mediaRoot),
+  fs.mkdir(sourceRoot),
+  fs.mkdir(posterRoot)
+]);
 
 test.after(async () => {
   await fs.rm(tempRoot, { recursive: true, force: true });
@@ -103,7 +109,7 @@ test('media manager records managed trash, rename, and temp delete file actions'
 });
 
 test('source delete records media actions and history undo restores catalog and files', async () => {
-  const libraryPath = path.join(dataDir, 'video-library.json');
+  const libraryPath = path.join(appStateBootstrapDir, 'video-library.json');
   const sourceFile = path.join(sourceRoot, 'source.mp4');
   const paddedFile = path.join(mediaRoot, 'RT000001 Source Clip abcdef12.mp4');
   const actionFile = path.join(mediaRoot, 'RT000001 Source Clip abcdef12 action.mp4');

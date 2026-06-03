@@ -1,10 +1,10 @@
 {
   "generatedAt": "2026-05-17T02:21:21Z",
   "source": {
-    "rawMoveReference": "data_reference.xlsx",
-    "moves": "data/dt_pw.RDS",
-    "layout": "data/dt_pw_lay.RDS",
-    "progress": "inputs/progress.RDS",
+    "rawMoveReference": "data/legacy/reference/data_reference.xlsx",
+    "moves": "data/legacy/rds/dt_pw.RDS",
+    "layout": "data/legacy/rds/dt_pw_lay.RDS",
+    "progress": "data/legacy/rds/progress.RDS",
     "localVideoDirectory": "videomoves",
     "visualReference": "_site_reference"
   },

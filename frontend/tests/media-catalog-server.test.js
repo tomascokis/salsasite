@@ -96,7 +96,7 @@ test('media catalog repository bootstraps JSON into SQLite and treats SQLite as 
   assert.equal(normalized.derivedClips[0].moveId, 'RT000001');
   assert.equal(normalized.derivedClips[0].countMarkers[0].ms, 1200);
   assert.deepEqual(normalized.derivedClips[0].cropRect, { x: 0.1, y: 0.2, width: 0.7, height: 0.6 });
-  assert.equal(await exists(path.join(env.dataDir, 'video-library.backup-before-sqlite.json')), true);
+  assert.equal(await exists(path.join(env.dataDir, 'video-library.backup-before-sqlite.json')), false);
 
   const meta = getAppDatabase().prepare('SELECT value FROM app_state_meta WHERE key = ?').get('media_catalog_sqlite_v1');
   assert.equal(meta.value, 'complete');

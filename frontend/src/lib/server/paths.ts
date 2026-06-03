@@ -1,23 +1,63 @@
 import path from 'node:path';
+import fs from 'node:fs';
 
 export const LEGACY_MOVE_VIDEO_PREFIX = 'videomoves';
 export const MOVE_VIDEO_PREFIX = 'video-moves';
 export const SOURCE_VIDEO_PREFIX = 'video-sources';
 
+function resolveMaybeUpgradedPath(
+  configuredPath: string | undefined,
+  defaultPath: string,
+  upgradedFromLegacyParent: string,
+  legacyBasename: string
+) {
+  const configured = configuredPath ? path.resolve(process.cwd(), configuredPath) : path.resolve(process.cwd(), defaultPath);
+  if (configuredPath && path.basename(configured) === legacyBasename) {
+    const upgraded = path.join(path.dirname(configured), upgradedFromLegacyParent);
+    if (fs.existsSync(upgraded)) {
+      return upgraded;
+    }
+  }
+  return configured;
+}
+
 export function resolveDataDir() {
-  return path.resolve(process.cwd(), process.env.DATA_DIR ?? '../migration-data');
+  return resolveMaybeUpgradedPath(process.env.DATA_DIR, '../data/live', path.join('data', 'live'), 'migration-data');
+}
+
+export function resolveCatalogBootstrapDir() {
+  return path.join(resolveDataDir(), 'bootstrap', 'catalog');
+}
+
+export function resolveAppStateBootstrapDir() {
+  return path.join(resolveDataDir(), 'bootstrap', 'app-state');
 }
 
 export function resolveMediaRoot() {
-  return path.resolve(process.cwd(), process.env.MEDIA_ROOT ?? '../video-moves');
+  return resolveMaybeUpgradedPath(
+    process.env.MEDIA_ROOT,
+    '../data/live/media/video-moves',
+    path.join('data', 'live', 'media', 'video-moves'),
+    'video-moves'
+  );
 }
 
 export function resolveSourceRoot() {
-  return path.resolve(process.cwd(), process.env.SOURCE_ROOT ?? '../video-sources');
+  return resolveMaybeUpgradedPath(
+    process.env.SOURCE_ROOT,
+    '../data/live/media/video-sources',
+    path.join('data', 'live', 'media', 'video-sources'),
+    'video-sources'
+  );
 }
 
 export function resolvePosterRoot() {
-  return path.resolve(process.cwd(), process.env.POSTER_ROOT ?? '../video-posters');
+  return resolveMaybeUpgradedPath(
+    process.env.POSTER_ROOT,
+    '../data/live/media/video-posters',
+    path.join('data', 'live', 'media', 'video-posters'),
+    'video-posters'
+  );
 }
 
 export function resolvePathInsideRoot(root: string, relativePath: string) {

@@ -22,18 +22,18 @@ ENV PORT=3000
 ENV HOST=0.0.0.0
 ENV ORIGIN=http://localhost:3000
 ENV LIVE_ROOT=/server/live
-ENV DATA_DIR=/server/live/migration-data
-ENV MEDIA_ROOT=/server/live/video-moves
-ENV SOURCE_ROOT=/server/live/video-sources
-ENV POSTER_ROOT=/server/live/video-posters
+ENV DATA_DIR=/server/live/data/live
+ENV MEDIA_ROOT=/server/live/data/live/media/video-moves
+ENV SOURCE_ROOT=/server/live/data/live/media/video-sources
+ENV POSTER_ROOT=/server/live/data/live/media/video-posters
 
 COPY --from=build /app/frontend/build ./build
 COPY --from=build /app/frontend/node_modules ./node_modules
 COPY docker/start.sh /start.sh
 
-RUN mkdir -p /server/live/video-moves \
-  /server/live/video-sources \
-  /server/live/video-posters \
+RUN mkdir -p /server/live/data/live/media/video-moves \
+  /server/live/data/live/media/video-sources \
+  /server/live/data/live/media/video-posters \
   && chmod +x /start.sh
 
 EXPOSE 3000

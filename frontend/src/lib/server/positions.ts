@@ -1,38 +1,22 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import type { MoveRecord, PositionOption } from '$lib/types';
 import { derivePositionOptions } from '$lib/video-library-utils';
-import { resolveDataDir } from './paths';
+import { getAppDatabase } from './app-state';
 
 type PositionStore = {
-  version: 1;
   positions: Array<{ id?: string; label?: string; name?: string } | string>;
 };
 
-const STORE_FILENAME = 'positions.json';
-
-function storePath() {
-  return path.join(resolveDataDir(), STORE_FILENAME);
-}
-
-async function readStore(): Promise<PositionStore> {
-  try {
-    const contents = await fs.readFile(storePath(), 'utf-8');
-    const parsed = JSON.parse(contents) as Partial<PositionStore>;
-    return {
-      version: 1,
-      positions: Array.isArray(parsed.positions) ? parsed.positions : []
-    };
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return { version: 1, positions: [] };
-    }
-    throw error;
-  }
+function readStore(): PositionStore {
+  const rows = getAppDatabase()
+    .prepare('SELECT id, label FROM position_options ORDER BY sort_order, label')
+    .all() as Array<{ id: string; label: string }>;
+  return {
+    positions: rows.map((row) => ({ id: row.id, label: row.label }))
+  };
 }
 
 export async function getPositionOptions(moves: MoveRecord[]): Promise<PositionOption[]> {
-  const store = await readStore();
+  const store = readStore();
   return derivePositionOptions(moves, store.positions) as PositionOption[];
 }
 

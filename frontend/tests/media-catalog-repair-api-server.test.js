@@ -64,7 +64,7 @@ function move(overrides = {}) {
 
 test('media jobs API scans and runs catalog repairs through existing endpoint', async () => {
   const testMove = move();
-  await fs.writeFile(path.join(env.dataDir, 'moves.json'), `${JSON.stringify([testMove], null, 2)}\n`);
+  await fs.writeFile(path.join(env.catalogBootstrapDir, 'moves.json'), `${JSON.stringify([testMove], null, 2)}\n`);
 
   await writeLibrary(env.libraryPath, {
     videoAssets: [],

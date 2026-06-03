@@ -49,23 +49,23 @@ The retired static output previously checked in under `_site_reference` mapped c
 The existing site already exposes the right entities:
 
 - `moves`:
-  Core move records from `data/dt_pw.RDS`
+  Core move records from `data/legacy/rds/dt_pw.RDS`
 - `layout`:
-  Column and ordering data from `data/dt_pw_lay.RDS`
+  Column and ordering data from `data/legacy/rds/dt_pw_lay.RDS`
 - `progress_entries`:
-  Per-date per-move progress records from `inputs/progress.RDS`
+  Per-date per-move progress records from `data/legacy/rds/progress.RDS`
 
 There is now also a raw workbook reference:
 
-- `data_reference.xlsx`:
+- `data/legacy/reference/data_reference.xlsx`:
   `595` move IDs, matching `dt_pw.RDS`, with additional source columns such as parent/addition relationships, family/blend metadata, alternative names, tracking flags, and notes
 
 Recommendation:
 
-- Treat `data_reference.xlsx` as the canonical move-catalogue source for the rewrite.
+- Treat `data/legacy/reference/data_reference.xlsx` as the canonical move-catalogue source for the rewrite.
 - Treat `dt_pw_lay.RDS` as the current canonical layout source.
-- Treat `inputs/progress.RDS` as the current canonical progress source.
-- Treat local files in `videomoves/` as the primary move-media source.
+- Treat `data/legacy/rds/progress.RDS` as the current canonical progress source.
+- Treat local files in `data/live/media/video-moves/` as the primary move-media source.
 - Treat Dropbox links as optional legacy metadata only.
 
 Suggested phase 1 backend tables:
@@ -127,10 +127,10 @@ Do not start by scraping retired static HTML output.
 
 Use historical static output only as background context when available, and build the app from structured data artifacts such as:
 
-- `data_reference.xlsx`
-- `data/dt_pw.RDS`
-- `data/dt_pw_lay.RDS`
-- `inputs/progress.RDS`
+- `data/legacy/reference/data_reference.xlsx`
+- `data/legacy/rds/dt_pw.RDS`
+- `data/legacy/rds/dt_pw_lay.RDS`
+- `data/legacy/rds/progress.RDS`
 
 That gives you:
 
@@ -141,4 +141,4 @@ That gives you:
 
 ## Current Data Handoff
 
-The legacy R/Quarto source pipeline has been retired. The checked-in `migration-data/*.json` files, preserved RDS/XLSX artifacts, and SQLite state under `DATA_DIR/app-state.sqlite` are the current data handoff and live-edit persistence layers. Future refresh work should use app-native import/export tooling or a newly documented migration utility, not removed R/Quarto scripts.
+The legacy R/Quarto source pipeline has been retired. The checked-in `data/live/bootstrap/**/*.json` files and preserved RDS/XLSX artifacts are first-run/reference inputs, while SQLite state under `DATA_DIR/app-state.sqlite` is the live-edit persistence layer. Future refresh work should use app-native import/export tooling or a newly documented migration utility, not removed R/Quarto scripts.

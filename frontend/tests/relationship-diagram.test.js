@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import moves from '../../migration-data/moves.json' with { type: 'json' };
+import moves from '../../data/live/bootstrap/catalog/moves.json' with { type: 'json' };
 import {
   buildRelationshipDiagram,
   buildRelationshipDot,

@@ -35,10 +35,10 @@ docker run -d \
   -p 18096:5173 \
   -e HOST=0.0.0.0 \
   -e PORT=5173 \
-  -e DATA_DIR=/server/live/migration-data \
-  -e MEDIA_ROOT=/server/live/video-moves \
-  -e SOURCE_ROOT=/server/live/video-sources \
-  -e POSTER_ROOT=/server/live/video-posters \
+  -e DATA_DIR=/server/live/data/live \
+  -e MEDIA_ROOT=/server/live/data/live/media/video-moves \
+  -e SOURCE_ROOT=/server/live/data/live/media/video-sources \
+  -e POSTER_ROOT=/server/live/data/live/media/video-posters \
   -e LIVE_ROOT=/server/live \
   -e CHOKIDAR_USEPOLLING=true \
   -v /mnt/user/fastdata/server/salsasite-dev:/server/live \
@@ -73,8 +73,8 @@ To backfill posters for existing move videos:
 
 ```sh
 docker exec salsasite-dev bash /server/live/scripts/generate_video_posters.sh \
-  /server/live/video-moves \
-  /server/live/video-posters/video-moves \
+  /server/live/data/live/media/video-moves \
+  /server/live/data/live/media/video-posters/video-moves \
   1.0
 ```
 
@@ -82,8 +82,8 @@ To backfill posters for uploaded source videos:
 
 ```sh
 docker exec salsasite-dev bash /server/live/scripts/generate_video_posters.sh \
-  /server/live/video-sources \
-  /server/live/video-posters/video-sources \
+  /server/live/data/live/media/video-sources \
+  /server/live/data/live/media/video-posters/video-sources \
   1.0
 ```
 
@@ -105,10 +105,10 @@ docker run -d \
   -e PORT=3000 \
   -e HOST=0.0.0.0 \
   -e ORIGIN=http://192.168.0.127:18096 \
-  -e DATA_DIR=/server/live/migration-data \
-  -e MEDIA_ROOT=/server/live/video-moves \
-  -e SOURCE_ROOT=/server/live/video-sources \
-  -e POSTER_ROOT=/server/live/video-posters \
+  -e DATA_DIR=/server/live/data/live \
+  -e MEDIA_ROOT=/server/live/data/live/media/video-moves \
+  -e SOURCE_ROOT=/server/live/data/live/media/video-sources \
+  -e POSTER_ROOT=/server/live/data/live/media/video-posters \
   -e NODE_ENV=production \
   -v /mnt/user/fastdata/server/salsasite-dev:/server/live \
   salsasite-dev:latest

@@ -17,11 +17,11 @@ Main files:
 
 - Port: `3000`
 - Recommended live mount root in container: `/server/live`
-- Data directory in container: `/server/live/migration-data`
-- Move video directory in container: `/server/live/video-moves`
-- Source video directory in container: `/server/live/video-sources`
-- Poster directory in container: `/server/live/video-posters`
-- SQLite app state: `/server/live/migration-data/app-state.sqlite`
+- Data directory in container: `/server/live/data/live`
+- Move video directory in container: `/server/live/data/live/media/video-moves`
+- Source video directory in container: `/server/live/data/live/media/video-sources`
+- Poster directory in container: `/server/live/data/live/media/video-posters`
+- SQLite app state: `/server/live/data/live/app-state.sqlite`
 
 For the full video catalog, upload, clip-render, and poster workflow, see [docs/video-library.md](/Volumes/fastdata/server/salsasite-dev/docs/video-library.md).
 
@@ -40,10 +40,10 @@ Recommended environment:
 - `PORT=3000`
 - `HOST=0.0.0.0`
 - `ORIGIN=http://your-unraid-host:3000`
-- `DATA_DIR=/server/live/migration-data`
-- `MEDIA_ROOT=/server/live/video-moves`
-- `SOURCE_ROOT=/server/live/video-sources`
-- `POSTER_ROOT=/server/live/video-posters`
+- `DATA_DIR=/server/live/data/live`
+- `MEDIA_ROOT=/server/live/data/live/media/video-moves`
+- `SOURCE_ROOT=/server/live/data/live/media/video-sources`
+- `POSTER_ROOT=/server/live/data/live/media/video-posters`
 - Optional: `POSTER_TIMESTAMP_SECONDS=1.0`
 
 ## Data refresh workflow
@@ -56,7 +56,7 @@ When workbook-derived reference data changes, regenerate the app-native workbook
 /Users/tomascokis/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/export_data_reference.py
 ```
 
-The other checked-in `migration-data/*.json` files are bootstrap artifacts for the current SvelteKit/SQLite app. Future refresh workflows for those artifacts should use app-native import/export tooling or a newly documented migration utility, not the removed R/Quarto scripts.
+The checked-in `data/live/bootstrap/**/*.json` files are first-run seed artifacts for the current SvelteKit/SQLite app. SQLite under `data/live/app-state.sqlite` is the live app data store after bootstrap.
 
 With the live-mounted setup, changes under `/mnt/user/fastdata/server/salsasite-dev` are read directly from the share. Rebuild only when the container dependencies or startup behavior change.
 

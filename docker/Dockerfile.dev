@@ -10,17 +10,17 @@ ENV NODE_ENV=development
 ENV HOST=0.0.0.0
 ENV PORT=5173
 ENV LIVE_ROOT=/server/live
-ENV DATA_DIR=/server/live/migration-data
-ENV MEDIA_ROOT=/server/live/video-moves
-ENV SOURCE_ROOT=/server/live/video-sources
-ENV POSTER_ROOT=/server/live/video-posters
+ENV DATA_DIR=/server/live/data/live
+ENV MEDIA_ROOT=/server/live/data/live/media/video-moves
+ENV SOURCE_ROOT=/server/live/data/live/media/video-sources
+ENV POSTER_ROOT=/server/live/data/live/media/video-posters
 ENV CHOKIDAR_USEPOLLING=true
 
 COPY docker/start-dev.sh /start-dev.sh
 
-RUN mkdir -p /server/live/video-moves \
-  /server/live/video-sources \
-  /server/live/video-posters \
+RUN mkdir -p /server/live/data/live/media/video-moves \
+  /server/live/data/live/media/video-sources \
+  /server/live/data/live/media/video-posters \
   && chmod +x /start-dev.sh
 
 EXPOSE 5173

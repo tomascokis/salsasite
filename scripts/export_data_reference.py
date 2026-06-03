@@ -9,10 +9,9 @@ from openpyxl import load_workbook
 
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKBOOK_PATH = ROOT / "data_reference.xlsx"
-OUTPUT_DIR = ROOT / "migration-data"
+WORKBOOK_PATH = ROOT / "data" / "legacy" / "reference" / "data_reference.xlsx"
+OUTPUT_DIR = ROOT / "data" / "live" / "bootstrap" / "catalog"
 RAW_MOVES_PATH = OUTPUT_DIR / "raw-moves.json"
-RAW_SCHEMA_PATH = OUTPUT_DIR / "raw-moves-schema.json"
 
 
 def normalize_header(value: object, index: int) -> str:
@@ -65,18 +64,9 @@ def main() -> None:
             continue
         records.append(record)
 
-    schema = {
-        "source": WORKBOOK_PATH.name,
-        "sheet": sheet.title,
-        "rowCount": len(records),
-        "headers": headers,
-    }
-
     RAW_MOVES_PATH.write_text(json.dumps(records, indent=2, ensure_ascii=True), encoding="utf-8")
-    RAW_SCHEMA_PATH.write_text(json.dumps(schema, indent=2, ensure_ascii=True), encoding="utf-8")
 
     print(f"Wrote {RAW_MOVES_PATH.relative_to(ROOT)}")
-    print(f"Wrote {RAW_SCHEMA_PATH.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

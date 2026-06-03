@@ -1,5 +1,4 @@
 import fs from 'node:fs/promises';
-import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
@@ -26,6 +25,7 @@ import {
 } from '$lib/video-library-utils';
 import {
   normalizeManagedVideoPath,
+  resolveAppStateBootstrapDir,
   resolveDataDir,
   resolveMediaRoot,
   resolvePosterRoot,
@@ -34,7 +34,6 @@ import {
 import { getAppDatabase } from './app-state';
 
 const LIBRARY_FILENAME = 'video-library.json';
-const LIBRARY_BOOTSTRAP_BACKUP_FILENAME = 'video-library.backup-before-sqlite.json';
 const LIBRARY_EXPORT_DIRNAME = 'media-catalog-exports';
 const SQLITE_BOOTSTRAP_META_KEY = 'media_catalog_sqlite_v1';
 
@@ -52,11 +51,7 @@ function safeDisplayName(filename: string) {
 }
 
 function libraryFilePath() {
-  return path.join(resolveDataDir(), LIBRARY_FILENAME);
-}
-
-function libraryBootstrapBackupPath() {
-  return path.join(resolveDataDir(), LIBRARY_BOOTSTRAP_BACKUP_FILENAME);
+  return path.join(resolveAppStateBootstrapDir(), LIBRARY_FILENAME);
 }
 
 function mediaCatalogExportDir() {
@@ -625,15 +620,6 @@ async function ensureSqliteBootstrap() {
         }
 
         const seed = await readMediaCatalogFromJsonSeed();
-        if (seed.sourceExists && seed.sourceContents !== null) {
-          try {
-            await fs.copyFile(libraryFilePath(), libraryBootstrapBackupPath(), fsConstants.COPYFILE_EXCL);
-          } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
-              throw error;
-            }
-          }
-        }
 
         db.exec('BEGIN IMMEDIATE');
         try {

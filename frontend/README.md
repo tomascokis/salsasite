@@ -18,7 +18,7 @@ The preferred deployment is a live-mounted container, where the repo is bind-mou
 - `/progress/editor`
   Browser-side editing shell with CSV import/export and keyboard shortcuts
 - `/api/search`
-  Search endpoint backed by `migration-data/search-index.json`
+  Search endpoint built from the SQLite-backed move catalog
 - `/media/[...path]`
   Local media streaming route with byte-range support for videos
 
@@ -26,24 +26,23 @@ The preferred deployment is a live-mounted container, where the repo is bind-mou
 
 The app reads from:
 
-- `migration-data/manifest.json`
-- `migration-data/moves.json`
-- `migration-data/layout.json`
-- `migration-data/progress.json`
-- `migration-data/search-index.json`
-- `migration-data/raw-moves.json`
-- `migration-data/raw-moves-schema.json`
+- `data/live/app-state.sqlite`
+- `data/live/bootstrap/catalog/manifest.json`
+- `data/live/bootstrap/catalog/moves.json`
+- `data/live/bootstrap/catalog/layout.json`
+- `data/live/bootstrap/catalog/progress.json`
+- `data/live/bootstrap/catalog/raw-moves.json`
 
 At runtime the app expects:
 
 - `DATA_DIR`
-  Defaults to `../migration-data`
+  Defaults to `../data/live`
 - `MEDIA_ROOT`
-  Defaults to `../video-moves`
+  Defaults to `../data/live/media/video-moves`
 - `SOURCE_ROOT`
-  Defaults to `../video-sources`
+  Defaults to `../data/live/media/video-sources`
 - `POSTER_ROOT`
-  Defaults to `../video-posters`
+  Defaults to `../data/live/media/video-posters`
 - `POSTER_TIMESTAMP_SECONDS`
   Defaults to `1.0` and controls which frame is used when the server auto-generates a missing poster
 

@@ -9,10 +9,10 @@ services:
       PORT: 5173
       HOST: 0.0.0.0
       LIVE_ROOT: /server/live
-      DATA_DIR: /server/live/migration-data
-      MEDIA_ROOT: /server/live/video-moves
-      SOURCE_ROOT: /server/live/video-sources
-      POSTER_ROOT: /server/live/video-posters
+      DATA_DIR: /server/live/data/live
+      MEDIA_ROOT: /server/live/data/live/media/video-moves
+      SOURCE_ROOT: /server/live/data/live/media/video-sources
+      POSTER_ROOT: /server/live/data/live/media/video-posters
       CHOKIDAR_USEPOLLING: "true"
       NODE_ENV: development
     ports:

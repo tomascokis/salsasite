@@ -22,13 +22,13 @@ Media catalog reads are split from media catalog repair. Ordinary media read mod
 ## High-Level Architecture
 
 ```text
-Preserved legacy data / XLSX / local videos
+data/legacy reference inputs + data/live/bootstrap seeds + live media files
         |
-        | checked-in bootstrap contracts and live SQLite state
+        | first-run imports and live SQLite state
         v
-migration-data/*.json + DATA_DIR/app-state.sqlite
+data/live/app-state.sqlite
         |
-        | SvelteKit server loads JSON bootstrap data and SQLite stores
+        | SvelteKit server reads SQLite and configured media roots
         v
 SvelteKit routes, APIs, media streaming, clip rendering
         |
@@ -38,8 +38,8 @@ Browser UI
 
 Important directories:
 
-- `data/`: preserved legacy RDS data artifacts, including `data/legacy-site/` for the distinct RDS files formerly stored beside the Quarto source.
-- `migration-data/`: JSON bootstrap/export layer consumed by the SvelteKit app and live `DATA_DIR` for SQLite state in the current deployment.
+- `data/live/`: live SQLite state, bootstrap seeds, media roots, media trash, and media catalog exports.
+- `data/legacy/`: preserved non-runtime RDS/XLSX reference inputs.
 - `frontend/`: SvelteKit application.
 - `docker/`: Unraid-oriented container setup.
 - `docs/`: design notes, contracts, and deployment/workflow documentation.
@@ -48,28 +48,25 @@ Important directories:
 
 The historical R/Quarto source files have been removed from the active repository. The data they produced or informed is preserved as data/reference material:
 
-- `data/dt_pw.RDS` and `data/dt_pw_lay.RDS`: original move/layout RDS artifacts.
-- `data/legacy-site/dt_pw.RDS` and `data/legacy-site/dt_pw_lay.RDS`: distinct RDS artifacts formerly stored beside the Quarto source tree.
-- `data_reference.xlsx`: workbook-derived move reference data used by the app-native export helper.
-- `migration-data/*.json`: checked-in bootstrap contracts for the SvelteKit app and first-run SQLite imports.
+- `data/legacy/rds/dt_pw.RDS`, `dt_pw_lay.RDS`, and `progress.RDS`: preserved RDS source artifacts.
+- `data/legacy/reference/data_reference.xlsx`: workbook-derived move reference data used by the app-native export helper.
+- `data/live/bootstrap/**/*.json`: checked-in first-run SQLite seed contracts.
 
 R/Quarto is no longer expected to regenerate these artifacts. The checked-in `_site_reference/` static output has also been retired from the repository. Future data refresh work should use app-native import/export tooling or a newly documented migration utility.
 
 ## Data Bootstrap Layer
 
-`migration-data/` contains the checked-in bootstrap contracts consumed by the SvelteKit app and imported into SQLite-backed stores where applicable. These files are data artifacts, not an active R/Quarto export pipeline.
+`data/live/bootstrap/` contains checked-in bootstrap contracts imported into SQLite when the relevant tables are empty. These files are seed artifacts, not live stores and not an active R/Quarto export pipeline.
 
-Current exported files include:
+Current bootstrap files include:
 
-- `manifest.json`: generation metadata, source references, route map, and counts.
-- `moves.json`: normalized move records.
-- `layout.json`: overview/dashboard column layout.
-- `progress.json`: progress snapshots with summary counts and per-move scores.
-- `search-index.json`: app-native search index.
-- `raw-moves.json`: workbook-derived move reference data.
-- `raw-moves-schema.json`: schema information for raw move reference data.
-- `video-library.json`: legacy media catalog bootstrap seed and backup/export artifact.
-- `move-edits.json`: sidecar move overrides, created moves, and draft moves.
+- `bootstrap/catalog/manifest.json`: generation metadata, source references, route map, and counts.
+- `bootstrap/catalog/moves.json`: normalized move records.
+- `bootstrap/catalog/layout.json`: overview/dashboard column layout.
+- `bootstrap/catalog/progress.json`: progress snapshots with summary counts and per-move scores.
+- `bootstrap/catalog/raw-moves.json`: workbook-derived move reference data.
+- `bootstrap/app-state/video-library.json`: media catalog bootstrap seed.
+- `bootstrap/app-state/metadata.json`, `dancers.json`, and `move-edits.json`: editable app-state bootstrap seeds.
 - `app-state.sqlite`: live SQLite state for migrated data-only editing workflows, media catalog tables, media jobs, and action history.
 
 The current manifest reports 595 move rows, 12 layout columns, 7 progress snapshots, 540 trackable moves, and 59 moves with local video at export time.
@@ -80,12 +77,12 @@ The frontend app is in [frontend/](/Volumes/fastdata/server/salsasite-dev/fronte
 
 The app reads data from:
 
-- `DATA_DIR`, defaulting to `../migration-data`
-- `MEDIA_ROOT`, defaulting to `../video-moves`
-- `SOURCE_ROOT`, defaulting to `../video-sources`
-- `POSTER_ROOT`, defaulting to `../video-posters`
+- `DATA_DIR`, defaulting to `../data/live`
+- `MEDIA_ROOT`, defaulting to `../data/live/media/video-moves`
+- `SOURCE_ROOT`, defaulting to `../data/live/media/video-sources`
+- `POSTER_ROOT`, defaulting to `../data/live/media/video-posters`
 
-[frontend/src/lib/server/data.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/data.ts) is the central loader for manifest, moves, layout, progress, search index, and raw move data. It applies move edits from the sidecar store and resolves video availability through the video library at request time.
+[frontend/src/lib/server/data.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/data.ts) is the central loader for manifest, moves, layout, progress, search index, and raw move data. It reads the base catalog from SQLite, applies move edits from SQLite, and resolves video availability through the video library at request time.
 
 [frontend/src/lib/server/paths.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/paths.ts) normalizes legacy `videomoves/` paths into the modern `video-moves/` namespace and protects media path resolution from escaping configured roots.
 
@@ -115,13 +112,13 @@ Implemented user-facing routes:
 - `/settings`: badge color settings stored in browser local storage.
 - `/upload`: compatibility redirect area for older upload navigation.
 
-Overview-style pages use the live published move dataset at runtime. Published moves and published move edits must appear on the home overview and overview-derived topic/family pages without requiring a fresh `layout.json` or `search-index.json` export.
+Overview-style pages use the live published move dataset at runtime. Published moves and published move edits must appear on the home overview and overview-derived topic/family pages without requiring fresh bootstrap JSON.
 
 ## Move Model And Editing
 
 Core move data is represented by `MoveRecord` in [frontend/src/lib/types.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/types.ts). A move includes identity, topic/family grouping, level/type, positions, tags, description, source/authorship, comments, review fields, ordering/layout fields, relationship IDs, validity, and video references.
 
-The app treats the exported `moves.json` as the base catalog and layers local edits from SQLite state under `DATA_DIR/app-state.sqlite`. Existing JSON sidecars are used to bootstrap the SQLite store on first initialization.
+The app treats SQLite catalog tables as the base catalog and layers local edits from SQLite state under `DATA_DIR/app-state.sqlite`. Existing JSON files under `data/live/bootstrap/` are used only to bootstrap empty SQLite tables.
 
 [frontend/src/lib/server/move-editor.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/move-editor.ts) manages:
 
@@ -165,7 +162,7 @@ Posters are served from `POSTER_ROOT` and can be queued/generated for video asse
 
 ## Progress Tracking
 
-Progress data is loaded from `migration-data/progress.json`.
+Progress data is loaded from SQLite after first-run import from `data/live/bootstrap/catalog/progress.json`.
 
 The progress viewer builds snapshot views over the same layout as the overview page. Each tracked move shows three colored status dimensions:
 
@@ -185,7 +182,7 @@ It is designed to become API-backed later; current edits are not persisted serve
 
 ## Metadata
 
-[frontend/src/lib/server/metadata.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/metadata.ts) derives topics and families from moves and raw workbook references, then merges custom entries from SQLite state. Existing `migration-data/metadata.json` content is imported during first SQLite initialization.
+[frontend/src/lib/server/metadata.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/metadata.ts) derives topics and families from moves and raw workbook references, then merges custom entries from SQLite state. Existing `data/live/bootstrap/app-state/metadata.json` content is imported when SQLite metadata tables are empty.
 
 Metadata entries include names, slugs, descriptions, source type, timestamps, and move counts.
 
@@ -193,7 +190,7 @@ Topics and families have splash pages that reuse the overview renderer with a fi
 
 ## Dancers
 
-[frontend/src/lib/server/dancers.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/dancers.ts) derives dancer profiles from raw move references and video-library asset dancers, then merges custom dancer records from SQLite state. Existing `migration-data/dancers.json` content is imported during first SQLite initialization.
+[frontend/src/lib/server/dancers.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/dancers.ts) derives dancer profiles from raw move references and video-library asset dancers, then merges custom dancer records from SQLite state. Existing `data/live/bootstrap/app-state/dancers.json` content is imported when SQLite dancer tables are empty.
 
 Dancer profiles include:
 
@@ -212,7 +209,7 @@ The `/dancers` page provides a searchable list, profile view, and editable profi
 
 The app exposes JSON endpoints for live workflows:
 
-- `/api/search`: search over exported search index.
+- `/api/search`: search built from the SQLite-backed move catalog.
 - `/api/moves/[...id]`: save published move edits.
 - `/api/moves/create`: save drafts, create drafts from names, and publish drafts.
 - `/api/metadata`: save topic/family metadata.
@@ -246,7 +243,7 @@ Status and badge language is intended to stay shared across move pages, media br
 
 ## Action History
 
-[frontend/src/lib/server/app-state.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/app-state.ts) owns the SQLite database and bootstraps migrated data-only stores from JSON sidecars. [frontend/src/lib/server/history.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/history.ts) lists and undoes supported actions.
+[frontend/src/lib/server/app-state.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/app-state.ts) owns the SQLite database and bootstraps empty tables from `data/live/bootstrap/` seed files. [frontend/src/lib/server/history.ts](/Volumes/fastdata/server/salsasite-dev/frontend/src/lib/server/history.ts) lists and undoes supported actions.
 
 The current undo-capable slice covers metadata entries, dancer profiles/deleted-profile markers, move drafts, published move edit overrides, and managed source-video deletes. Managed source-video delete undo depends on the media manager trash entries still existing under `DATA_DIR/media-trash/<job-id>/`. Source upload/update, clip save/key-video changes, clip render queueing, and clip publishing are audit-only action-history rows. Draft publishing actions are recorded but not undoable yet because they may involve media relinks. Poster generation, source hash backfill, generated cleanup, media job retry, and managed media renames are observable through media-manager jobs where applicable, but they are not user-history undo actions in this slice.
 
@@ -258,10 +255,10 @@ The current compose file maps:
 
 - Host repo root to `/server/live`
 - Container port `5173` to host port `18096`
-- `DATA_DIR=/server/live/migration-data`
-- `MEDIA_ROOT=/server/live/video-moves`
-- `SOURCE_ROOT=/server/live/video-sources`
-- `POSTER_ROOT=/server/live/video-posters`
+- `DATA_DIR=/server/live/data/live`
+- `MEDIA_ROOT=/server/live/data/live/media/video-moves`
+- `SOURCE_ROOT=/server/live/data/live/media/video-sources`
+- `POSTER_ROOT=/server/live/data/live/media/video-posters`
 
 For browser verification from this checkout, use `http://192.168.0.127:18096`.
 

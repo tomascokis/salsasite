@@ -1,37 +1,100 @@
-import fs from 'node:fs/promises';
 import type {
   LayoutColumn,
   MoveRecord,
   ProgressSnapshot,
   RawMoveReferenceRecord,
-  SearchIndexEntry,
   SiteManifest
 } from '$lib/types';
 import { buildResolvedMoveVideoMetadataIndex } from './video-library';
 import { resolveDataDir, resolveMediaRoot, resolvePosterRoot, resolveSourceRoot } from './paths';
 import { applyMoveEditStore } from './move-editor';
 import { buildOverviewLayout, buildOverviewSearchIndex } from './overview.js';
+import { getAppDatabase } from './app-state';
 
-type JsonCache = {
+type CatalogCache = {
   manifest?: SiteManifest;
   moves?: MoveRecord[];
   layout?: LayoutColumn[];
   progress?: ProgressSnapshot[];
-  search?: SearchIndexEntry[];
   rawMoves?: RawMoveReferenceRecord[];
 };
 
-const cache: JsonCache = {};
+type DatabaseRow = Record<string, unknown>;
+
+const cache: CatalogCache = {};
 export { resolveDataDir, resolveMediaRoot, resolvePosterRoot, resolveSourceRoot } from './paths';
 
-async function readJsonFile<T>(filename: string): Promise<T> {
-  const fullPath = `${resolveDataDir()}/${filename}`;
-  const contents = await fs.readFile(fullPath, 'utf-8');
-  return JSON.parse(contents) as T;
+function parseJson<T>(value: unknown): T {
+  return JSON.parse(String(value)) as T;
+}
+
+function rows<T>(sql: string): T[] {
+  return getAppDatabase().prepare(sql).all() as T[];
+}
+
+function defaultManifest(): SiteManifest {
+  return {
+    generatedAt: new Date(0).toISOString(),
+    source: {
+      rawMoveReference: 'data/legacy/reference/data_reference.xlsx',
+      moves: 'data/live/bootstrap/catalog/moves.json',
+      layout: 'data/live/bootstrap/catalog/layout.json',
+      progress: 'data/live/bootstrap/catalog/progress.json',
+      localVideoDirectory: null,
+      visualReference: ''
+    },
+    counts: {
+      moveRows: 0,
+      validMoves: 0,
+      layoutRows: 0,
+      layoutColumns: 0,
+      progressRows: 0,
+      progressSnapshots: 0,
+      trackableMoves: 0,
+      movesWithLocalVideo: 0
+    },
+    routes: {
+      home: '/',
+      moveDetail: '/moves/[slug]',
+      progress: '/progress',
+      progressEditor: '/progress/editor'
+    }
+  };
+}
+
+function readManifestFromCatalog(): SiteManifest {
+  const row = getAppDatabase().prepare('SELECT manifest_json FROM catalog_manifest WHERE id = ?').get('main') as
+    | { manifest_json?: string }
+    | undefined;
+  return row?.manifest_json ? parseJson<SiteManifest>(row.manifest_json) : defaultManifest();
+}
+
+function readMovesFromCatalog(): MoveRecord[] {
+  return rows<DatabaseRow>('SELECT move_json FROM catalog_moves ORDER BY sort_order').map((row) =>
+    parseJson<MoveRecord>(row.move_json)
+  );
+}
+
+function readLayoutFromCatalog(): LayoutColumn[] {
+  return rows<DatabaseRow>('SELECT column_json FROM catalog_layout_columns ORDER BY sort_order').map((row) =>
+    parseJson<LayoutColumn>(row.column_json)
+  );
+}
+
+function readProgressFromCatalog(): ProgressSnapshot[] {
+  return rows<DatabaseRow>('SELECT snapshot_json FROM catalog_progress_snapshots ORDER BY sort_order').map((row) =>
+    parseJson<ProgressSnapshot>(row.snapshot_json)
+  );
+}
+
+function readRawMovesFromCatalog(): RawMoveReferenceRecord[] {
+  return rows<DatabaseRow>('SELECT reference_json FROM catalog_raw_move_references ORDER BY sort_order').map((row) =>
+    parseJson<RawMoveReferenceRecord>(row.reference_json)
+  );
 }
 
 export async function getManifest() {
-  cache.manifest ??= await readJsonFile<SiteManifest>('manifest.json');
+  cache.manifest ??= readManifestFromCatalog();
   const moves = await getMoves();
 
   return {
@@ -45,7 +108,7 @@ export async function getManifest() {
 }
 
 export async function getMoves() {
-  cache.moves ??= await readJsonFile<MoveRecord[]>('moves.json');
+  cache.moves ??= readMovesFromCatalog();
   const editedMoves = await applyMoveEditStore(cache.moves);
   const resolvedVideoIndex = await buildResolvedMoveVideoMetadataIndex(editedMoves);
 
@@ -63,7 +126,7 @@ export async function getMoves() {
 }
 
 export async function getLayout() {
-  cache.layout ??= await readJsonFile<LayoutColumn[]>('layout.json');
+  cache.layout ??= readLayoutFromCatalog();
   return cache.layout;
 }
 
@@ -73,7 +136,7 @@ export async function getOverviewLayout() {
 }
 
 export async function getProgressSnapshots() {
-  cache.progress ??= await readJsonFile<ProgressSnapshot[]>('progress.json');
+  cache.progress ??= readProgressFromCatalog();
   return cache.progress;
 }
 
@@ -83,7 +146,7 @@ export async function getSearchIndex() {
 }
 
 export async function getRawMoveReference() {
-  cache.rawMoves ??= await readJsonFile<RawMoveReferenceRecord[]>('raw-moves.json');
+  cache.rawMoves ??= readRawMovesFromCatalog();
   return cache.rawMoves;
 }
 

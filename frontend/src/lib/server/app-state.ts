@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { resolveDataDir } from './paths';
+import { resolveAppStateBootstrapDir, resolveCatalogBootstrapDir, resolveDataDir } from './paths';
 
 export type ActionRecord = {
   id: string;
@@ -44,16 +44,32 @@ function dbPath() {
   return path.join(resolveDataDir(), DB_FILENAME);
 }
 
-function readJsonFile<T>(filename: string, fallback: T): T {
+function readJsonFileFromDirectory<T>(directory: string, filename: string, fallback: T): T {
   try {
-    const contents = fs.readFileSync(path.join(resolveDataDir(), filename), 'utf-8');
+    const contents = fs.readFileSync(path.join(directory, filename), 'utf-8');
     return JSON.parse(contents) as T;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return fallback;
+      try {
+        const contents = fs.readFileSync(path.join(resolveDataDir(), filename), 'utf-8');
+        return JSON.parse(contents) as T;
+      } catch (fallbackError) {
+        if ((fallbackError as NodeJS.ErrnoException).code === 'ENOENT') {
+          return fallback;
+        }
+        throw fallbackError;
+      }
     }
     throw error;
   }
+}
+
+function readAppStateBootstrapJson<T>(filename: string, fallback: T): T {
+  return readJsonFileFromDirectory(resolveAppStateBootstrapDir(), filename, fallback);
+}
+
+function readCatalogBootstrapJson<T>(filename: string, fallback: T): T {
+  return readJsonFileFromDirectory(resolveCatalogBootstrapDir(), filename, fallback);
 }
 
 function serializeJson(value: unknown) {
@@ -256,6 +272,46 @@ function createSchema(db: DatabaseSync) {
 
     CREATE INDEX IF NOT EXISTS idx_media_derived_clips_source ON media_derived_clips(source_asset_id);
     CREATE INDEX IF NOT EXISTS idx_media_derived_clips_move ON media_derived_clips(move_id);
+
+    CREATE TABLE IF NOT EXISTS catalog_manifest (
+      id TEXT PRIMARY KEY,
+      manifest_json TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS catalog_moves (
+      move_id TEXT PRIMARY KEY,
+      sort_order INTEGER NOT NULL,
+      move_json TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_catalog_moves_sort ON catalog_moves(sort_order);
+
+    CREATE TABLE IF NOT EXISTS catalog_layout_columns (
+      column_number INTEGER PRIMARY KEY,
+      sort_order INTEGER NOT NULL,
+      column_json TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS catalog_progress_snapshots (
+      snapshot_date TEXT PRIMARY KEY,
+      sort_order INTEGER NOT NULL,
+      snapshot_json TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS catalog_raw_move_references (
+      row_key TEXT PRIMARY KEY,
+      move_id TEXT,
+      sort_order INTEGER NOT NULL,
+      reference_json TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_catalog_raw_move_references_sort ON catalog_raw_move_references(sort_order);
+
+    CREATE TABLE IF NOT EXISTS position_options (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      sort_order INTEGER NOT NULL
+    );
   `);
 }
 
@@ -264,7 +320,7 @@ function metadataEntryKindFromCollection(collection: string) {
 }
 
 function bootstrapMetadata(db: DatabaseSync) {
-  const store = readJsonFile<{ topics?: unknown[]; families?: unknown[] }>('metadata.json', {});
+  const store = readAppStateBootstrapJson<{ topics?: unknown[]; families?: unknown[] }>('metadata.json', {});
   const insert = db.prepare(`
     INSERT OR IGNORE INTO metadata_entries (
       id, kind, slug, name, description, created_at, updated_at, source
@@ -290,7 +346,7 @@ function bootstrapMetadata(db: DatabaseSync) {
 }
 
 function bootstrapDancers(db: DatabaseSync) {
-  const store = readJsonFile<{ dancers?: unknown[]; deletedDancerSlugs?: unknown[] }>('dancers.json', {});
+  const store = readAppStateBootstrapJson<{ dancers?: unknown[]; deletedDancerSlugs?: unknown[] }>('dancers.json', {});
   const insertDancer = db.prepare(`
     INSERT OR IGNORE INTO dancer_profiles (
       id, slug, full_name, display_name, instagram_handle, role, level, region, source, created_at, updated_at
@@ -321,7 +377,7 @@ function bootstrapDancers(db: DatabaseSync) {
 }
 
 function bootstrapMoveEdits(db: DatabaseSync) {
-  const store = readJsonFile<{
+  const store = readAppStateBootstrapJson<{
     overrides?: Record<string, unknown>;
     createdMoves?: unknown[];
     drafts?: unknown[];
@@ -355,11 +411,106 @@ function bootstrapMoveEdits(db: DatabaseSync) {
   });
 }
 
+function bootstrapPositions(db: DatabaseSync) {
+  const store = readAppStateBootstrapJson<{ positions?: unknown[] }>('positions.json', {});
+  const insert = db.prepare('INSERT OR IGNORE INTO position_options (id, label, sort_order) VALUES (?, ?, ?)');
+
+  (Array.isArray(store.positions) ? store.positions : []).forEach((position, index) => {
+    const raw = position as DatabaseRow | string;
+    const id = typeof raw === 'string' ? raw : raw.id || raw.label || raw.name;
+    const label = typeof raw === 'string' ? raw : raw.label || raw.name || raw.id;
+    if (!id || !label) return;
+    insert.run(String(id), String(label), index);
+  });
+}
+
+function catalogTableHasRows(db: DatabaseSync) {
+  const row = db.prepare('SELECT COUNT(*) AS count FROM catalog_moves').get() as { count?: number | bigint } | undefined;
+  return Number(row?.count ?? 0) > 0;
+}
+
+function bootstrapCatalogData(db: DatabaseSync) {
+  const completed = db.prepare('SELECT value FROM app_state_meta WHERE key = ?').get('catalog_json_bootstrap_v1') as
+    | { value: string }
+    | undefined;
+  if (completed?.value === 'complete') {
+    return;
+  }
+
+  if (catalogTableHasRows(db)) {
+    db.prepare('INSERT OR REPLACE INTO app_state_meta (key, value) VALUES (?, ?)').run(
+      'catalog_json_bootstrap_v1',
+      'complete'
+    );
+    return;
+  }
+
+  const manifest = readCatalogBootstrapJson('manifest.json', null);
+  const moves = readCatalogBootstrapJson<unknown[]>('moves.json', []);
+  const layout = readCatalogBootstrapJson<unknown[]>('layout.json', []);
+  const progress = readCatalogBootstrapJson<unknown[]>('progress.json', []);
+  const rawMoves = readCatalogBootstrapJson<unknown[]>('raw-moves.json', []);
+
+  if (manifest) {
+    db.prepare('INSERT OR REPLACE INTO catalog_manifest (id, manifest_json) VALUES (?, ?)').run(
+      'main',
+      serializeJson(manifest)
+    );
+  }
+
+  const insertMove = db.prepare('INSERT OR REPLACE INTO catalog_moves (move_id, sort_order, move_json) VALUES (?, ?, ?)');
+  moves.forEach((move, index) => {
+    const entry = move as DatabaseRow;
+    if (!entry.id) return;
+    insertMove.run(String(entry.id), index, serializeJson(move));
+  });
+
+  const insertLayout = db.prepare(
+    'INSERT OR REPLACE INTO catalog_layout_columns (column_number, sort_order, column_json) VALUES (?, ?, ?)'
+  );
+  layout.forEach((column, index) => {
+    const entry = column as DatabaseRow;
+    const columnNumber = Number(entry.column ?? index + 1);
+    if (!Number.isFinite(columnNumber)) return;
+    insertLayout.run(Math.floor(columnNumber), index, serializeJson(column));
+  });
+
+  const insertProgress = db.prepare(
+    'INSERT OR REPLACE INTO catalog_progress_snapshots (snapshot_date, sort_order, snapshot_json) VALUES (?, ?, ?)'
+  );
+  progress.forEach((snapshot, index) => {
+    const entry = snapshot as DatabaseRow;
+    if (!entry.date) return;
+    insertProgress.run(String(entry.date), index, serializeJson(snapshot));
+  });
+
+  const insertRawMove = db.prepare(
+    'INSERT OR REPLACE INTO catalog_raw_move_references (row_key, move_id, sort_order, reference_json) VALUES (?, ?, ?, ?)'
+  );
+  rawMoves.forEach((reference, index) => {
+    const entry = reference as DatabaseRow;
+    insertRawMove.run(`row-${index}`, entry.id == null ? null : String(entry.id), index, serializeJson(reference));
+  });
+
+  db.prepare('INSERT OR REPLACE INTO app_state_meta (key, value) VALUES (?, ?)').run(
+    'catalog_json_bootstrap_v1',
+    'complete'
+  );
+}
+
 function bootstrapFromJsonSidecars(db: DatabaseSync) {
   const completed = db.prepare('SELECT value FROM app_state_meta WHERE key = ?').get('json_bootstrap_v1') as
     | { value: string }
     | undefined;
   if (completed?.value === 'complete') {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      bootstrapCatalogData(db);
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
     return;
   }
 
@@ -368,6 +519,8 @@ function bootstrapFromJsonSidecars(db: DatabaseSync) {
     bootstrapMetadata(db);
     bootstrapDancers(db);
     bootstrapMoveEdits(db);
+    bootstrapPositions(db);
+    bootstrapCatalogData(db);
     db.prepare('INSERT OR REPLACE INTO app_state_meta (key, value) VALUES (?, ?)').run('json_bootstrap_v1', 'complete');
     db.exec('COMMIT');
   } catch (error) {
