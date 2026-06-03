@@ -15,25 +15,20 @@ This document describes what the project currently does and how its main pieces 
 
 The project is a salsa partnerwork encyclopedia and practice tracker. It catalogs moves, organizes them into the dense overview layout used by the original static site, shows move detail pages with relationships and videos, tracks learning progress snapshots, and provides tools for managing modern source videos, rendered move clips, dancers, topics, families, and move edits.
 
-The repository currently contains two generations of the system:
-
-- A legacy R and Quarto build that generates a static `_site` output.
-- A SvelteKit application that reads exported JSON contracts and adds live editing/media workflows without requiring R at runtime.
-
-The SvelteKit app is the active migration target. The R pipeline remains the source for exporting the existing workbook/RDS data into JSON.
+The repository now contains the SvelteKit application plus preserved legacy data/reference artifacts. The legacy R/Quarto implementation files have been retired; R and Quarto are not part of the active build, export, or runtime path.
 
 Media catalog reads are split from media catalog repair. Ordinary media read models load the SQLite media catalog without mutating it; legacy move-video bootstrap, missing generated-variant pruning, generated cleanup repair, orphan draft relinking, point-in-time JSON catalog export, and read-only catalog diagnostics are explicit operator actions exposed from `/settings/media`. Production catalog mutations go through the serialized media catalog repository, and public catalog reads wait for queued writes before returning. This keeps live page/API reads predictable while preserving the current one-Docker, live-edit architecture.
 
 ## High-Level Architecture
 
 ```text
-Google Sheets / RDS / XLSX / local videos
+Preserved legacy data / XLSX / local videos
         |
-        | R export scripts
+        | checked-in bootstrap contracts and live SQLite state
         v
-migration-data/*.json
+migration-data/*.json + DATA_DIR/app-state.sqlite
         |
-        | SvelteKit server loads JSON and sidecar stores
+        | SvelteKit server loads JSON bootstrap data and SQLite stores
         v
 SvelteKit routes, APIs, media streaming, clip rendering
         |
@@ -43,34 +38,28 @@ Browser UI
 
 Important directories:
 
-- `R/`: legacy R data loading, validation, rendering, progress generation, and JSON export scripts.
-- `site/`: Quarto source pages for the legacy static site.
+- `data/`: preserved legacy RDS data artifacts, including `data/legacy-site/` for the distinct RDS files formerly stored beside the Quarto source.
 - `_site_reference/`: checked-in static reference output used as a visual and behavioral reference.
-- `migration-data/`: JSON handoff layer consumed by the SvelteKit app.
+- `migration-data/`: JSON bootstrap/export layer consumed by the SvelteKit app and live `DATA_DIR` for SQLite state in the current deployment.
 - `frontend/`: SvelteKit application.
 - `docker/`: Unraid-oriented container setup.
 - `docs/`: design notes, contracts, and deployment/workflow documentation.
 
-## Legacy R And Quarto System
+## Retired Legacy Data Artifacts
 
-The legacy build is driven by [build.R](/Volumes/fastdata/server/salsasite-dev/build.R). It:
+The historical R/Quarto source files have been removed from the active repository. The data they produced or informed is preserved as data/reference material:
 
-- Authenticates to Google Sheets.
-- Loads move data and splash layout data.
-- Calculates move type and base-move metadata.
-- Builds the overview layout.
-- Saves `data/dt_pw.RDS` and `data/dt_pw_lay.RDS`.
-- Renders the Quarto overview and progress pages.
-- Imports progress CSV updates into `inputs/progress.RDS`.
-- Generates a static progress editor.
-- Renders one move template and then creates individual move HTML files through template substitution.
-- Links static output to local move videos.
+- `data/dt_pw.RDS` and `data/dt_pw_lay.RDS`: original move/layout RDS artifacts.
+- `data/legacy-site/dt_pw.RDS` and `data/legacy-site/dt_pw_lay.RDS`: distinct RDS artifacts formerly stored beside the Quarto source tree.
+- `data_reference.xlsx`: workbook-derived move reference data used by the app-native export helper.
+- `_site_reference/`: static HTML/CSS/JS output retained only as visual and behavioral reference material.
+- `migration-data/*.json`: checked-in bootstrap contracts for the SvelteKit app and first-run SQLite imports.
 
-The legacy system is still useful for rebuilding the static reference and for producing source RDS data, but it is not the intended live runtime for the migrated app.
+R/Quarto is no longer expected to regenerate these artifacts. Future data refresh work should use app-native import/export tooling or a newly documented migration utility.
 
-## Data Export Layer
+## Data Bootstrap Layer
 
-[R/export_app_data.R](/Volumes/fastdata/server/salsasite-dev/R/export_app_data.R) converts the R-backed data into JSON contracts under `migration-data/`.
+`migration-data/` contains the checked-in bootstrap contracts consumed by the SvelteKit app and imported into SQLite-backed stores where applicable. These files are data artifacts, not an active R/Quarto export pipeline.
 
 Current exported files include:
 
@@ -178,7 +167,7 @@ Posters are served from `POSTER_ROOT` and can be queued/generated for video asse
 
 ## Progress Tracking
 
-Progress data is exported from `inputs/progress.RDS` into `migration-data/progress.json`.
+Progress data is loaded from `migration-data/progress.json`.
 
 The progress viewer builds snapshot views over the same layout as the overview page. Each tracked move shows three colored status dimensions:
 
@@ -280,8 +269,8 @@ For browser verification from this checkout, use `http://192.168.0.127:18096`.
 
 ## Current Limitations And Boundaries
 
-- The static R/Quarto build and the SvelteKit app both exist; the SvelteKit app is the migration target, but the R export layer still feeds it.
-- The media library remains a JSON sidecar file; migrated data-only editing workflows use SQLite.
+- The legacy R/Quarto implementation has been retired. Preserved RDS/XLSX/static reference artifacts remain for audit and migration context, but they are not an active build/export path.
+- The media catalog is SQLite-backed. JSON media catalog files are bootstrap/export artifacts, not the live source of truth after first SQLite bootstrap.
 - Progress editor changes are currently browser-local unless imported/exported through CSV.
 - Authentication, authorization, admin pages, and access tracking are planned but not implemented in the inspected app.
 - Media render jobs are in memory. If the container restarts during rendering, the saved clip definition remains but the active render job is lost.

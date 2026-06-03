@@ -33,7 +33,7 @@ Use Postgres instead if you already expect concurrent multi-user editing, accoun
 
 ## Current site, translated to app concepts
 
-Current R/Quarto output in `_site_reference` maps cleanly to application routes:
+The retired static output in `_site_reference` maps cleanly to application routes:
 
 - `/`:
   Multi-column move browser with search and links to detail pages.
@@ -102,7 +102,7 @@ The first migration should aim for behavioral parity, not redesign:
 3. Keep move detail pages close to the current visual structure.
 4. Rebuild the progress viewer from structured data.
 5. Rebuild the progress editor with keyboard shortcuts and CSV import/export.
-6. Move search to an app-native index instead of Quarto search scraping.
+6. Keep search on the app-native index instead of scraping retired static output.
 
 ## Route plan
 
@@ -125,7 +125,7 @@ Recommended SvelteKit routes:
 
 Do not start by scraping `_site_reference` HTML.
 
-Use `_site_reference` as the visual and behavioral reference, but build the new app from structured exports of:
+Use `_site_reference` as the visual and behavioral reference, but build the app from structured data artifacts such as:
 
 - `data_reference.xlsx`
 - `data/dt_pw.RDS`
@@ -137,8 +137,8 @@ That gives you:
 - stable contracts for frontend development
 - easier testing
 - simpler future database import
-- no coupling to Quarto-specific HTML output
+- no coupling to retired static-site HTML output
 
-## Immediate next step
+## Current Data Handoff
 
-The repo now includes export scripts that write both the R-backed data and the raw workbook reference into JSON contracts under `migration-data/`. That should be treated as the handoff layer between the existing R system and the new application.
+The legacy R/Quarto source pipeline has been retired. The checked-in `migration-data/*.json` files, preserved RDS/XLSX artifacts, and SQLite state under `DATA_DIR/app-state.sqlite` are the current data handoff and live-edit persistence layers. Future refresh work should use app-native import/export tooling or a newly documented migration utility, not removed R/Quarto scripts.

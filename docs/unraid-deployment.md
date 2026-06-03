@@ -48,14 +48,17 @@ Recommended environment:
 
 ## Data refresh workflow
 
-The container does not need R at runtime.
+The container does not need R or Quarto at runtime, and the legacy R/Quarto source files have been retired.
 
-When the workbook, progress data, or local move/source video files change:
+When workbook-derived reference data changes, regenerate the app-native workbook export:
 
-1. Regenerate the exported contracts:
-   `Rscript R/export_app_data.R`
-   `/Users/tomascokis/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/export_data_reference.py`
-2. With the live-mounted setup, changes under `/mnt/user/fastdata/server/salsasite-dev` are read directly from the share. Rebuild only when the container dependencies or startup behavior change.
+```bash
+/Users/tomascokis/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/export_data_reference.py
+```
+
+The other checked-in `migration-data/*.json` files are bootstrap artifacts for the current SvelteKit/SQLite app. Future refresh workflows for those artifacts should use app-native import/export tooling or a newly documented migration utility, not the removed R/Quarto scripts.
+
+With the live-mounted setup, changes under `/mnt/user/fastdata/server/salsasite-dev` are read directly from the share. Rebuild only when the container dependencies or startup behavior change.
 
 ## Current limitations
 
