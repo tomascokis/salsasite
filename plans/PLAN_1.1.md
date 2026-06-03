@@ -1,4 +1,4 @@
-# Plan 1.1: Complete Partially Implemented Plan 1.0 Work
+# Plan 1.1_finished: Complete Partially Implemented Plan 1.0 Work
 
 Plan 1.1 is only for fixing work from Plan 1.0 that has already been started but is not fully correct, complete, or consistently applied.
 
