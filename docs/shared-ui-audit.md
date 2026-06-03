@@ -39,6 +39,7 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - The picker lab must expose loaded option counts and only use visible suggestion limits, not hidden dataset limits, so picker functionality can be tested in the page.
 - Picker lab family, dancer, and move picker variants must use a consistent text scale for field headers, helper text, input placeholders, selected chips, suggestion rows, and lab state readouts.
 - Picker chips must use an icon-style remove affordance inside the selected chip button instead of visible `x` text, while keeping the chip button's accessible remove label.
+- Picker inline chip fields must use balanced top and bottom vertical padding; selected pills should not sit in a field with visibly heavier top padding.
 - Picker lab dropdown rows must share create, empty, more-results, hover, and active styling across family, dancer, and move variants.
 - Picker dropdown row secondary text is optional and should be omitted when it only restates obvious status such as an existing tag.
 - Picker dropdown keyboard navigation must keep the active suggestion visible inside the dropdown scroller and must not allow arrow keys to scroll the page/window while a picker query is active.

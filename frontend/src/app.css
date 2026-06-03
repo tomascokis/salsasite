@@ -4217,7 +4217,7 @@ select {
   border: 1px solid #d7dee6;
   border-radius: 10px;
   background: #ffffff;
-  padding: 0.24rem 0.35rem;
+  padding: 0.12rem 0.35rem;
   font-size: var(--picker-control-font-size);
   line-height: 1.2;
   scrollbar-width: none;
@@ -4405,7 +4405,7 @@ select {
   border: 1px solid #d7dee6;
   border-radius: 10px;
   background: #ffffff;
-  padding: 0.24rem 0.35rem;
+  padding: 0.12rem 0.35rem;
   font-size: var(--picker-control-font-size);
   line-height: 1.2;
   scrollbar-width: none;
@@ -4603,8 +4603,8 @@ select {
   height: 2rem;
   min-width: 0;
   max-width: 100%;
-  padding-top: 0.18rem;
-  padding-bottom: 0.18rem;
+  padding-top: 0.09rem;
+  padding-bottom: 0.09rem;
 }
 
 .entity-picker-field-compact .move-picker-input-inline input,
