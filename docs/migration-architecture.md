@@ -33,7 +33,7 @@ Use Postgres instead if you already expect concurrent multi-user editing, accoun
 
 ## Current site, translated to app concepts
 
-The retired static output in `_site_reference` maps cleanly to application routes:
+The retired static output previously checked in under `_site_reference` mapped cleanly to application routes:
 
 - `/`:
   Multi-column move browser with search and links to detail pages.
@@ -123,9 +123,9 @@ Recommended SvelteKit routes:
 
 ## Migration approach
 
-Do not start by scraping `_site_reference` HTML.
+Do not start by scraping retired static HTML output.
 
-Use `_site_reference` as the visual and behavioral reference, but build the app from structured data artifacts such as:
+Use historical static output only as background context when available, and build the app from structured data artifacts such as:
 
 - `data_reference.xlsx`
 - `data/dt_pw.RDS`

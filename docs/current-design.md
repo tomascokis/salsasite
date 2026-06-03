@@ -39,7 +39,6 @@ Browser UI
 Important directories:
 
 - `data/`: preserved legacy RDS data artifacts, including `data/legacy-site/` for the distinct RDS files formerly stored beside the Quarto source.
-- `_site_reference/`: checked-in static reference output used as a visual and behavioral reference.
 - `migration-data/`: JSON bootstrap/export layer consumed by the SvelteKit app and live `DATA_DIR` for SQLite state in the current deployment.
 - `frontend/`: SvelteKit application.
 - `docker/`: Unraid-oriented container setup.
@@ -52,10 +51,9 @@ The historical R/Quarto source files have been removed from the active repositor
 - `data/dt_pw.RDS` and `data/dt_pw_lay.RDS`: original move/layout RDS artifacts.
 - `data/legacy-site/dt_pw.RDS` and `data/legacy-site/dt_pw_lay.RDS`: distinct RDS artifacts formerly stored beside the Quarto source tree.
 - `data_reference.xlsx`: workbook-derived move reference data used by the app-native export helper.
-- `_site_reference/`: static HTML/CSS/JS output retained only as visual and behavioral reference material.
 - `migration-data/*.json`: checked-in bootstrap contracts for the SvelteKit app and first-run SQLite imports.
 
-R/Quarto is no longer expected to regenerate these artifacts. Future data refresh work should use app-native import/export tooling or a newly documented migration utility.
+R/Quarto is no longer expected to regenerate these artifacts. The checked-in `_site_reference/` static output has also been retired from the repository. Future data refresh work should use app-native import/export tooling or a newly documented migration utility.
 
 ## Data Bootstrap Layer
 
@@ -269,7 +267,7 @@ For browser verification from this checkout, use `http://192.168.0.127:18096`.
 
 ## Current Limitations And Boundaries
 
-- The legacy R/Quarto implementation has been retired. Preserved RDS/XLSX/static reference artifacts remain for audit and migration context, but they are not an active build/export path.
+- The legacy R/Quarto implementation and checked-in static reference output have been retired. Preserved RDS/XLSX artifacts remain for audit and migration context, but they are not an active build/export path.
 - The media catalog is SQLite-backed. JSON media catalog files are bootstrap/export artifacts, not the live source of truth after first SQLite bootstrap.
 - Progress editor changes are currently browser-local unless imported/exported through CSV.
 - Authentication, authorization, admin pages, and access tracking are planned but not implemented in the inspected app.
