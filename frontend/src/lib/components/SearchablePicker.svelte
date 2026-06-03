@@ -224,7 +224,8 @@
     if (clearQueryOnSelect) {
       setQuery('');
     } else {
-      dismissedQueryAfterSelect = query;
+      setQuery(option.label);
+      dismissedQueryAfterSelect = option.label;
     }
   }
 

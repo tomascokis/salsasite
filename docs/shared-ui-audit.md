@@ -45,7 +45,7 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - Picker inline chip inputs must wrap chips and remaining input space within the field instead of hiding horizontal scroll, and dropdown row text must wrap or truncate inside the row without exceeding its text column.
 - Shared entity picker templates must declare picker intent through mode (`browse`, `filter`, `singleEdit`, `multiEdit`, or `strict`), create policy (`none`, `local`, `persistMetadata`, or `draftMove`), value source (`id` or `label`), and density (`default` or `compact`) before rollout to real pages.
 - Shared entity picker browse mode is search/navigation-only: choosing a suggestion must not create hidden selected state or clear the visible typed query as though an edit field committed a value.
-- Browse-mode picker Enter/selection must visibly complete the action by closing the suggestion list while preserving the typed query and readout action.
+- Browse-mode picker Enter/selection must visibly complete the action by closing the suggestion list while showing the committed option label in the input and updating the readout action.
 - Shared entity picker strict mode must not expose create behavior or allow arbitrary typed values to become selections.
 - Shared entity picker create policies only control create-row availability and event intent; page-level handlers remain responsible for persistence or draft creation.
 - Move picker `No preview` poster placeholders must center the text within the thumbnail area.

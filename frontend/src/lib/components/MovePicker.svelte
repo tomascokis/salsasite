@@ -224,7 +224,9 @@
     if (clearQueryOnSelect) {
       setQuery('');
     } else {
-      dismissedQueryAfterSelect = query;
+      const selectedQuery = primaryLabel(move);
+      setQuery(selectedQuery);
+      dismissedQueryAfterSelect = selectedQuery;
     }
   }
 
