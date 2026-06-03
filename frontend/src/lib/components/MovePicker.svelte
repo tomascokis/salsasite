@@ -350,7 +350,7 @@
     {/if}
     {#if !selectionFull}
       <input
-        value={query}
+        bind:value={query}
         placeholder={inputPlaceholder}
         aria-label={hasVisibleSelection ? addPlaceholder : ariaLabel}
         {autocapitalize}

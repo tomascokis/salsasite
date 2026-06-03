@@ -23,8 +23,9 @@ export type EntityPickerDensity = 'default' | 'compact';
 
 type EntityPickerBaseTemplate = {
   key: string;
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
+  showHeader?: boolean;
   placeholder: string;
   addPlaceholder: string;
   ariaLabel: string;

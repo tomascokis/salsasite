@@ -18,22 +18,38 @@
   export let query = '';
   export let limit = 8;
   export let disabled = false;
-  export let onselect: ((detail: { id: string; option?: EntityPickerSearchOption; move?: EntityPickerMoveOption }) => void) | undefined = undefined;
-  export let onremove: ((detail: { id: string }) => void) | undefined = undefined;
+  export let onselect:
+    | ((
+        detail: {
+          id: string;
+          value: string;
+          valueSource: EntityPickerValueSource;
+          option?: EntityPickerSearchOption;
+          move?: EntityPickerMoveOption;
+        }
+      ) => void)
+    | undefined = undefined;
+  export let onremove:
+    | ((detail: { id: string; value: string; valueSource: EntityPickerValueSource }) => void)
+    | undefined = undefined;
   export let onquery: ((detail: { query: string }) => void) | undefined = undefined;
   export let onfocus: ((detail: Record<string, never>) => void) | undefined = undefined;
-  export let oncreate: ((detail: { value: string }) => void) | undefined = undefined;
+  export let oncreate:
+    | ((detail: { value: string; createPolicy: EntityPickerCreatePolicy }) => void)
+    | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     select: {
       id: string;
+      value: string;
+      valueSource: EntityPickerValueSource;
       option?: EntityPickerSearchOption;
       move?: EntityPickerMoveOption;
     };
-    remove: { id: string };
+    remove: { id: string; value: string; valueSource: EntityPickerValueSource };
     query: { query: string };
     focus: Record<string, never>;
-    create: { value: string };
+    create: { value: string; createPolicy: EntityPickerCreatePolicy };
   }>();
 
   $: searchableOptions = options as EntityPickerSearchOption[];
@@ -42,13 +58,15 @@
   $: pickerSelectedIds = selectedIds.map((id) => optionIdForValue(id, resolved.valueSource)).filter(Boolean);
 
   function emitSelect(detail: { id: string; option?: EntityPickerSearchOption; move?: EntityPickerMoveOption }) {
-    dispatch('select', detail);
-    onselect?.(detail);
+    const emittedDetail = { ...detail, value: detail.id, valueSource: resolved.valueSource };
+    dispatch('select', emittedDetail);
+    onselect?.(emittedDetail);
   }
 
   function emitRemove(detail: { id: string }) {
-    dispatch('remove', detail);
-    onremove?.(detail);
+    const emittedDetail = { ...detail, value: detail.id, valueSource: resolved.valueSource };
+    dispatch('remove', emittedDetail);
+    onremove?.(emittedDetail);
   }
 
   function emitQuery(detail: { query: string }) {
@@ -62,8 +80,9 @@
   }
 
   function emitCreate(detail: { value: string }) {
-    dispatch('create', detail);
-    oncreate?.(detail);
+    const emittedDetail = { ...detail, createPolicy: resolved.createPolicy };
+    dispatch('create', emittedDetail);
+    oncreate?.(emittedDetail);
   }
 
   function resolveTemplate(pickerTemplate: EntityPickerTemplate) {
@@ -84,6 +103,7 @@
       mode,
       createPolicy,
       valueSource,
+      showHeader: pickerTemplate.showHeader ?? true,
       density: pickerTemplate.density ?? 'default',
       showSelected: pickerTemplate.showSelected ?? modeDefaults.showSelected,
       selectedPlacement: pickerTemplate.selectedPlacement ?? modeDefaults.selectedPlacement,
@@ -136,11 +156,21 @@
   }
 </script>
 
-<div class="entity-picker-field" class:entity-picker-field-compact={resolved.density === 'compact'}>
-  <div class="entity-picker-field-header">
-    <h3>{template.title}</h3>
-    <p>{template.description}</p>
-  </div>
+<div
+  class="entity-picker-field"
+  class:entity-picker-field-compact={resolved.density === 'compact'}
+  class:entity-picker-field-inline={!resolved.showHeader}
+>
+  {#if resolved.showHeader && (template.title || template.description)}
+    <div class="entity-picker-field-header">
+      {#if template.title}
+        <h3>{template.title}</h3>
+      {/if}
+      {#if template.description}
+        <p>{template.description}</p>
+      {/if}
+    </div>
+  {/if}
 
   {#if template.kind === 'move'}
     <MovePicker

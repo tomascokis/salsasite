@@ -4561,6 +4561,10 @@ select {
   gap: 0.8rem;
 }
 
+.entity-picker-field-inline {
+  gap: 0;
+}
+
 .entity-picker-field-compact {
   gap: 0.55rem;
 }

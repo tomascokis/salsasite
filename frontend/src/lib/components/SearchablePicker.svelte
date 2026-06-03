@@ -335,7 +335,7 @@
 
     {#if !selectionFull}
       <input
-        value={query}
+        bind:value={query}
         placeholder={inputPlaceholder}
         aria-label={inputAriaLabel}
         autocomplete="off"

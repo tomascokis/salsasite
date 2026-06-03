@@ -49,6 +49,7 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - Shared entity picker templates must declare picker intent through mode (`browse`, `filter`, `singleEdit`, `multiEdit`, or `strict`), create policy (`none`, `local`, `persistMetadata`, or `draftMove`), value source (`id` or `label`), and density (`default` or `compact`) before rollout to real pages.
 - Shared entity picker strict mode must not expose create behavior or allow arbitrary typed values to become selections.
 - Shared entity picker create policies only control create-row availability and event intent; page-level handlers remain responsible for persistence or draft creation.
+- Shared entity picker templates may hide their wrapper header for existing form labels, but they must keep the same mode, create-policy, value-source, and density event contracts.
 - Current search-only/add pickers that intentionally hide selected chips should not be rolled into the picker lab or migrated to `EntityPicker` until they have a clearly named shared contract distinct from edit/filter picker behavior.
 - Move picker `No preview` poster placeholders must center the text within the thumbnail area.
 - Editable list/grid UI should be a shared pattern for metadata and dancer management surfaces that are viewable by default with small edit affordances.

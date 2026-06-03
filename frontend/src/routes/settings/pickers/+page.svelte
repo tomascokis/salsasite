@@ -269,6 +269,7 @@
 
     const singleValue = template?.mode === 'singleEdit' || template?.mode === 'strict';
     updateState(key, {
+      query: '',
       selectedIds: singleValue ? [value] : [...state.selectedIds, value],
       lastAction: `Selected ${value}`
     });
@@ -284,6 +285,7 @@
     const template = templates.find((candidate) => candidate.key === key);
     const singleValue = template?.mode === 'singleEdit' || template?.mode === 'strict';
     updateState(key, {
+      query: '',
       selectedIds: state.selectedIds.includes(normalized)
         ? state.selectedIds
         : singleValue
