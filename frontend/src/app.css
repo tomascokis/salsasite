@@ -4252,8 +4252,14 @@ select {
   flex: 1 1 7rem;
   border: 0;
   border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  appearance: none;
   padding: 0.14rem 0.2rem;
   outline: none;
+  color: inherit;
+  font: inherit;
+  caret-color: currentColor;
 }
 
 .move-picker-input-inline:focus-within {
@@ -4614,6 +4620,8 @@ select {
 
 .entity-picker-field-compact .move-picker-input-inline input,
 .entity-picker-field-compact .searchable-picker-input-inline input {
+  height: 1.4rem;
+  min-height: 1.4rem;
   min-width: 0;
   flex: 1 1 0;
 }
