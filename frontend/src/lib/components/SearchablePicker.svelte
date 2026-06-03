@@ -53,7 +53,8 @@
     (option) => normalizeId(option.id) === normalizeId(query) || normalizeId(option.label) === normalizeId(query)
   );
   $: canCreate = allowCreate && hasQuery && !hasExactAvailableMatch && !unavailableIds.has(normalizeId(query));
-  $: suggestionCount = suggestionResults.length + (canCreate ? 1 : 0);
+  $: suggestionIndexOffset = canCreate ? 1 : 0;
+  $: suggestionCount = suggestionResults.length + suggestionIndexOffset;
   $: hasMoreSuggestions = matches.total > suggestionResults.length;
   $: hasVisibleSelection = showSelected && selectedIds.length > 0;
   $: selectionFull = maxSelected !== null && selectedIds.length >= maxSelected;
@@ -63,7 +64,7 @@
 
   $: if (query !== lastQuery) {
     lastQuery = query;
-    activeSuggestionIndex = 0;
+    activeSuggestionIndex = canCreate && suggestionResults.length ? 1 : 0;
   }
 
   $: if (activeSuggestionIndex >= suggestionCount) {
@@ -234,8 +235,14 @@
         return;
       }
 
-      if (activeSuggestionIndex < suggestionResults.length && suggestionResults.length) {
-        selectOption(suggestionResults[activeSuggestionIndex]?.id ?? suggestionResults[0].id);
+      if (canCreate && activeSuggestionIndex === 0) {
+        createOption();
+        return;
+      }
+
+      const suggestionIndex = activeSuggestionIndex - suggestionIndexOffset;
+      if (suggestionResults.length) {
+        selectOption(suggestionResults[suggestionIndex]?.id ?? suggestionResults[0].id);
       } else if (canCreate) {
         createOption();
       }
@@ -261,7 +268,8 @@
     <div class="shared-chip-row">
       {#each selectedIds as id}
         <button type="button" class="shared-chip" aria-label={`Remove ${selectedLabel(id)}`} onpointerdown={(event) => { event.preventDefault(); removeOption(id); }} onkeydown={(event) => handleRemoveKeydown(event, id)}>
-          {selectedLabel(id)} x
+          <span class="picker-chip-label">{selectedLabel(id)}</span>
+          <span class="picker-chip-remove" aria-hidden="true"></span>
         </button>
       {/each}
     </div>
@@ -275,7 +283,8 @@
     {#if selectedPlacement === 'inside' && showSelected && selectedIds.length}
       {#each selectedIds as id}
         <button type="button" class="shared-chip searchable-picker-inline-chip" aria-label={`Remove ${selectedLabel(id)}`} onpointerdown={(event) => { event.preventDefault(); removeOption(id); }} onkeydown={(event) => handleRemoveKeydown(event, id)}>
-          {selectedLabel(id)} x
+          <span class="picker-chip-label">{selectedLabel(id)}</span>
+          <span class="picker-chip-remove" aria-hidden="true"></span>
         </button>
       {/each}
     {/if}
@@ -308,15 +317,31 @@
         aria-label="Search matches"
       >
         {#if suggestionResults.length || canCreate}
+          {#if canCreate}
+            <button
+              type="button"
+              role="option"
+              class="searchable-picker-option searchable-picker-create-option"
+              class:active={activeSuggestionIndex === 0}
+              aria-selected={activeSuggestionIndex === 0}
+              onpointerdown={(event) => { event.preventDefault(); createOption(); }}
+              onmouseenter={() => (activeSuggestionIndex = 0)}
+            >
+              <span class="searchable-picker-option-text">
+                <strong>{createLabel}</strong>
+                <span>{query.trim()}</span>
+              </span>
+            </button>
+          {/if}
           {#each suggestionResults as option, index}
             <button
               type="button"
               role="option"
               class="searchable-picker-option"
-              class:active={index === activeSuggestionIndex}
-              aria-selected={index === activeSuggestionIndex}
+              class:active={index + suggestionIndexOffset === activeSuggestionIndex}
+              aria-selected={index + suggestionIndexOffset === activeSuggestionIndex}
               onpointerdown={(event) => { event.preventDefault(); selectOption(option.id); }}
-              onmouseenter={() => (activeSuggestionIndex = index)}
+              onmouseenter={() => (activeSuggestionIndex = index + suggestionIndexOffset)}
             >
               {#if option.imageUrl}
                 <span class="searchable-picker-option-image" aria-hidden="true">
@@ -331,21 +356,6 @@
               </span>
             </button>
           {/each}
-          {#if canCreate}
-            <button
-              type="button"
-              role="option"
-              class="searchable-picker-option"
-              class:active={activeSuggestionIndex === suggestionResults.length}
-              aria-selected={activeSuggestionIndex === suggestionResults.length}
-              onpointerdown={(event) => { event.preventDefault(); createOption(); }}
-              onmouseenter={() => (activeSuggestionIndex = suggestionResults.length)}
-            >
-              <span class="searchable-picker-option-text">
-                <strong>{createLabel} "{query.trim()}"</strong>
-              </span>
-            </button>
-          {/if}
           {#if hasMoreSuggestions}
             <span class="searchable-picker-more">{moreText}</span>
           {/if}
@@ -360,7 +370,8 @@
     <div class="shared-chip-row">
       {#each selectedIds as id}
         <button type="button" class="shared-chip" aria-label={`Remove ${selectedLabel(id)}`} onpointerdown={(event) => { event.preventDefault(); removeOption(id); }} onkeydown={(event) => handleRemoveKeydown(event, id)}>
-          {selectedLabel(id)} x
+          <span class="picker-chip-label">{selectedLabel(id)}</span>
+          <span class="picker-chip-remove" aria-hidden="true"></span>
         </button>
       {/each}
     </div>

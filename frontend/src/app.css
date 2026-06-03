@@ -599,17 +599,54 @@ select {
 .shared-chip {
   display: inline-flex;
   align-items: center;
+  gap: 0.32rem;
   max-width: 100%;
   min-height: 1.6rem;
   border: 1px solid #d3dee8;
   border-radius: 999px;
   background: #eef5fb;
   color: #38516a;
-  padding: 0.18rem 0.48rem;
+  padding: 0.18rem 0.42rem 0.18rem 0.5rem;
   font-size: 0.74rem;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.picker-chip-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-chip-remove {
+  position: relative;
+  display: inline-flex;
+  width: 0.62rem;
+  height: 0.62rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.picker-chip-remove::before,
+.picker-chip-remove::after {
+  position: absolute;
+  width: 0.58rem;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+  content: '';
+}
+
+.picker-chip-remove::before {
+  transform: rotate(45deg);
+}
+
+.picker-chip-remove::after {
+  transform: rotate(-45deg);
 }
 
 .shared-chip:hover,
@@ -4258,6 +4295,13 @@ select {
   font-size: var(--picker-control-font-size);
 }
 
+.move-picker-create-option,
+.searchable-picker-create-option {
+  border-bottom: 1px solid #e5edf5;
+  border-radius: 9px 9px 6px 6px;
+  color: #174f79;
+}
+
 .move-picker-option-poster {
   display: flex;
   width: 3.5rem;
@@ -4318,13 +4362,8 @@ select {
   outline: none;
 }
 
-.move-picker-create-option {
-  border-bottom: 1px solid #e5edf5;
-  border-radius: 9px 9px 6px 6px;
-  color: #174f79;
-}
-
-.move-picker-create-option .move-picker-option-text strong {
+.move-picker-create-option .move-picker-option-text strong,
+.searchable-picker-create-option .searchable-picker-option-text strong {
   color: #174f79;
 }
 
@@ -4410,7 +4449,7 @@ select {
 }
 
 .searchable-picker-inline-chip {
-  max-width: none;
+  max-width: min(18rem, 70%);
   flex: 0 0 auto;
   font-size: var(--picker-chip-font-size);
 }
@@ -4565,14 +4604,19 @@ select {
 
 .picker-lab-state {
   display: grid;
-  gap: 0.75rem;
-  padding-top: 0.1rem;
+  gap: 0.58rem;
+  min-width: 0;
+  padding-top: 0.05rem;
   border-top: 1px solid #e3ebf3;
+}
+
+.picker-lab-state > div {
+  min-width: 0;
 }
 
 .picker-lab-state-label {
   display: block;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.12rem;
   color: #738191;
   font-size: 0.72rem;
   font-weight: 700;
@@ -4585,6 +4629,7 @@ select {
   color: #30404f;
   font-size: 0.82rem;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .move-link-field {
@@ -4660,14 +4705,21 @@ select {
 }
 
 .move-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  max-width: 100%;
+  min-height: 1.6rem;
   border: 1px solid #d4dfeb;
   background: #f8fbff;
   color: #2f577d;
   border-radius: 999px;
-  padding: 0.28rem 0.55rem;
+  padding: 0.18rem 0.42rem 0.18rem 0.5rem;
   cursor: pointer;
   font-size: var(--picker-chip-font-size, 0.76rem);
+  font-weight: 700;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .move-picker-inline-chip {

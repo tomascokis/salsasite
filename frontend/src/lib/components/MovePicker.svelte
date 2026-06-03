@@ -278,7 +278,8 @@
           onpointerdown={(event) => { event.preventDefault(); removeMove(moveId); }}
           onkeydown={(event) => handleRemoveKeydown(event, moveId)}
         >
-          {moveLabel(moveId)} x
+          <span class="picker-chip-label">{moveLabel(moveId)}</span>
+          <span class="picker-chip-remove" aria-hidden="true"></span>
         </button>
       {/each}
     </div>
@@ -297,7 +298,8 @@
           onpointerdown={(event) => { event.preventDefault(); removeMove(moveId); }}
           onkeydown={(event) => handleRemoveKeydown(event, moveId)}
         >
-          {moveLabel(moveId)} x
+          <span class="picker-chip-label">{moveLabel(moveId)}</span>
+          <span class="picker-chip-remove" aria-hidden="true"></span>
         </button>
       {/each}
     {/if}
@@ -391,7 +393,8 @@
           onpointerdown={(event) => { event.preventDefault(); removeMove(moveId); }}
           onkeydown={(event) => handleRemoveKeydown(event, moveId)}
         >
-          {moveLabel(moveId)} x
+          <span class="picker-chip-label">{moveLabel(moveId)}</span>
+          <span class="picker-chip-remove" aria-hidden="true"></span>
         </button>
       {/each}
     </div>

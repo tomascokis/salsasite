@@ -38,6 +38,9 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - The picker lab move picker must search the full move catalog, not a sampled subset.
 - The picker lab must expose loaded option counts and only use visible suggestion limits, not hidden dataset limits, so picker functionality can be tested in the page.
 - Picker lab family, dancer, and move picker variants must use a consistent text scale for field headers, helper text, input placeholders, selected chips, suggestion rows, and lab state readouts.
+- Picker chips must use an icon-style remove affordance inside the selected chip button instead of visible `x` text, while keeping the chip button's accessible remove label.
+- Picker lab dropdown rows must share create, empty, more-results, hover, and active styling across family, dancer, and move variants.
+- Picker lab mobile and narrow layouts must prevent selected chips, input text, suggestion rows, and lab state readouts from overflowing their cards.
 - Move picker `No preview` poster placeholders must center the text within the thumbnail area.
 - Editable list/grid UI should be a shared pattern for metadata and dancer management surfaces that are viewable by default with small edit affordances.
 - Context menu interactions used for relationship editing must support right-click and long-press.
