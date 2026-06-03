@@ -200,6 +200,17 @@ Uploading stores the original file in `video-sources/` and creates a `source` as
 - Move-page tab metadata for derived clips must come from the source media metadata, not fallback `Other / Other / Class` bootstrap defaults.
 - Legacy direct video links may be replaced only where an explicit migration workflow allows it.
 
+## Count Overlay Contract
+
+Count overlays are an independent optional feature, not part of the core publish-to-moves contract.
+
+- A media-derived clip can be drafted, rendered, published, and revisited without count overlays being configured.
+- Count overlays are metadata-driven display overlays, not baked into rendered video files.
+- Count overlays must be off by default at runtime and enabled only through an explicit viewer/editor toggle.
+- Count overlay editing may store count markers, clear flags, placement, and timing preset metadata on the derived clip.
+- Unfinished count-overlay UI must not block ordinary clip editing, rendering, or publishing.
+- Count-only changes should be handled as count feature edits rather than making the core media-to-move workflow ambiguous.
+
 ## Clip Naming Contract
 
 - Clip names should be generated automatically unless the user manually names the clip.
