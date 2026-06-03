@@ -4206,15 +4206,13 @@ select {
 
 .move-picker-input-inline {
   display: flex;
-  height: 2.2rem;
   min-height: 2.2rem;
   width: 100%;
   box-sizing: border-box;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.3rem;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
   overscroll-behavior-x: contain;
   border: 1px solid #d7dee6;
   border-radius: 10px;
@@ -4246,7 +4244,7 @@ select {
   min-width: 7rem;
   min-height: 1.7rem;
   width: auto;
-  flex: 1 0 7rem;
+  flex: 1 1 7rem;
   border: 0;
   border-radius: 0;
   padding: 0.14rem 0.2rem;
@@ -4341,8 +4339,9 @@ select {
 .move-picker-option-text strong,
 .move-picker-option-text span {
   overflow: hidden;
+  overflow-wrap: anywhere;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .move-picker-option-text strong {
@@ -4395,15 +4394,13 @@ select {
 
 .searchable-picker-input-inline {
   display: flex;
-  height: 2.2rem;
   min-height: 2.2rem;
   width: 100%;
   box-sizing: border-box;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.3rem;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
   overscroll-behavior-x: contain;
   border: 1px solid #d7dee6;
   border-radius: 10px;
@@ -4437,7 +4434,7 @@ select {
   min-width: 7rem;
   min-height: 1.7rem;
   width: auto;
-  flex: 1 0 7rem;
+  flex: 1 1 7rem;
   background: transparent;
   box-shadow: none;
   padding: 0.14rem 0.2rem;
@@ -4450,7 +4447,8 @@ select {
 
 .searchable-picker-inline-chip {
   max-width: min(18rem, 70%);
-  flex: 0 0 auto;
+  min-width: 0;
+  flex: 0 1 auto;
   font-size: var(--picker-chip-font-size);
 }
 
@@ -4523,8 +4521,9 @@ select {
 .searchable-picker-option-text strong,
 .searchable-picker-option-text span {
   overflow: hidden;
+  overflow-wrap: anywhere;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .searchable-picker-option-text strong {
@@ -4762,6 +4761,7 @@ select {
 
 .move-picker-inline-chip {
   max-width: min(18rem, 70%);
+  min-width: 0;
   flex: 0 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;

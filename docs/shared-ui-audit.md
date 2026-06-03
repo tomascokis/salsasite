@@ -42,6 +42,7 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - Picker lab dropdown rows must share create, empty, more-results, hover, and active styling across family, dancer, and move variants.
 - Picker dropdown keyboard navigation must keep the active suggestion visible inside the dropdown scroller and must not allow arrow keys to scroll the page/window while a picker query is active.
 - Picker lab mobile and narrow layouts must prevent selected chips, input text, suggestion rows, and lab state readouts from overflowing their cards.
+- Picker inline chip inputs must wrap chips and remaining input space within the field instead of hiding horizontal scroll, and dropdown row text must wrap or truncate inside the row without exceeding its text column.
 - Shared entity picker templates must declare picker intent through mode (`browse`, `filter`, `singleEdit`, `multiEdit`, or `strict`), create policy (`none`, `local`, `persistMetadata`, or `draftMove`), value source (`id` or `label`), and density (`default` or `compact`) before rollout to real pages.
 - Shared entity picker browse mode is search/navigation-only: choosing a suggestion must not create hidden selected state or clear the visible typed query as though an edit field committed a value.
 - Shared entity picker strict mode must not expose create behavior or allow arbitrary typed values to become selections.
