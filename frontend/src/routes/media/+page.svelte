@@ -1,7 +1,8 @@
 <script lang="ts">
   import ContentBadge from '$lib/components/ContentBadge.svelte';
-  import SearchablePicker from '$lib/components/SearchablePicker.svelte';
+  import EntityPicker from '$lib/components/EntityPicker.svelte';
   import { publicationStatusFor } from '$lib/content-status';
+  import type { EntityPickerTemplate } from '$lib/components/entity-picker';
   import type { ContentStatusTone } from '$lib/content-status';
   import type { DerivedClip, VideoContentType, VideoEnvironment, VideoOriginType, VideoTiming } from '$lib/types';
 
@@ -56,6 +57,18 @@
   let dancerQuery = '';
   let loadedFilterKey = 'all|all|';
   let filterRequestId = 0;
+  const dancerFilterPickerTemplate: EntityPickerTemplate = {
+    key: 'media-dancer-filter',
+    kind: 'searchable',
+    showHeader: false,
+    placeholder: 'Any dancer',
+    addPlaceholder: 'Add dancer',
+    ariaLabel: 'Filter by dancer',
+    mode: 'filter',
+    createPolicy: 'none',
+    valueSource: 'id',
+    density: 'compact'
+  };
 
   $: dancerOptions = data.dancerOptions.map((dancer) => ({ id: dancer, label: dancer }));
   $: desiredFilterKey = mediaFilterKey();
@@ -310,17 +323,14 @@
       </div>
       <div class="media-filter-dancer">
         <span class="media-filter-label">Dancer</span>
-        <SearchablePicker
+        <EntityPicker
+          template={dancerFilterPickerTemplate}
           options={dancerOptions}
           selectedIds={selectedDancerIds}
           query={dancerQuery}
-          placeholder="Any dancer"
-          addPlaceholder="Add dancer"
-          ariaLabel="Filter by dancer"
-          selectedPlacement="inside"
-          on:query={(event) => (dancerQuery = event.detail.query)}
-          on:select={(event) => (selectedDancerIds = [...selectedDancerIds, event.detail.id])}
-          on:remove={(event) => (selectedDancerIds = selectedDancerIds.filter((id) => id !== event.detail.id))}
+          onquery={(detail) => (dancerQuery = detail.query)}
+          onselect={(detail) => (selectedDancerIds = [...selectedDancerIds, detail.id])}
+          onremove={(detail) => (selectedDancerIds = selectedDancerIds.filter((id) => id !== detail.id))}
         />
       </div>
       <span class="muted media-filter-count">{filteredAssets.length} / {totalAssets}</span>

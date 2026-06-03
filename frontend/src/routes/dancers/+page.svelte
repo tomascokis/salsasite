@@ -1,7 +1,9 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
   import EditableList from '$lib/components/EditableList.svelte';
+  import EntityPicker from '$lib/components/EntityPicker.svelte';
   import SearchablePicker from '$lib/components/SearchablePicker.svelte';
+  import type { EntityPickerTemplate } from '$lib/components/entity-picker';
   import type { DancerLevel, DancerProfile, DancerRole } from '$lib/types';
 
   type PickerOption = {
@@ -26,6 +28,18 @@
     { value: 'semi-pro', label: 'Semi-pro' },
     { value: 'amateur', label: 'Amateur' }
   ];
+  const regionPickerTemplate: EntityPickerTemplate = {
+    key: 'dancer-region',
+    kind: 'searchable',
+    showHeader: false,
+    placeholder: 'Choose or type region',
+    addPlaceholder: 'Change region',
+    ariaLabel: 'Region',
+    mode: 'singleEdit',
+    createPolicy: 'local',
+    valueSource: 'label',
+    createLabel: 'Use region'
+  };
 
   let dancers = data.dancers;
   let selectedId: string | null = dancers[0]?.id ?? null;
@@ -255,26 +269,21 @@
             </label>
             <label>
               <span>Region</span>
-              <SearchablePicker
+              <EntityPicker
+                template={regionPickerTemplate}
                 options={regionOptions}
                 selectedIds={selectedRegionIds}
                 query={regionQuery}
-                placeholder="Choose or type region"
-                addPlaceholder="Change region"
-                ariaLabel="Region"
-                selectedPlacement="inside"
-                allowCreate={true}
-                createLabel="Use region"
-                on:query={(event) => (regionQuery = event.detail.query)}
-                on:select={(event) => {
-                  region = event.detail.option.label;
+                onquery={(detail) => (regionQuery = detail.query)}
+                onselect={(detail) => {
+                  region = detail.value;
                   regionQuery = '';
                 }}
-                on:create={(event) => {
-                  region = event.detail.value;
+                oncreate={(detail) => {
+                  region = detail.value;
                   regionQuery = '';
                 }}
-                on:remove={() => {
+                onremove={() => {
                   region = '';
                   regionQuery = '';
                 }}

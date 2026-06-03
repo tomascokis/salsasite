@@ -6,9 +6,9 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import ContentBadge from '$lib/components/ContentBadge.svelte';
-  import MovePicker from '$lib/components/MovePicker.svelte';
-  import SearchablePicker from '$lib/components/SearchablePicker.svelte';
+  import EntityPicker from '$lib/components/EntityPicker.svelte';
   import { publicationStatusFor, processingStatusFor } from '$lib/content-status';
+  import type { EntityPickerTemplate } from '$lib/components/entity-picker';
   import {
     applyVideoAudioPreference,
     hasActiveMutedVideoPreference,
@@ -128,6 +128,55 @@
   const ROW_WINDOW_SETTLE_MS = 450;
   const ROW_MOVE_MS = 850;
   const ROW_ENTER_MS = 260;
+  const draftMovePickerTemplate: EntityPickerTemplate = {
+    key: 'media-edit-draft-move',
+    kind: 'move',
+    showHeader: false,
+    placeholder: 'Search moves by id or name',
+    addPlaceholder: 'Add another move',
+    ariaLabel: 'Search moves by id or name',
+    mode: 'singleEdit',
+    createPolicy: 'draftMove',
+    valueSource: 'id',
+    density: 'compact',
+    maxSelected: 1
+  };
+  const startPositionPickerTemplate: EntityPickerTemplate = {
+    key: 'media-edit-start-position',
+    kind: 'searchable',
+    showHeader: false,
+    placeholder: 'Start',
+    addPlaceholder: 'Start',
+    ariaLabel: 'Start position',
+    mode: 'strict',
+    createPolicy: 'none',
+    valueSource: 'id',
+    density: 'compact'
+  };
+  const endPositionPickerTemplate: EntityPickerTemplate = {
+    key: 'media-edit-end-position',
+    kind: 'searchable',
+    showHeader: false,
+    placeholder: 'End',
+    addPlaceholder: 'End',
+    ariaLabel: 'End position',
+    mode: 'strict',
+    createPolicy: 'none',
+    valueSource: 'id',
+    density: 'compact'
+  };
+  const mediaDancerPickerTemplate: EntityPickerTemplate = {
+    key: 'media-edit-dancers',
+    kind: 'searchable',
+    showHeader: false,
+    placeholder: 'Search dancers',
+    addPlaceholder: 'Add dancer',
+    ariaLabel: 'Dancers',
+    mode: 'multiEdit',
+    createPolicy: 'none',
+    valueSource: 'label',
+    density: 'compact'
+  };
   const ROW_EXIT_MS = 180;
   const COUNT_PRESET_SEQUENCES: Record<CountTimingPreset, string[]> = {
     'on2-default': ['6', '7', '1', '2', '3', '5'],
@@ -3763,20 +3812,18 @@
                               <strong>{formatTenthSeconds(row.startMs)}s</strong>
                             </div>
                             <div class="move-link-field">
-                              <MovePicker
-                                moves={availableMoves}
+                              <EntityPicker
+                                template={draftMovePickerTemplate}
+                                options={availableMoves}
                                 selectedIds={row.moveIds}
                                 excludedIds={selectedDraftMoveIds}
                                 query={row.query}
                                 limit={MOVE_SUGGESTION_LIMIT}
-                                selectedPlacement="inside"
-                                allowCreate={true}
-                                maxSelected={1}
-                                on:focus={() => selectDraftMoveRow(row.id)}
-                                on:query={(event) => handleDraftMoveQueryInput(row.id, event.detail.query)}
-                                on:create={(event) => createDraftMoveFromQuery(row.id, event.detail.query)}
-                                on:select={(event) => addDraftMove(event.detail.moveId, row.id)}
-                                on:remove={(event) => removeDraftMove(row.id, event.detail.moveId)}
+                                onfocus={() => selectDraftMoveRow(row.id)}
+                                onquery={(detail) => handleDraftMoveQueryInput(row.id, detail.query)}
+                                oncreate={(detail) => createDraftMoveFromQuery(row.id, detail.value)}
+                                onselect={(detail) => addDraftMove(detail.id, row.id)}
+                                onremove={(detail) => removeDraftMove(row.id, detail.id)}
                               />
                             </div>
                             <label class="draft-descriptor-field">
@@ -3790,37 +3837,29 @@
                               />
                             </label>
                             <div class="draft-position-field">
-                              <SearchablePicker
+                              <EntityPicker
+                                template={startPositionPickerTemplate}
                                 options={positionPickerOptions}
                                 selectedIds={row.startPositionId ? [row.startPositionId] : []}
                                 query={row.startPositionQuery}
                                 limit={MOVE_SUGGESTION_LIMIT}
-                                placeholder="Start"
-                                addPlaceholder="Start"
-                                ariaLabel="Start position"
-                                selectedPlacement="inside"
-                                floatingDropdown={true}
-                                on:focus={() => selectDraftMoveRow(row.id)}
-                                on:query={(event) => updateDraftPositionQuery(row.id, 'start', event.detail.query)}
-                                on:select={(event) => selectDraftPosition(row.id, 'start', event.detail.id)}
-                                on:remove={() => removeDraftPosition(row.id, 'start')}
+                                onfocus={() => selectDraftMoveRow(row.id)}
+                                onquery={(detail) => updateDraftPositionQuery(row.id, 'start', detail.query)}
+                                onselect={(detail) => selectDraftPosition(row.id, 'start', detail.id)}
+                                onremove={() => removeDraftPosition(row.id, 'start')}
                               />
                             </div>
                             <div class="draft-position-field">
-                              <SearchablePicker
+                              <EntityPicker
+                                template={endPositionPickerTemplate}
                                 options={positionPickerOptions}
                                 selectedIds={row.endPositionId ? [row.endPositionId] : []}
                                 query={row.endPositionQuery}
                                 limit={MOVE_SUGGESTION_LIMIT}
-                                placeholder="End"
-                                addPlaceholder="End"
-                                ariaLabel="End position"
-                                selectedPlacement="inside"
-                                floatingDropdown={true}
-                                on:focus={() => selectDraftMoveRow(row.id)}
-                                on:query={(event) => updateDraftPositionQuery(row.id, 'end', event.detail.query)}
-                                on:select={(event) => selectDraftPosition(row.id, 'end', event.detail.id)}
-                                on:remove={() => removeDraftPosition(row.id, 'end')}
+                                onfocus={() => selectDraftMoveRow(row.id)}
+                                onquery={(detail) => updateDraftPositionQuery(row.id, 'end', detail.query)}
+                                onselect={(detail) => selectDraftPosition(row.id, 'end', detail.id)}
+                                onremove={() => removeDraftPosition(row.id, 'end')}
                               />
                             </div>
                             {#if sourceClip}
@@ -3925,18 +3964,14 @@
                   </label>
                   <label>
                     <span>Dancers</span>
-                    <SearchablePicker
+                    <EntityPicker
+                      template={mediaDancerPickerTemplate}
                       options={dancerOptions}
                       selectedIds={editDancerIds}
                       query={editDancerQuery}
-                      placeholder="Search dancers"
-                      addPlaceholder="Add dancer"
-                      ariaLabel="Dancers"
-                      selectedPlacement="inside"
-                      floatingDropdown={true}
-                      on:query={(event) => (editDancerQuery = event.detail.query)}
-                      on:select={(event) => addSelectedDancer(event.detail.option.label)}
-                      on:remove={(event) => removeSelectedDancer(event.detail.id)}
+                      onquery={(detail) => (editDancerQuery = detail.query)}
+                      onselect={(detail) => addSelectedDancer(detail.value)}
+                      onremove={(detail) => removeSelectedDancer(detail.value)}
                     />
                   </label>
                   <div class="segmented-field">

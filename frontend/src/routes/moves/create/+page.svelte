@@ -4,11 +4,12 @@
   import { onDestroy, onMount } from 'svelte';
   import AutoResizeTextarea from '$lib/components/AutoResizeTextarea.svelte';
   import ContextMenu from '$lib/components/ContextMenu.svelte';
+  import EntityPicker from '$lib/components/EntityPicker.svelte';
   import MoveConnectionDiagramEditor from '$lib/components/MoveConnectionDiagramEditor.svelte';
   import MovePicker from '$lib/components/MovePicker.svelte';
   import MoveTypeControl from '$lib/components/MoveTypeControl.svelte';
   import MoveVideoPreview from '$lib/components/MoveVideoPreview.svelte';
-  import SearchablePicker from '$lib/components/SearchablePicker.svelte';
+  import type { EntityPickerTemplate } from '$lib/components/entity-picker';
   import { moveDisplayId, normalizeMoveDisplayId } from '$lib/move-id';
   import { draftMoveIdFromName } from '$lib/move-id-utils.js';
   import type { MetadataEntry, MoveRecord, SiteMetadata } from '$lib/types';
@@ -88,6 +89,66 @@
     { id: 'child', label: 'Add as child' },
     { id: 'related', label: 'Add as related' }
   ];
+  const topicPickerTemplate: EntityPickerTemplate = {
+    key: 'move-topic',
+    kind: 'searchable',
+    showHeader: false,
+    placeholder: 'Search topics',
+    addPlaceholder: '',
+    ariaLabel: 'Search topics',
+    mode: 'singleEdit',
+    createPolicy: 'persistMetadata',
+    valueSource: 'label',
+    createLabel: 'Use topic'
+  };
+  const familyPickerTemplate: EntityPickerTemplate = {
+    key: 'move-family',
+    kind: 'searchable',
+    showHeader: false,
+    placeholder: 'Search families',
+    addPlaceholder: '',
+    ariaLabel: 'Search families',
+    mode: 'singleEdit',
+    createPolicy: 'persistMetadata',
+    valueSource: 'label',
+    createLabel: 'Use family'
+  };
+  const positionPickerTemplate: EntityPickerTemplate = {
+    key: 'move-positions',
+    kind: 'searchable',
+    showHeader: false,
+    placeholder: '',
+    addPlaceholder: '',
+    ariaLabel: 'Positions',
+    mode: 'singleEdit',
+    createPolicy: 'local',
+    valueSource: 'label',
+    createLabel: 'Use position'
+  };
+  const tagPickerTemplate: EntityPickerTemplate = {
+    key: 'move-tags',
+    kind: 'searchable',
+    showHeader: false,
+    placeholder: 'Add tags',
+    addPlaceholder: 'Add tags',
+    ariaLabel: 'Tags',
+    mode: 'multiEdit',
+    createPolicy: 'local',
+    valueSource: 'label',
+    createLabel: 'Add tag'
+  };
+  const authorshipPickerTemplate: EntityPickerTemplate = {
+    key: 'move-authorship',
+    kind: 'searchable',
+    showHeader: false,
+    placeholder: '',
+    addPlaceholder: '',
+    ariaLabel: 'Authorship',
+    mode: 'singleEdit',
+    createPolicy: 'local',
+    valueSource: 'label',
+    createLabel: 'Use authorship'
+  };
 
   $: pinnedMoves = pinnedMoveIds
     .map((moveId) => data.moves.find((move) => move.id === moveId))
@@ -880,30 +941,24 @@
               </label>
               <label class="move-form-field move-form-topic">
                 <span>Topic</span>
-                <SearchablePicker
+                <EntityPicker
+                  template={topicPickerTemplate}
                   options={topicOptions}
                   selectedIds={selectedTopicIds}
                   query={topicQuery}
-                  placeholder="Search topics"
-                  addPlaceholder=""
-                  ariaLabel="Search topics"
-                  showSelected={true}
-                  selectedPlacement="inside"
-                  allowCreate={true}
-                  createLabel="Use topic"
-                  on:query={(event) => {
-                    topicQuery = event.detail.query;
+                  onquery={(detail) => {
+                    topicQuery = detail.query;
                   }}
-                  on:select={(event) => {
-                    topic = event.detail.option.label;
+                  onselect={(detail) => {
+                    topic = detail.value;
                     topicQuery = '';
                   }}
-                  on:create={(event) => {
-                    topic = event.detail.value;
+                  oncreate={(detail) => {
+                    topic = detail.value;
                     topicQuery = '';
-                    void persistMetadata('topic', event.detail.value);
+                    void persistMetadata('topic', detail.value);
                   }}
-                  on:remove={() => {
+                  onremove={() => {
                     topic = '';
                     topicQuery = '';
                   }}
@@ -911,30 +966,24 @@
               </label>
               <label class="move-form-field move-form-family">
                 <span>Family</span>
-                <SearchablePicker
+                <EntityPicker
+                  template={familyPickerTemplate}
                   options={familyOptions}
                   selectedIds={selectedFamilyIds}
                   query={familyQuery}
-                  placeholder="Search families"
-                  addPlaceholder=""
-                  ariaLabel="Search families"
-                  showSelected={true}
-                  selectedPlacement="inside"
-                  allowCreate={true}
-                  createLabel="Use family"
-                  on:query={(event) => {
-                    familyQuery = event.detail.query;
+                  onquery={(detail) => {
+                    familyQuery = detail.query;
                   }}
-                  on:select={(event) => {
-                    group = event.detail.option.label;
+                  onselect={(detail) => {
+                    group = detail.value;
                     familyQuery = '';
                   }}
-                  on:create={(event) => {
-                    group = event.detail.value;
+                  oncreate={(detail) => {
+                    group = detail.value;
                     familyQuery = '';
-                    void persistMetadata('family', event.detail.value);
+                    void persistMetadata('family', detail.value);
                   }}
-                  on:remove={() => {
+                  onremove={() => {
                     group = '';
                     familyQuery = '';
                   }}
@@ -942,25 +991,21 @@
               </label>
               <label class="move-form-field move-form-positions">
                 <span>Positions</span>
-                <SearchablePicker
+                <EntityPicker
+                  template={positionPickerTemplate}
                   options={positionOptions}
                   selectedIds={selectedPositionIds}
                   query={positionsQuery}
-                  placeholder=""
-                  addPlaceholder=""
-                  ariaLabel="Positions"
-                  allowCreate={true}
-                  createLabel="Use position"
-                  on:query={(event) => (positionsQuery = event.detail.query)}
-                  on:select={(event) => {
-                    positions = event.detail.option.label;
+                  onquery={(detail) => (positionsQuery = detail.query)}
+                  onselect={(detail) => {
+                    positions = detail.value;
                     positionsQuery = '';
                   }}
-                  on:create={(event) => {
-                    positions = event.detail.value;
+                  oncreate={(detail) => {
+                    positions = detail.value;
                     positionsQuery = '';
                   }}
-                  on:remove={() => {
+                  onremove={() => {
                     positions = '';
                     positionsQuery = '';
                   }}
@@ -968,43 +1013,34 @@
               </label>
               <label class="move-form-field move-form-tags">
                 <span>Tags</span>
-                <SearchablePicker
+                <EntityPicker
+                  template={tagPickerTemplate}
                   options={tagOptions}
                   selectedIds={selectedTagIds}
                   query={tagsQuery}
-                  placeholder="Add tags"
-                  addPlaceholder="Add tags"
-                  ariaLabel="Tags"
-                  selectedPlacement="inside"
-                  allowCreate={true}
-                  createLabel="Add tag"
-                  on:query={(event) => (tagsQuery = event.detail.query)}
-                  on:select={(event) => addTagValue(event.detail.option.label)}
-                  on:create={(event) => addTagValue(event.detail.value)}
-                  on:remove={(event) => removeTagValue(event.detail.id)}
+                  onquery={(detail) => (tagsQuery = detail.query)}
+                  onselect={(detail) => addTagValue(detail.value)}
+                  oncreate={(detail) => addTagValue(detail.value)}
+                  onremove={(detail) => removeTagValue(detail.value)}
                 />
               </label>
               <label class="move-form-field move-form-authorship">
                 <span>Authorship</span>
-                <SearchablePicker
+                <EntityPicker
+                  template={authorshipPickerTemplate}
                   options={sourceOptions}
                   selectedIds={selectedSourceIds}
                   query={sourceQuery}
-                  placeholder=""
-                  addPlaceholder=""
-                  ariaLabel="Authorship"
-                  allowCreate={true}
-                  createLabel="Use authorship"
-                  on:query={(event) => (sourceQuery = event.detail.query)}
-                  on:select={(event) => {
-                    source = event.detail.option.label;
+                  onquery={(detail) => (sourceQuery = detail.query)}
+                  onselect={(detail) => {
+                    source = detail.value;
                     sourceQuery = '';
                   }}
-                  on:create={(event) => {
-                    source = event.detail.value;
+                  oncreate={(detail) => {
+                    source = detail.value;
                     sourceQuery = '';
                   }}
-                  on:remove={() => {
+                  onremove={() => {
                     source = '';
                     sourceQuery = '';
                   }}

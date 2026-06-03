@@ -4559,6 +4559,7 @@ select {
 .entity-picker-field {
   display: grid;
   gap: 0.8rem;
+  min-width: 0;
 }
 
 .entity-picker-field-inline {
@@ -4584,6 +4585,7 @@ select {
 
 .entity-picker-field-compact .move-picker,
 .entity-picker-field-compact .searchable-picker {
+  min-width: 0;
   --picker-control-font-size: 0.78rem;
   --picker-chip-font-size: 0.72rem;
   --picker-secondary-font-size: 0.68rem;
@@ -4599,8 +4601,16 @@ select {
 .entity-picker-field-compact .move-picker-input-inline,
 .entity-picker-field-compact .searchable-picker-input-inline {
   height: 2rem;
+  min-width: 0;
+  max-width: 100%;
   padding-top: 0.18rem;
   padding-bottom: 0.18rem;
+}
+
+.entity-picker-field-compact .move-picker-input-inline input,
+.entity-picker-field-compact .searchable-picker-input-inline input {
+  min-width: 0;
+  flex: 1 1 0;
 }
 
 .entity-picker-field-header {
