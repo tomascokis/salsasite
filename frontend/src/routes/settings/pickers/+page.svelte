@@ -281,11 +281,18 @@
 
   function selectValue(key: string, value: string) {
     const state = stateFor(key);
+    const template = templates.find((candidate) => candidate.key === key);
+    if (template?.mode === 'browse') {
+      updateState(key, {
+        lastAction: `Browsed ${labelFor(template, state, value)}`
+      });
+      return;
+    }
+
     if (state.selectedIds.includes(value)) {
       return;
     }
 
-    const template = templates.find((candidate) => candidate.key === key);
     const singleValue = template?.mode === 'singleEdit' || template?.mode === 'strict';
     updateState(key, {
       selectedIds: singleValue ? [value] : [...state.selectedIds, value],

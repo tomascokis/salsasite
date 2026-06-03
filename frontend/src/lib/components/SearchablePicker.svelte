@@ -25,6 +25,7 @@
   export let allowCreate = false;
   export let createLabel = 'Use';
   export let maxSelected: number | null = null;
+  export let clearQueryOnSelect = true;
   export let onselect: ((detail: { option: SearchablePickerOption; id: string }) => void) | undefined = undefined;
   export let onremove: ((detail: { id: string }) => void) | undefined = undefined;
   export let onquery: ((detail: { query: string }) => void) | undefined = undefined;
@@ -194,7 +195,9 @@
     const detail = { option, id: option.id };
     dispatch('select', detail);
     onselect?.(detail);
-    setQuery('');
+    if (clearQueryOnSelect) {
+      setQuery('');
+    }
   }
 
   function createOption() {

@@ -34,6 +34,7 @@
   export let createText = 'Create new move';
   export let autocapitalize: 'none' | 'characters' | 'off' | 'on' | 'sentences' | 'words' = 'off';
   export let maxSelected: number | null = null;
+  export let clearQueryOnSelect = true;
   export let onselect: ((detail: { move: MoveOption; moveId: string }) => void) | undefined = undefined;
   export let onremove: ((detail: { moveId: string }) => void) | undefined = undefined;
   export let onquery: ((detail: { query: string }) => void) | undefined = undefined;
@@ -194,7 +195,9 @@
     const detail = { move, moveId: move.id };
     dispatch('select', detail);
     onselect?.(detail);
-    setQuery('');
+    if (clearQueryOnSelect) {
+      setQuery('');
+    }
   }
 
   function removeMove(moveId: string) {

@@ -76,7 +76,8 @@
       selectedPlacement: mode === 'browse' ? 'before' : 'inside',
       floatingDropdown: true,
       maxSelected: mode === 'singleEdit' || mode === 'strict' ? 1 : null,
-      allowCreate: createPolicy !== 'none' && mode !== 'browse' && mode !== 'filter' && mode !== 'strict'
+      allowCreate: createPolicy !== 'none' && mode !== 'browse' && mode !== 'filter' && mode !== 'strict',
+      clearQueryOnSelect: mode !== 'browse'
     };
 
     return {
@@ -88,7 +89,8 @@
       selectedPlacement: pickerTemplate.selectedPlacement ?? modeDefaults.selectedPlacement,
       floatingDropdown: pickerTemplate.floatingDropdown ?? modeDefaults.floatingDropdown,
       maxSelected: pickerTemplate.maxSelected ?? modeDefaults.maxSelected,
-      allowCreate: pickerTemplate.allowCreate ?? modeDefaults.allowCreate
+      allowCreate: pickerTemplate.allowCreate ?? modeDefaults.allowCreate,
+      clearQueryOnSelect: modeDefaults.clearQueryOnSelect
     };
   }
 
@@ -155,6 +157,7 @@
       floatingDropdown={resolved.floatingDropdown}
       disabled={disabled}
       maxSelected={resolved.maxSelected}
+      clearQueryOnSelect={resolved.clearQueryOnSelect}
       emptyText={template.emptyText ?? 'No matching moves'}
       moreText={template.moreText ?? 'and more...'}
       allowCreate={resolved.allowCreate}
@@ -183,6 +186,7 @@
       floatingDropdown={resolved.floatingDropdown}
       disabled={disabled}
       maxSelected={resolved.maxSelected}
+      clearQueryOnSelect={resolved.clearQueryOnSelect}
       emptyText={template.emptyText ?? 'No matches'}
       moreText={template.moreText ?? 'and more...'}
       allowCreate={resolved.allowCreate}
