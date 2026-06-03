@@ -24,6 +24,11 @@
     if (type === 'Variation') return 'variation';
     return '';
   }
+
+  function entryKey(entry: LayoutColumn['entries'][number], index: number) {
+    const identity = entry.id ?? entry.slug ?? entry.name ?? 'row';
+    return `${entry.entryType ?? 'entry'}-${identity}-${entry.layoutOrder ?? 'unplaced'}-${index}`;
+  }
 </script>
 
 <div class="stack metadata-splash-page">
@@ -47,7 +52,7 @@
         {#each orderedLayout as column}
           <div class="dashboard-column">
             <div class="dashboard-column-content">
-              {#each column.entries as entry (entry.layoutOrder ?? entry.id ?? entry.name)}
+              {#each column.entries as entry, entryIdx (entryKey(entry, entryIdx))}
                 {#if entry.entryType === 'Title'}
                   <div class="dashboard-row title-row">
                     <div class="title-cell">{entry.name}</div>
