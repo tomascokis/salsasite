@@ -42,7 +42,7 @@
       title: 'Filter dancers',
       description: 'Multi-select filter picker with creation disabled.',
       placeholder: 'Search dancers',
-      addPlaceholder: 'Filter another dancer',
+      addPlaceholder: 'Search',
       ariaLabel: 'Filter dancers',
       limit: 24
     },

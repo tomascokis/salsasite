@@ -44,6 +44,7 @@ Phase 0 / Infra-1 audit of existing reusable UI and local patterns.
 - Picker lab mobile and narrow layouts must prevent selected chips, input text, suggestion rows, and lab state readouts from overflowing their cards.
 - Picker inline chip inputs must wrap chips and remaining input space within the field instead of hiding horizontal scroll, and dropdown row text must wrap or truncate inside the row without exceeding its text column.
 - Picker lab must not include a browse/search-only test card; the first visible picker must accept committed values and show them as selected pills.
+- Picker lab's first dancer picker must use `Search` as the in-field prompt after selected pills are present, not `Filter another dancer`.
 - Shared entity picker templates must declare picker intent through mode (`browse`, `filter`, `singleEdit`, `multiEdit`, or `strict`), create policy (`none`, `local`, `persistMetadata`, or `draftMove`), value source (`id` or `label`), and density (`default` or `compact`) before rollout to real pages.
 - Shared entity picker strict mode must not expose create behavior or allow arbitrary typed values to become selections.
 - Shared entity picker create policies only control create-row availability and event intent; page-level handlers remain responsible for persistence or draft creation.
