@@ -55,3 +55,4 @@ data/live/media-catalog-exports/
 # Node modules (if needed for npm packages)
 node_modules/
 package-lock.json
+.svelte-kit/
