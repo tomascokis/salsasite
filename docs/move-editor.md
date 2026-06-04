@@ -106,7 +106,9 @@ The move editor saves clip definitions before rendering.
 - Each visible clip row represents exactly one move expression.
 - Each clip row must allow only one move selection at a time; adding another move expression requires a separate row.
 - A clip row may store an optional extra move label, optional start position, and optional end position.
-- Start and end positions must come from the strict position picker option set; the media editor must not save arbitrary position text.
+- Start and end position pickers must let the user create a new position from typed text when no existing option is appropriate.
+- Newly created clip positions must be saved as reusable position options and selected in the current row immediately.
+- Saved clips must store start and end positions by position ID, not by arbitrary unsaved text.
 - The optional extra move label describes only that clip expression and must not rename the canonical move.
 - Multiple move expressions that share the same clip/action timing must be represented as separate rows bound by a shared timing group.
 - Bound rows must keep locked same-time behavior: editing timing on one row updates the other rows in the group.

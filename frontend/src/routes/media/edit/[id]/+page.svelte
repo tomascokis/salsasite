@@ -148,10 +148,11 @@
     placeholder: 'Start',
     addPlaceholder: 'Start',
     ariaLabel: 'Start position',
-    mode: 'strict',
-    createPolicy: 'none',
+    mode: 'singleEdit',
+    createPolicy: 'local',
     valueSource: 'id',
-    density: 'compact'
+    density: 'compact',
+    createLabel: 'Create position'
   };
   const endPositionPickerTemplate: EntityPickerTemplate = {
     key: 'media-edit-end-position',
@@ -160,10 +161,11 @@
     placeholder: 'End',
     addPlaceholder: 'End',
     ariaLabel: 'End position',
-    mode: 'strict',
-    createPolicy: 'none',
+    mode: 'singleEdit',
+    createPolicy: 'local',
     valueSource: 'id',
-    density: 'compact'
+    density: 'compact',
+    createLabel: 'Create position'
   };
   const mediaDancerPickerTemplate: EntityPickerTemplate = {
     key: 'media-edit-dancers',
@@ -959,6 +961,39 @@
         : { endPositionId: id, endPositionQuery: '' }
     );
     activeDraftMoveRowId = rowId;
+  }
+
+  function upsertPositionPickerOption(position: { id: string; label: string }) {
+    positionPickerOptions = [
+      ...positionPickerOptions.filter((option) => option.id !== position.id),
+      { id: position.id, label: position.label }
+    ].sort((left, right) => left.label.localeCompare(right.label, undefined, { sensitivity: 'base' }));
+  }
+
+  async function createDraftPositionFromQuery(rowId: string, field: 'start' | 'end', value: string) {
+    const label = value.trim();
+    if (!label) {
+      return;
+    }
+
+    activeDraftMoveRowId = rowId;
+    saveStatus = `Creating position "${label}"...`;
+
+    const response = await fetch('/api/positions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ label })
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      saveStatus = payload.error ?? 'Could not create position.';
+      return;
+    }
+
+    upsertPositionPickerOption(payload.position);
+    selectDraftPosition(rowId, field, payload.position.id);
+    saveStatus = `Created position "${payload.position.label}".`;
   }
 
   function removeDraftPosition(rowId: string, field: 'start' | 'end') {
@@ -3848,6 +3883,7 @@
                                 onfocus={() => selectDraftMoveRow(row.id)}
                                 onquery={(detail) => updateDraftPositionQuery(row.id, 'start', detail.query)}
                                 onselect={(detail) => selectDraftPosition(row.id, 'start', detail.id)}
+                                oncreate={(detail) => void createDraftPositionFromQuery(row.id, 'start', detail.value)}
                                 onremove={() => removeDraftPosition(row.id, 'start')}
                               />
                             </div>
@@ -3861,6 +3897,7 @@
                                 onfocus={() => selectDraftMoveRow(row.id)}
                                 onquery={(detail) => updateDraftPositionQuery(row.id, 'end', detail.query)}
                                 onselect={(detail) => selectDraftPosition(row.id, 'end', detail.id)}
+                                oncreate={(detail) => void createDraftPositionFromQuery(row.id, 'end', detail.value)}
                                 onremove={() => removeDraftPosition(row.id, 'end')}
                               />
                             </div>
