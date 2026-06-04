@@ -288,6 +288,8 @@
   let timelinePinchStartDistancePx = 0;
   let timelinePinchStartViewport: TimelineViewport | null = null;
   let timelinePinchAnchorMs = 0;
+  let timelinePinchRestorePlayheadMs: number | null = null;
+  let timelinePinchRestoreLoopSuppression: boolean | null = null;
   let resumePlaybackAfterTimelineDrag = false;
   let timelineElement: HTMLDivElement | null = null;
   let draftMoveRowWindowElement: HTMLDivElement | null = null;
@@ -447,11 +449,7 @@
     return actions;
   }
 
-  function buildTimelineZoomButtons(visible: boolean, zoomLooping: boolean): TimelineActionButton[] {
-    if (!visible) {
-      return [];
-    }
-
+  function buildTimelineZoomButtons(zoomLooping: boolean): TimelineActionButton[] {
     return [
       {
         key: 'reset-zoom',
@@ -636,7 +634,7 @@
     hasSaveableDraftChanges,
     hasUnsavedClipRowChanges
   });
-  $: timelineZoomButtons = buildTimelineZoomButtons(timelineZoomControlsVisible, isZoomLooping);
+  $: timelineZoomButtons = buildTimelineZoomButtons(isZoomLooping);
 
   beforeNavigate((navigation) => {
     if (navigation.willUnload || !hasDraftChanges) {
@@ -2467,6 +2465,8 @@
     timelinePinchStartDistancePx = 0;
     timelinePinchStartViewport = null;
     timelinePinchAnchorMs = 0;
+    timelinePinchRestorePlayheadMs = null;
+    timelinePinchRestoreLoopSuppression = null;
     timelineZoomTargetViewport = null;
   }
 
@@ -2507,6 +2507,8 @@
       return false;
     }
 
+    restoreTimelinePinchPlayhead();
+
     timelinePinchActive = true;
     timelineDragTarget = null;
     timelineDragPreviousMs = null;
@@ -2519,6 +2521,17 @@
     };
     timelinePinchAnchorMs = timelineMsFromClientX((pair[0].clientX + pair[1].clientX) / 2);
     return true;
+  }
+
+  function restoreTimelinePinchPlayhead() {
+    if (timelinePinchRestorePlayheadMs === null) {
+      return;
+    }
+
+    seekPreview(timelinePinchRestorePlayheadMs);
+    if (timelinePinchRestoreLoopSuppression !== null) {
+      isLoopSuppressedByTimelineSeek = timelinePinchRestoreLoopSuppression;
+    }
   }
 
   function updateTimelinePinch() {
@@ -2536,6 +2549,7 @@
     const touchScale = 1 + (rawScale - 1) * TIMELINE_TOUCH_PINCH_ZOOM_DAMPING;
     const dampedScale = Math.max(TIMELINE_PINCH_SCALE_MIN, Math.min(TIMELINE_PINCH_SCALE_MAX, touchScale));
     zoomTimelineAround(timelinePinchAnchorMs, dampedScale, timelinePinchStartViewport);
+    restoreTimelinePinchPlayhead();
   }
 
   function markTimelineZooming() {
@@ -2567,7 +2581,7 @@
       updateTimelineTouchPointer(event);
       timelineDragCaptureElement = event.currentTarget instanceof HTMLElement ? event.currentTarget : timelineDragCaptureElement;
       timelineDragCaptureElement?.setPointerCapture?.(event.pointerId);
-      if (!target && timelineTouchPointers.size >= 2 && beginTimelinePinch()) {
+      if (timelineTouchPointers.size >= 2 && beginTimelinePinch()) {
         return;
       }
     }
@@ -2585,6 +2599,13 @@
       resumePlaybackAfterTimelineDrag = false;
     }
     timelineDragTarget = target ?? 'playhead';
+    if (event.pointerType === 'touch' && timelineDragTarget === 'playhead' && timelineTouchPointers.size === 1) {
+      timelinePinchRestorePlayheadMs = playerCurrentMs;
+      timelinePinchRestoreLoopSuppression = isLoopSuppressedByTimelineSeek;
+    } else if (event.pointerType !== 'touch') {
+      timelinePinchRestorePlayheadMs = null;
+      timelinePinchRestoreLoopSuppression = null;
+    }
     timelineDragSnapConsumed = false;
     const nextValue = timelineMsFromPointer(event);
     const markerValue = timelineMarkerValue(timelineDragTarget, nextValue);
@@ -2603,13 +2624,19 @@
   }
 
   function handleTimelinePointerMove(event: PointerEvent) {
+    if (event.pointerType === 'touch' && timelinePinchActive) {
+      event.preventDefault();
+      if (timelineTouchPointers.has(event.pointerId)) {
+        updateTimelineTouchPointer(event);
+        updateTimelinePinch();
+      } else {
+        restoreTimelinePinchPlayhead();
+      }
+      return;
+    }
+
     if (event.pointerType === 'touch' && timelineTouchPointers.has(event.pointerId)) {
       updateTimelineTouchPointer(event);
-      if (timelinePinchActive) {
-        event.preventDefault();
-        updateTimelinePinch();
-        return;
-      }
     }
 
     if (!timelineDragTarget) {
@@ -3557,39 +3584,35 @@
                     </span>
                   </span>
                   <span><strong>Total</strong> {formatRoundedSeconds(playerDurationMs)}s</span>
-                  {#if timelineIsZoomed}
-                    <span class="timeline-zoom-status">
-                      <span
-                        class:timeline-zoom-active={timelineIsZoomed}
-                        in:fly={{ y: -4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
-                        out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
-                      >
-                        <strong>Zoomed</strong>
-                        {formatRoundedSeconds(timelineViewportDurationMs())}s
-                        ({formatRoundedSeconds(timelineViewportStartMs)}s - {formatRoundedSeconds(timelineViewportEndMs)}s)
-                      </span>
-                      {#if timelineZoomControlsVisible}
-                        <span class="timeline-zoom-actions">
-                          {#each timelineZoomButtons as action (action.key)}
-                            <button
-                              class={`timeline-move-action${action.className ? ` ${action.className}` : ''}`}
-                              class:active={action.active}
-                              type="button"
-                              aria-label={action.ariaLabel}
-                              aria-pressed={action.ariaPressed}
-                              title={action.title}
-                              animate:flip={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
-                              in:fly={{ y: -4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
-                              out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
-                              on:click={action.onClick}
-                            >
-                              {action.label}
-                            </button>
-                          {/each}
-                        </span>
-                      {/if}
+                  <span
+                    class="timeline-zoom-status"
+                    class:visible={timelineZoomControlsVisible}
+                    aria-hidden={!timelineZoomControlsVisible}
+                  >
+                    <span class="timeline-zoom-pill" class:timeline-zoom-active={timelineIsZoomed}>
+                      <strong>Zoomed</strong>
+                      {formatRoundedSeconds(timelineViewportDurationMs())}s
+                      ({formatRoundedSeconds(timelineViewportStartMs)}s - {formatRoundedSeconds(timelineViewportEndMs)}s)
                     </span>
-                  {/if}
+                    <span class="timeline-zoom-actions">
+                      {#each timelineZoomButtons as action (action.key)}
+                        <button
+                          class={`timeline-move-action${action.className ? ` ${action.className}` : ''}`}
+                          class:active={action.active}
+                          type="button"
+                          aria-label={action.ariaLabel}
+                          aria-pressed={action.ariaPressed}
+                          title={action.title}
+                          disabled={!timelineZoomControlsVisible}
+                          tabindex={timelineZoomControlsVisible ? undefined : -1}
+                          animate:flip={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
+                          on:click={action.onClick}
+                        >
+                          {action.label}
+                        </button>
+                      {/each}
+                    </span>
+                  </span>
                   {#if isDraftingMove}
                     {#if activeDraftMoveRow}
                       <span class="timeline-tool-actions">
@@ -3659,21 +3682,14 @@
                     </div>
                   </div>
                 {/if}
-                {#if timelineIsZoomed}
-                  <div
-                    class="timeline-overview zoomed"
-                    aria-hidden="true"
-                    in:fly={{ y: -4, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicOut }}
-                    out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
-                  >
-                    <span class="timeline-overview-track">
-                      <span
-                        class="timeline-overview-window"
-                        style={`left: ${timelineOverviewLeft(timelineScaleKey)}%; width: ${timelineOverviewWidth(timelineScaleKey)}%`}
-                      ></span>
-                    </span>
-                  </div>
-                {/if}
+                <div class="timeline-overview" class:zoomed={timelineIsZoomed} aria-hidden="true">
+                  <span class="timeline-overview-track">
+                    <span
+                      class="timeline-overview-window"
+                      style={`left: ${timelineOverviewLeft(timelineScaleKey)}%; width: ${timelineOverviewWidth(timelineScaleKey)}%`}
+                    ></span>
+                  </span>
+                </div>
                 <div class="clip-timeline-shell" class:zoomed={timelineIsZoomed}>
                   <div
                     class:zoomed={timelineIsZoomed}
