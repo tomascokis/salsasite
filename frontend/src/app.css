@@ -5185,6 +5185,13 @@ select {
   border-color: #9fbad2;
 }
 
+.media-properties-card .property-edit-button {
+  width: 1.55rem;
+  height: 1.55rem;
+  font-size: 0.82rem;
+  flex: 0 0 auto;
+}
+
 .move-detail-edit-button {
   width: 1.9rem;
   height: 1.9rem;
@@ -5342,9 +5349,14 @@ select {
 }
 
 .media-properties-card > .panel-header {
-  margin-bottom: 0.7rem;
-  padding-bottom: 0.65rem;
+  margin-bottom: 0.42rem;
+  padding-bottom: 0.38rem;
   border-bottom: 1px solid #e1e8ef;
+}
+
+.media-properties-card .panel-heading-row {
+  align-items: center;
+  flex-direction: row;
 }
 
 .media-properties-title {
@@ -5362,7 +5374,8 @@ select {
 
 .media-properties-title h3 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.94rem;
+  line-height: 1.15;
 }
 
 .media-properties-title span {
@@ -5373,6 +5386,7 @@ select {
 
 .media-properties-card .property-list {
   grid-template-columns: minmax(76px, 96px) minmax(0, 1fr);
+  gap: 0.22rem 0.48rem;
 }
 
 .media-property-badges {
@@ -5381,7 +5395,7 @@ select {
   flex-wrap: wrap;
   gap: 0;
   grid-column: 1 / -1;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.32rem;
 }
 
 .media-property-badge {
