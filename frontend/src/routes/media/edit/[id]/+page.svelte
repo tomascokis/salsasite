@@ -358,7 +358,10 @@
   $: activeCountMarkers = activeSavedClip?.countMarkers ?? [];
   $: currentCountMarker = activeSavedClip ? activeCountMarkers[countModeIndex] ?? null : null;
   $: activePreviewCountMarker = activeVisibleCountMarker(activeCountMarkers, playerCurrentMs);
-  $: visibleSavedTimelineClips = isDraftingMove ? [] : clipRows;
+  $: visibleSavedTimelineClips =
+    isDraftingMove && activeDraftOriginalClipIds.size
+      ? clipRows.filter((clip) => !activeDraftOriginalClipIds.has(clip.id))
+      : isDraftingMove && activeClipId ? clipRows.filter((clip) => clip.id !== activeClipId) : clipRows;
   $: savedSnapBoundaryClips =
     isDraftingMove && activeDraftOriginalClipIds.size
       ? clipRows.filter((clip) => !activeDraftOriginalClipIds.has(clip.id))

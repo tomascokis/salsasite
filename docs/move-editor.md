@@ -126,7 +126,7 @@ The move editor saves clip definitions before rendering.
 - While the move editor is open, the row list should show only the currently open move row.
 - While the move editor is open, a compact previous/current/next move context strip must appear above the timeline so neighboring moves remain visible without filling the row list.
 - The edit-mode previous/current/next move context strip must share the same renderer and move-name labels as the playback move-context strip; it must not use source-video or saved clip labels.
-- While the move editor is open, the lower timeline lane should show only the active draft/editing range; other saved clip bars should stay hidden until editing exits.
+- While the move editor is open, saved clip bars for other clips must remain visible in the lower timeline lane; only the saved bar for the active draft/editing row may be hidden to avoid duplicating the orange active range.
 - Opening a saved clip that belongs to a timing group must still load only the clicked clip row; adding another bound row remains an explicit `Add bound move` action.
 - Selecting or editing a clip must not reorder the clip rows; active draft rows should replace their saved row in place.
 - Saved clip rows must use the same Start, Move, Label, Start position, and End position columns as editable rows, even when older clips do not yet have descriptor or position values.

@@ -3806,11 +3806,6 @@ select {
   box-shadow: none;
 }
 
-.timeline-card.expanded .clip-timeline-selection.saved-move-range {
-  display: none;
-  pointer-events: none;
-}
-
 .timeline-draft-label {
   position: absolute;
   inset: 0;
