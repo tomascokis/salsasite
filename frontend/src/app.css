@@ -3557,6 +3557,30 @@ select {
   padding-block: 0.12rem;
 }
 
+.timeline-context-button {
+  appearance: none;
+  border: 1px solid rgba(178, 202, 226, 0.22);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.timeline-context-button:hover,
+.timeline-context-button:focus-visible {
+  border-color: rgba(255, 209, 102, 0.34);
+  background: rgba(255, 255, 255, 0.095);
+  outline: none;
+}
+
+.timeline-edit-context .timeline-context-current {
+  border-color: rgba(251, 146, 60, 0.42);
+  background: rgba(251, 146, 60, 0.15);
+}
+
+.timeline-edit-context .timeline-context-current strong {
+  color: #fed7aa;
+}
+
 .timeline-context-box strong {
   overflow: hidden;
   font-size: 0.66rem;
@@ -3780,6 +3804,11 @@ select {
   -webkit-appearance: none;
   appearance: none;
   box-shadow: none;
+}
+
+.timeline-card.expanded .clip-timeline-selection.saved-move-range {
+  display: none;
+  pointer-events: none;
 }
 
 .timeline-draft-label {
@@ -4064,7 +4093,7 @@ select {
 }
 
 .editor-draft-form {
-  --clip-editor-visible-rows: 5;
+  --clip-editor-visible-rows: 1;
   --clip-editor-row-height: 2.2rem;
   --clip-editor-row-gap: 0.42rem;
   --clip-editor-row-min-width: 854px;

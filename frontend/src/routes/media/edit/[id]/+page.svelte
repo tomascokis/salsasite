@@ -21,7 +21,6 @@
     timelineZoomed,
     zoomTimelineViewport
   } from '$lib/timeline-zoom.js';
-  import { visibleMoveRowKeys } from '$lib/video-library-utils.js';
   import type {
     ClipCountMarker,
     ClipCropRect,
@@ -82,6 +81,11 @@
   type EditorMoveRow =
     | { kind: 'draft'; key: string; row: DraftMoveRow }
     | { kind: 'saved'; key: string; clip: ClipWithUi };
+  type EditorMoveContext = {
+    previous: EditorMoveRow | null;
+    current: EditorMoveRow | null;
+    next: EditorMoveRow | null;
+  };
   type TimelineMarker = 'clipStart' | 'clipEnd' | 'moveStart' | 'moveEnd' | 'playhead';
   type CountModeStep = 'idle' | 'placing';
   type ClipChangeState = 'new' | 'edited';
@@ -125,9 +129,6 @@
   const TIMELINE_PINCH_SCALE_MIN = 0.05;
   const TIMELINE_PINCH_SCALE_MAX = 20;
   const TIMELINE_ZOOMING_MS = 180;
-  const ROW_WINDOW_SETTLE_MS = 450;
-  const ROW_MOVE_MS = 850;
-  const ROW_ENTER_MS = 260;
   const draftMovePickerTemplate: EntityPickerTemplate = {
     key: 'media-edit-draft-move',
     kind: 'move',
@@ -180,7 +181,6 @@
     valueSource: 'label',
     density: 'compact'
   };
-  const ROW_EXIT_MS = 180;
   const COUNT_PRESET_SEQUENCES: Record<CountTimingPreset, string[]> = {
     'on2-default': ['6', '7', '1', '2', '3', '5'],
     'on2-all': ['6', '7', '1', '2', '3', '4', '5', '6', '7', '8'],
@@ -301,7 +301,6 @@
   let timelinePromotionTimer: ReturnType<typeof setTimeout> | null = null;
   let timelineZoomAnimationFrame: number | null = null;
   let timelineZoomingTimer: ReturnType<typeof setTimeout> | null = null;
-  let rowWindowSettleTimer: ReturnType<typeof setTimeout> | null = null;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
   let syncingAssetKey: string | null = null;
   let syncedMediaPath: string | null = null;
@@ -316,6 +315,7 @@
   let renderedEditorMoveRows: EditorMoveRow[] = [];
   let visibleEditorMoveRows: EditorMoveRow[] = [];
   let visibleEditorDraftMoveRows: DraftMoveRow[] = [];
+  let editMoveContext: EditorMoveContext = { previous: null, current: null, next: null };
   let currentPlaybackMove: ClipWithUi | null = null;
   let previousPlaybackMove: ClipWithUi | null = null;
   let nextPlaybackMove: ClipWithUi | null = null;
@@ -328,8 +328,6 @@
   let timelinePromotingDraftRowId: string | null = null;
   let timelinePromotionAtSavedLane = false;
   let timelineEditorChromeVisible = true;
-  let lastRowWindowImmediateSignature = '';
-  let lastRowWindowPendingKeySignature = '';
   let dancerOptions = data.dancerOptions.map((dancer) => ({ id: dancer, label: dancer }));
   let positionPickerOptions = data.positionOptions.map((position) => ({ id: position.id, label: position.label }));
 
@@ -337,13 +335,6 @@
   let draftMoveIds = new Set<string>();
   $: moveNameById = new Map(availableMoves.map((move) => [move.id, move.name ?? move.id]));
   $: draftMoveIds = new Set(availableMoves.filter((move) => move.isDraft).map((move) => normalizeMoveId(move.id)));
-  $: rowWindowImmediateSignature = editorRowWindowImmediateSignature(
-    editorMoveRows,
-    isDraftingMove,
-    activeDraftMoveRowId,
-    activeClipId,
-    prefersReducedMotion
-  );
 
   $: selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? null;
 
@@ -355,10 +346,7 @@
   $: activeCountMarkers = activeSavedClip?.countMarkers ?? [];
   $: currentCountMarker = activeSavedClip ? activeCountMarkers[countModeIndex] ?? null : null;
   $: activePreviewCountMarker = activeVisibleCountMarker(activeCountMarkers, playerCurrentMs);
-  $: visibleSavedTimelineClips =
-    isDraftingMove && activeDraftOriginalClipIds.size
-      ? clipRows.filter((clip) => !activeDraftOriginalClipIds.has(clip.id))
-      : isDraftingMove && activeClipId ? clipRows.filter((clip) => clip.id !== activeClipId) : clipRows;
+  $: visibleSavedTimelineClips = isDraftingMove ? [] : clipRows;
   $: savedSnapBoundaryClips =
     isDraftingMove && activeDraftOriginalClipIds.size
       ? clipRows.filter((clip) => !activeDraftOriginalClipIds.has(clip.id))
@@ -367,11 +355,11 @@
   $: targetEditorMoveRows = visibleEditorRowsForDisplay(
     editorMoveRows,
     isDraftingMove,
-    playerCurrentMs,
     activeDraftMoveRowId,
     activeClipId
   );
-  $: syncRenderedEditorMoveRows(targetEditorMoveRows, rowWindowImmediateSignature);
+  $: editMoveContext = editMoveContextForDisplay(editorMoveRows, isDraftingMove, activeDraftMoveRowId, activeClipId);
+  $: syncRenderedEditorMoveRows(targetEditorMoveRows);
   $: visibleEditorMoveRows = renderedEditorMoveRows;
   $: visibleEditorDraftMoveRows = visibleEditorMoveRows
     .filter((item): item is { kind: 'draft'; key: string; row: DraftMoveRow } => item.kind === 'draft')
@@ -533,69 +521,12 @@
     });
   }
 
-  function moveRangeIntroDuration(row: DraftMoveRow) {
-    return row.id === timelinePromotingDraftRowId ? 0 : motionDuration(MEDIA_MOTION_SHORT_MS);
-  }
-
-  function clearRowWindowSettleTimer() {
-    if (rowWindowSettleTimer !== null) {
-      clearTimeout(rowWindowSettleTimer);
-    }
-    rowWindowSettleTimer = null;
-  }
-
-  function editorRowKeySignature(rows: EditorMoveRow[]) {
-    return rows.map((row) => row.key).join('|');
-  }
-
-  function editorRowWindowImmediateSignature(
-    rows: EditorMoveRow[],
-    editing: boolean,
-    activeDraftRowId: string | null,
-    activeSavedClipId: string | null,
-    reducedMotion: boolean
-  ) {
-    return [
-      editing ? 'editing' : 'viewing',
-      activeDraftRowId ?? '',
-      activeSavedClipId ?? '',
-      reducedMotion ? 'reduce' : 'motion',
-      rows.map((row) => `${row.key}:${editorRowStartMs(row)}:${editorRowEndMs(row)}`).join('|')
-    ].join('::');
-  }
-
   function commitRenderedEditorMoveRows(rows: EditorMoveRow[]) {
-    clearRowWindowSettleTimer();
     renderedEditorMoveRows = rows;
-    lastRowWindowPendingKeySignature = editorRowKeySignature(rows);
   }
 
-  function syncRenderedEditorMoveRows(rows: EditorMoveRow[], immediateSignature: string) {
-    const nextKeySignature = editorRowKeySignature(rows);
-    const renderedKeySignature = editorRowKeySignature(renderedEditorMoveRows);
-    const shouldCommitImmediately =
-      prefersReducedMotion ||
-      !browser ||
-      renderedEditorMoveRows.length === 0 ||
-      immediateSignature !== lastRowWindowImmediateSignature;
-
-    if (shouldCommitImmediately || nextKeySignature === renderedKeySignature) {
-      lastRowWindowImmediateSignature = immediateSignature;
-      commitRenderedEditorMoveRows(rows);
-      return;
-    }
-
-    lastRowWindowImmediateSignature = immediateSignature;
-    if (nextKeySignature === lastRowWindowPendingKeySignature && rowWindowSettleTimer !== null) {
-      return;
-    }
-
-    clearRowWindowSettleTimer();
-    lastRowWindowPendingKeySignature = nextKeySignature;
-    rowWindowSettleTimer = setTimeout(() => {
-      rowWindowSettleTimer = null;
-      renderedEditorMoveRows = rows;
-    }, ROW_WINDOW_SETTLE_MS);
+  function syncRenderedEditorMoveRows(rows: EditorMoveRow[]) {
+    commitRenderedEditorMoveRows(rows);
   }
   $: clipChangeStates = new Map(
     selectedAsset
@@ -1159,28 +1090,36 @@
   function visibleEditorRowsForDisplay(
     rows: EditorMoveRow[],
     editing: boolean,
-    currentMs: number,
     activeDraftRowId: string | null,
     activeSavedClipId: string | null
   ) {
-    if (!editing || rows.length <= 4) {
+    if (!editing) {
       return rows;
     }
 
     const activeRow = rows.find((row) => editorRowIsActive(row, activeDraftRowId, activeSavedClipId)) ?? null;
-    const visibleKeys = new Set(
-      visibleMoveRowKeys(
-        rows.map((row) => ({
-          key: row.key,
-          startMs: editorRowStartMs(row),
-          endMs: editorRowEndMs(row)
-        })),
-        currentMs,
-        activeRow?.key ?? null
-      )
-    );
 
-    return rows.filter((row) => visibleKeys.has(row.key));
+    return activeRow ? [activeRow] : rows.slice(0, 1);
+  }
+
+  function editMoveContextForDisplay(
+    rows: EditorMoveRow[],
+    editing: boolean,
+    activeDraftRowId: string | null,
+    activeSavedClipId: string | null
+  ): EditorMoveContext {
+    if (!editing || !rows.length) {
+      return { previous: null, current: null, next: null };
+    }
+
+    const activeIndex = rows.findIndex((row) => editorRowIsActive(row, activeDraftRowId, activeSavedClipId));
+    const currentIndex = activeIndex >= 0 ? activeIndex : 0;
+
+    return {
+      previous: rows[currentIndex - 1] ?? null,
+      current: rows[currentIndex] ?? null,
+      next: rows[currentIndex + 1] ?? null
+    };
   }
 
   function editorRowIsActive(row: EditorMoveRow, activeDraftRowId: string | null, activeSavedClipId: string | null) {
@@ -1197,6 +1136,33 @@
 
   function editorRowEndMs(row: EditorMoveRow) {
     return row.kind === 'draft' ? row.row.endMs : clipActionEndMs(row.clip);
+  }
+
+  function editorRowDisplayName(row: EditorMoveRow | null) {
+    if (!row) {
+      return '—';
+    }
+
+    if (row.kind === 'saved') {
+      return clipDisplayName(row.clip);
+    }
+
+    const moveId = row.row.moveIds[0] ?? '';
+    const base = moveId ? moveNameById.get(moveId) || moveId : row.row.query.trim() || 'New move';
+    return row.row.descriptorLabel.trim() ? `${base} - ${row.row.descriptorLabel.trim()}` : base;
+  }
+
+  function openEditorContextRow(row: EditorMoveRow | null) {
+    if (!row) {
+      return;
+    }
+
+    if (row.kind === 'draft') {
+      selectDraftMoveRow(row.row.id);
+      return;
+    }
+
+    openSavedClipEditor(row.clip);
   }
 
   function lastClipBefore(clips: ClipWithUi[], milliseconds: number) {
@@ -1293,10 +1259,7 @@
 
     const actionStart = clipActionStartMs(clip);
     const actionEnd = clipActionEndMs(clip);
-    const groupClips = clip.timingGroupId
-      ? clipRows.filter((entry) => entry.timingGroupId === clip.timingGroupId)
-      : [clip];
-    const rows = groupClips.map((entry) => ({
+    const rows = [clip].map((entry) => ({
       ...createDraftMoveRow(clipActionStartMs(entry), clipActionEndMs(entry), entry.timingGroupId ?? null),
       originalClipId: entry.id,
       moveIds: [entry.moveId],
@@ -3327,7 +3290,6 @@
     if (timelineZoomingTimer) {
       clearTimeout(timelineZoomingTimer);
     }
-    clearRowWindowSettleTimer();
     stopPolling();
     stopPlaybackAnimation();
   });
@@ -3666,7 +3628,43 @@
                     {/if}
                   {/if}
                 </div>
-                {#if !isDraftingMove && playbackMoveClips.length}
+                {#if isDraftingMove && editMoveContext.current}
+                  <div class="timeline-now-playing timeline-edit-context" aria-label="Move edit context">
+                    <div class="timeline-context-slot timeline-context-slot-previous">
+                      {#if editMoveContext.previous}
+                        <button
+                          type="button"
+                          class="timeline-context-box timeline-context-side timeline-context-previous timeline-context-button"
+                          aria-label={`Edit previous move ${editorRowDisplayName(editMoveContext.previous)}`}
+                          on:click={() => openEditorContextRow(editMoveContext.previous)}
+                          in:fly={{ x: -6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
+                          out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                        >
+                          <strong>{editorRowDisplayName(editMoveContext.previous)}</strong>
+                        </button>
+                      {/if}
+                    </div>
+                    <div class="timeline-context-box timeline-context-current">
+                      {#key editMoveContext.current.key}
+                        <strong>{editorRowDisplayName(editMoveContext.current)}</strong>
+                      {/key}
+                    </div>
+                    <div class="timeline-context-slot timeline-context-slot-next">
+                      {#if editMoveContext.next}
+                        <button
+                          type="button"
+                          class="timeline-context-box timeline-context-side timeline-context-next timeline-context-button"
+                          aria-label={`Edit next move ${editorRowDisplayName(editMoveContext.next)}`}
+                          on:click={() => openEditorContextRow(editMoveContext.next)}
+                          in:fly={{ x: 6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
+                          out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                        >
+                          <strong>{editorRowDisplayName(editMoveContext.next)}</strong>
+                        </button>
+                      {/if}
+                    </div>
+                  </div>
+                {:else if !isDraftingMove && playbackMoveClips.length}
                   <div class="timeline-now-playing" aria-label="Current move context">
                     <div class="timeline-context-slot timeline-context-slot-previous">
                       {#if visiblePreviousPlaybackMove}
@@ -3758,8 +3756,6 @@
                         class:secondary={row.id !== activeDraftMoveRowId}
                         class:promoting-from-saved={row.id === timelinePromotingDraftRowId && timelinePromotionAtSavedLane}
                         style={draftMoveRangeStyle(row, timelineScaleKey)}
-                        in:fade={{ duration: moveRangeIntroDuration(row) }}
-                        out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
                         on:dblclick={(event) => editDraftMoveRowFromTimeline(event, row.id)}
                       >
                         {#if draftRowUsesDraftMove(row)}
@@ -3877,9 +3873,6 @@
                           class:saved-editor-row={item.kind === 'saved'}
                           data-draft-row-id={item.kind === 'draft' ? item.row.id : undefined}
                           data-clip-row-id={item.kind === 'draft' ? item.row.originalClipId ?? undefined : item.clip.id}
-                          animate:flip={{ duration: motionDuration(ROW_MOVE_MS), easing: cubicOut }}
-                          in:fade={{ duration: motionDuration(ROW_ENTER_MS) }}
-                          out:fade={{ duration: motionDuration(ROW_EXIT_MS) }}
                         >
                           {#if item.kind === 'draft'}
                             {@const row = item.row}

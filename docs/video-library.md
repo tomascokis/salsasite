@@ -238,19 +238,20 @@ Current constraints:
 - Draft move editor rows must keep the Start time, Moves picker content, and Edit control in separate aligned columns; saved clip rows and selected move chips must not inherit generic button chrome that creates nested boxes or visual overlap.
 - Draft and saved move editor rows must keep their columns aligned at desktop and tablet widths; if the viewport cannot fit the full row, the row area should scroll horizontally or use a deliberate narrow layout rather than allowing header labels and row controls to auto-place unpredictably.
 - In active edit mode, the video/timeline column must either reserve enough width for the fixed editor row grid or stack separately from the metadata panel; timeline and row controls must not render underneath the metadata panel.
-- In edit mode, the move clip row list must be a fixed five-row scroll window by default so the source video and timeline stay aligned with a stable editor height even when there are more clips.
-- In edit mode, the move clip row list should show only the currently clicked move plus the three other move rows closest to the video playhead, rather than every saved move row in the source video.
-- In edit mode, green saved clip bars in the lower timeline lane must continue to show all eligible saved clips, not only the filtered row-window clips.
-- Clicking a timeline clip whose row is outside the current edit-mode row window must auto-scroll that internal row window to the selected row without scrolling the whole page.
+- In edit mode, the move clip row list must show only the currently open move row in a compact one-row editor viewport.
+- In edit mode, the timeline must show a compact previous/current/next move context strip so neighboring moves remain visible without adding extra rows.
+- In edit mode, green saved clip bars for other moves must stay hidden; the active draft/editing range is the only move range shown in the lower timeline lane.
+- Opening a saved clip that belongs to a timing group must load only the clicked clip row; adding another bound row remains an explicit `Add bound move` action.
+- Choosing a previous or next move from the edit context strip must replace the visible editor row with that move without scrolling the whole page.
 - Timeline move ranges that are currently open for editing must remain orange, while move ranges that are not currently open for editing must appear green.
 - The saved clip range containing the current playback position must be shown in a lighter green than the other saved clip ranges.
 - Timeline ranges must not show small circular changed or unsaved badges; unsaved state belongs in the Save action and status text instead.
 - Timeline playhead handles must render as complete circles without clipping in both compact playback mode and expanded draft-editing mode.
 - Timeline playhead handles must exactly fill the vertical gap between the playback track and lower clip lane, using the measured lane geometry.
 - Saved and secondary clip ranges must render on a lower lane below the playhead handle so they do not overlap the playback track marker, including in expanded edit mode.
-- Timeline and edit-row animations must be smooth, restrained, and visibly paced rather than snappy; direct marker/playhead dragging must remain immediate without trailing transitions, and reduced-motion preferences must disable nonessential motion.
-- Playback-nearest edit-row updates must settle briefly before changing the visible row window, so ordinary playback does not constantly reshuffle rows; when the settled window changes, rows should slide smoothly rather than jump.
-- Clicking `Edit` on a different saved or draft row must keep the underlying row identity stable so the row window slides/reflows smoothly instead of tearing down and rebuilding rows.
+- Timeline animations must be smooth, restrained, and visibly paced rather than snappy; direct marker/playhead dragging must remain immediate without trailing transitions, and reduced-motion preferences must disable nonessential motion.
+- The focused one-row editor must replace the visible row directly when the current edit target changes; it must not keep stale previous rows visible through row-window transition animations.
+- Clicking `Edit` on a different saved or draft row must keep the underlying row identity stable without expanding the row list.
 - When a saved green move range is opened for editing, it should lift from the lower lane into the active timeline lane while turning orange; the clip padding range and trim/move markers must fade in only after that lift completes.
 - When dragging a move start or move end marker, crossing another move boundary or landing within a small screen-precision tolerance of it must snap to that boundary once for that drag. After that first snap, moving away during the same drag must not keep snapping.
 - One or more unsaved draft move rows must not be lost by clicking away, switching clips or sources, exiting the draft editor, or browser/page navigation without an explicit discard confirmation.
