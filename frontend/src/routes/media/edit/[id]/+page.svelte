@@ -86,6 +86,17 @@
     current: EditorMoveRow | null;
     next: EditorMoveRow | null;
   };
+  type TimelineMoveContextEntry = {
+    key: string;
+    label: string;
+    row?: EditorMoveRow;
+    empty?: boolean;
+  };
+  type TimelineMoveContext = {
+    previous: TimelineMoveContextEntry | null;
+    current: TimelineMoveContextEntry | null;
+    next: TimelineMoveContextEntry | null;
+  };
   type TimelineMarker = 'clipStart' | 'clipEnd' | 'moveStart' | 'moveEnd' | 'playhead';
   type CountModeStep = 'idle' | 'placing';
   type ClipChangeState = 'new' | 'edited';
@@ -316,6 +327,7 @@
   let visibleEditorMoveRows: EditorMoveRow[] = [];
   let visibleEditorDraftMoveRows: DraftMoveRow[] = [];
   let editMoveContext: EditorMoveContext = { previous: null, current: null, next: null };
+  let timelineMoveContext: TimelineMoveContext = { previous: null, current: null, next: null };
   let currentPlaybackMove: ClipWithUi | null = null;
   let previousPlaybackMove: ClipWithUi | null = null;
   let nextPlaybackMove: ClipWithUi | null = null;
@@ -382,7 +394,10 @@
     nextPlaybackMove && clipActionStartMs(nextPlaybackMove) - playerCurrentMs <= PLAYBACK_CONTEXT_WINDOW_MS
       ? nextPlaybackMove
       : null;
-  $: showPlaybackMoveContext = Boolean(currentPlaybackMove || visiblePreviousPlaybackMove || visibleNextPlaybackMove);
+  $: timelineMoveContext = isDraftingMove
+    ? editTimelineMoveContext(editMoveContext)
+    : playbackTimelineMoveContext(currentPlaybackMove, visiblePreviousPlaybackMove, visibleNextPlaybackMove);
+  $: showPlaybackMoveContext = isDraftingMove ? Boolean(timelineMoveContext.current) : playbackMoveClips.length > 0;
   $: timelineScaleKey = `${isDraftingMove ? 'editing' : 'full'}:${playerDurationMs}:${timelineViewportStartMs}:${timelineViewportEndMs}`;
   $: timelineInferredDurationMs = Math.max(
     playerDurationMs,
@@ -1138,18 +1153,52 @@
     return row.kind === 'draft' ? row.row.endMs : clipActionEndMs(row.clip);
   }
 
-  function editorRowDisplayName(row: EditorMoveRow | null) {
-    if (!row) {
-      return '—';
-    }
+  function playbackTimelineContextEntry(clip: ClipWithUi): TimelineMoveContextEntry {
+    return {
+      key: clip.id,
+      label: playbackMoveName(clip)
+    };
+  }
 
+  function editorTimelineContextEntry(row: EditorMoveRow): TimelineMoveContextEntry {
     if (row.kind === 'saved') {
-      return clipDisplayName(row.clip);
+      return {
+        key: row.key,
+        label: playbackMoveName(row.clip),
+        row
+      };
     }
 
     const moveId = row.row.moveIds[0] ?? '';
-    const base = moveId ? moveNameById.get(moveId) || moveId : row.row.query.trim() || 'New move';
-    return row.row.descriptorLabel.trim() ? `${base} - ${row.row.descriptorLabel.trim()}` : base;
+    return {
+      key: row.key,
+      label: moveId ? moveNameById.get(moveId) || moveId : row.row.query.trim() || 'New move',
+      row
+    };
+  }
+
+  function playbackTimelineMoveContext(
+    current: ClipWithUi | null,
+    previous: ClipWithUi | null,
+    next: ClipWithUi | null
+  ): TimelineMoveContext {
+    return {
+      previous: previous ? playbackTimelineContextEntry(previous) : null,
+      current: current ? playbackTimelineContextEntry(current) : { key: 'empty', label: '—', empty: true },
+      next: next ? playbackTimelineContextEntry(next) : null
+    };
+  }
+
+  function editTimelineMoveContext(context: EditorMoveContext): TimelineMoveContext {
+    return {
+      previous: context.previous ? editorTimelineContextEntry(context.previous) : null,
+      current: context.current ? editorTimelineContextEntry(context.current) : null,
+      next: context.next ? editorTimelineContextEntry(context.next) : null
+    };
+  }
+
+  function timelineContextActionLabel(position: 'previous' | 'next', entry: TimelineMoveContextEntry) {
+    return `Edit ${position} move ${entry.label}`;
   }
 
   function openEditorContextRow(row: EditorMoveRow | null) {
@@ -3628,69 +3677,66 @@
                     {/if}
                   {/if}
                 </div>
-                {#if isDraftingMove && editMoveContext.current}
-                  <div class="timeline-now-playing timeline-edit-context" aria-label="Move edit context">
+                {#if showPlaybackMoveContext}
+                  <div
+                    class="timeline-now-playing"
+                    class:timeline-edit-context={isDraftingMove}
+                    aria-label={isDraftingMove ? 'Move edit context' : 'Current move context'}
+                  >
                     <div class="timeline-context-slot timeline-context-slot-previous">
-                      {#if editMoveContext.previous}
-                        <button
-                          type="button"
-                          class="timeline-context-box timeline-context-side timeline-context-previous timeline-context-button"
-                          aria-label={`Edit previous move ${editorRowDisplayName(editMoveContext.previous)}`}
-                          on:click={() => openEditorContextRow(editMoveContext.previous)}
-                          in:fly={{ x: -6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
-                          out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
-                        >
-                          <strong>{editorRowDisplayName(editMoveContext.previous)}</strong>
-                        </button>
+                      {#if timelineMoveContext.previous}
+                        {#if isDraftingMove && timelineMoveContext.previous.row}
+                          <button
+                            type="button"
+                            class="timeline-context-box timeline-context-side timeline-context-previous timeline-context-button"
+                            aria-label={timelineContextActionLabel('previous', timelineMoveContext.previous)}
+                            on:click={() => openEditorContextRow(timelineMoveContext.previous?.row ?? null)}
+                            in:fly={{ x: -6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
+                            out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                          >
+                            <strong>{timelineMoveContext.previous.label}</strong>
+                          </button>
+                        {:else}
+                          <div
+                            class="timeline-context-box timeline-context-side timeline-context-previous"
+                            in:fly={{ x: -6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
+                            out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                          >
+                            <strong>{timelineMoveContext.previous.label}</strong>
+                          </div>
+                        {/if}
                       {/if}
                     </div>
-                    <div class="timeline-context-box timeline-context-current">
-                      {#key editMoveContext.current.key}
-                        <strong>{editorRowDisplayName(editMoveContext.current)}</strong>
+                    <div
+                      class="timeline-context-box timeline-context-current"
+                      class:empty={Boolean(timelineMoveContext.current?.empty)}
+                    >
+                      {#key timelineMoveContext.current?.key ?? 'empty'}
+                        <strong>{timelineMoveContext.current?.label ?? '—'}</strong>
                       {/key}
                     </div>
                     <div class="timeline-context-slot timeline-context-slot-next">
-                      {#if editMoveContext.next}
-                        <button
-                          type="button"
-                          class="timeline-context-box timeline-context-side timeline-context-next timeline-context-button"
-                          aria-label={`Edit next move ${editorRowDisplayName(editMoveContext.next)}`}
-                          on:click={() => openEditorContextRow(editMoveContext.next)}
-                          in:fly={{ x: 6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
-                          out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
-                        >
-                          <strong>{editorRowDisplayName(editMoveContext.next)}</strong>
-                        </button>
-                      {/if}
-                    </div>
-                  </div>
-                {:else if !isDraftingMove && playbackMoveClips.length}
-                  <div class="timeline-now-playing" aria-label="Current move context">
-                    <div class="timeline-context-slot timeline-context-slot-previous">
-                      {#if visiblePreviousPlaybackMove}
-                        <div
-                          class="timeline-context-box timeline-context-side timeline-context-previous"
-                          in:fly={{ x: -6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
-                          out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
-                        >
-                          <strong>{playbackMoveName(visiblePreviousPlaybackMove)}</strong>
-                        </div>
-                      {/if}
-                    </div>
-                    <div class="timeline-context-box timeline-context-current" class:empty={!currentPlaybackMove}>
-                      {#key currentPlaybackMove?.id ?? 'empty'}
-                        <strong>{currentPlaybackMove ? playbackMoveName(currentPlaybackMove) : '—'}</strong>
-                      {/key}
-                    </div>
-                    <div class="timeline-context-slot timeline-context-slot-next">
-                      {#if visibleNextPlaybackMove}
-                        <div
-                          class="timeline-context-box timeline-context-side timeline-context-next"
-                          in:fly={{ x: 6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
-                          out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
-                        >
-                          <strong>{playbackMoveName(visibleNextPlaybackMove)}</strong>
-                        </div>
+                      {#if timelineMoveContext.next}
+                        {#if isDraftingMove && timelineMoveContext.next.row}
+                          <button
+                            type="button"
+                            class="timeline-context-box timeline-context-side timeline-context-next timeline-context-button"
+                            aria-label={timelineContextActionLabel('next', timelineMoveContext.next)}
+                            on:click={() => openEditorContextRow(timelineMoveContext.next?.row ?? null)}
+                            in:fly={{ x: 6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
+                            out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                          >
+                            <strong>{timelineMoveContext.next.label}</strong>
+                          </button>
+                        {:else}
+                          <div
+                            class="timeline-context-box timeline-context-side timeline-context-next"
+                            in:fly={{ x: 6, duration: motionDuration(MEDIA_MOTION_SHORT_MS), easing: cubicInOut }}
+                            out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
+                          >
+                            <strong>{timelineMoveContext.next.label}</strong>
+                          </div>
+                        {/if}
                       {/if}
                     </div>
                   </div>

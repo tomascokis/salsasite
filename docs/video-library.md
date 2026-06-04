@@ -240,6 +240,7 @@ Current constraints:
 - In active edit mode, the video/timeline column must either reserve enough width for the fixed editor row grid or stack separately from the metadata panel; timeline and row controls must not render underneath the metadata panel.
 - In edit mode, the move clip row list must show only the currently open move row in a compact one-row editor viewport.
 - In edit mode, the timeline must show a compact previous/current/next move context strip so neighboring moves remain visible without adding extra rows.
+- The edit-mode previous/current/next move context strip must share the same renderer and move-name labels as the playback move-context strip; it must not use source-video or saved clip labels.
 - In edit mode, green saved clip bars for other moves must stay hidden; the active draft/editing range is the only move range shown in the lower timeline lane.
 - Opening a saved clip that belongs to a timing group must load only the clicked clip row; adding another bound row remains an explicit `Add bound move` action.
 - Choosing a previous or next move from the edit context strip must replace the visible editor row with that move without scrolling the whole page.
