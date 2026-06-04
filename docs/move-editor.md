@@ -48,7 +48,7 @@ Entering move-editing mode should preserve the user's spatial context while enab
 - Edit mode must keep the timeline and clip controls visible without the video dominating the viewport.
 - The media editor must not show a `Back to media` button above or inside the editor chrome, so navigation does not consume editor height or header space.
 - The side metadata card must remain fully inside the viewport; its rounded corners and edit control must not be clipped by horizontal overflow.
-- The side metadata card read-only summary should stay vertically compact: the title and edit action remain on one row, and summary badges/details should avoid unnecessary vertical gaps.
+- The side metadata card read-only summary should stay vertically compact: the title, summary badges, edit action, and short metadata details should share rows where width allows instead of forcing a tall vertical list.
 - The layout must remain usable on mobile; the video/editor must not overflow horizontally or push controls off-screen.
 - Mobile layout should prefer a single-column editor with compact controls.
 - The timeline must never paint past the video/editor column into the side metadata area or past the window edge.

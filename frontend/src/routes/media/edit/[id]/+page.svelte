@@ -4073,6 +4073,13 @@
                   <div class="media-properties-title">
                     <h3>{selectedAsset.displayName}</h3>
                   </div>
+                  {#if !isEditingMetadata}
+                    <div class="media-property-badges" aria-label="Source attributes">
+                      <ContentBadge label={timingLabel(selectedAsset.timing)} className={`media-property-badge ${timingBadgeClass(selectedAsset.timing)}`} />
+                      <ContentBadge label={contentTypeLabel(selectedAsset.contentType)} className={`media-property-badge ${contentBadgeClass(selectedAsset.contentType)}`} />
+                      <ContentBadge label={environmentLabel(selectedAsset.environment)} className={`media-property-badge ${environmentBadgeClass(selectedAsset.environment)}`} />
+                    </div>
+                  {/if}
                   <button class="icon-button property-edit-button" type="button" aria-label="Edit properties" title="Edit properties" on:click={() => (isEditingMetadata = !isEditingMetadata)}>✎</button>
                 </div>
               </div>
@@ -4207,15 +4214,10 @@
                   </div>
                 </div>
               {:else}
-                <dl class="property-list">
-                  <dt class="sr-only">Source attributes</dt>
-                  <dd class="media-property-badges">
-                    <ContentBadge label={timingLabel(selectedAsset.timing)} className={`media-property-badge ${timingBadgeClass(selectedAsset.timing)}`} />
-                    <ContentBadge label={contentTypeLabel(selectedAsset.contentType)} className={`media-property-badge ${contentBadgeClass(selectedAsset.contentType)}`} />
-                    <ContentBadge label={environmentLabel(selectedAsset.environment)} className={`media-property-badge ${environmentBadgeClass(selectedAsset.environment)}`} />
-                  </dd>
-                  <dt>Dancers</dt>
-                  <dd>
+                <div class="media-property-summary" aria-label="Source metadata">
+                  <div class="media-property-item media-property-item-dancers">
+                    <span class="media-property-label">Dancers</span>
+                    <span class="media-property-value">
                     {#if selectedAsset.dancers.length}
                       <span class="shared-chip-row media-dancer-badge-row">
                         {#each selectedAsset.dancers as dancer}
@@ -4225,26 +4227,39 @@
                     {:else}
                       —
                     {/if}
-                  </dd>
-                  <dt>Recorded</dt>
-                  <dd>{selectedAsset.recordDate ? formatDate(selectedAsset.recordDate) : '—'}</dd>
-                  <dt>Uploaded</dt>
-                  <dd>{selectedAsset.createdAt ? formatDate(selectedAsset.createdAt) : '—'}</dd>
-                  <dt>Source</dt>
-                  <dd>{selectedAsset.originType === 'download' ? 'Download' : 'Self-recorded'}</dd>
+                    </span>
+                  </div>
+                  <div class="media-property-item">
+                    <span class="media-property-label">Recorded</span>
+                    <span class="media-property-value">{selectedAsset.recordDate ? formatDate(selectedAsset.recordDate) : '—'}</span>
+                  </div>
+                  <div class="media-property-item">
+                    <span class="media-property-label">Uploaded</span>
+                    <span class="media-property-value">{selectedAsset.createdAt ? formatDate(selectedAsset.createdAt) : '—'}</span>
+                  </div>
+                  <div class="media-property-item">
+                    <span class="media-property-label">Source</span>
+                    <span class="media-property-value">{selectedAsset.originType === 'download' ? 'Download' : 'Self-recorded'}</span>
+                  </div>
                   {#if selectedAsset.originType === 'download' && selectedAsset.sourceUrl}
-                    <dt>Source URL</dt>
-                    <dd><a href={selectedAsset.sourceUrl} target="_blank" rel="noreferrer">{sourceUrlLabel(selectedAsset.sourceUrl)}</a></dd>
+                    <div class="media-property-item">
+                      <span class="media-property-label">Source URL</span>
+                      <span class="media-property-value"><a href={selectedAsset.sourceUrl} target="_blank" rel="noreferrer">{sourceUrlLabel(selectedAsset.sourceUrl)}</a></span>
+                    </div>
                   {/if}
                   {#if selectedAsset.tags.length}
-                    <dt>Tags</dt>
-                    <dd>{selectedAsset.tags.join(', ')}</dd>
+                    <div class="media-property-item">
+                      <span class="media-property-label">Tags</span>
+                      <span class="media-property-value">{selectedAsset.tags.join(', ')}</span>
+                    </div>
                   {/if}
                   {#if selectedAsset.notes}
-                    <dt>Notes</dt>
-                    <dd>{selectedAsset.notes}</dd>
+                    <div class="media-property-item media-property-item-notes">
+                      <span class="media-property-label">Notes</span>
+                      <span class="media-property-value">{selectedAsset.notes}</span>
+                    </div>
                   {/if}
-                </dl>
+                </div>
               {/if}
             </div>
           </div>
