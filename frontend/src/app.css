@@ -3776,9 +3776,29 @@ select {
   background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
   cursor: pointer;
   opacity: 0.78;
+  overflow: hidden;
   -webkit-appearance: none;
   appearance: none;
   box-shadow: none;
+}
+
+.timeline-draft-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  color: #ffffff;
+  font-size: 0.48rem;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0.92;
+  overflow: hidden;
+  pointer-events: none;
+  text-overflow: clip;
+  text-shadow: 0 1px 1px rgba(15, 23, 42, 0.38);
+  white-space: nowrap;
 }
 
 .clip-timeline-selection.saved-move-range.current {

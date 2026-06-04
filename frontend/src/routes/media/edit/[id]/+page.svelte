@@ -334,7 +334,9 @@
   let positionPickerOptions = data.positionOptions.map((position) => ({ id: position.id, label: position.label }));
 
   let moveNameById = new Map<string, string>();
+  let draftMoveIds = new Set<string>();
   $: moveNameById = new Map(availableMoves.map((move) => [move.id, move.name ?? move.id]));
+  $: draftMoveIds = new Set(availableMoves.filter((move) => move.isDraft).map((move) => normalizeMoveId(move.id)));
   $: rowWindowImmediateSignature = editorRowWindowImmediateSignature(
     editorMoveRows,
     isDraftingMove,
@@ -2430,6 +2432,18 @@
     return timelineRangeStyle(row.startMs, row.endMs, scaleKey);
   }
 
+  function isDraftMoveId(moveId: string | null | undefined) {
+    return Boolean(moveId && draftMoveIds.has(normalizeMoveId(moveId)));
+  }
+
+  function savedClipUsesDraftMove(clip: DerivedClip) {
+    return isDraftMoveId(clip.moveId);
+  }
+
+  function draftRowUsesDraftMove(row: DraftMoveRow) {
+    return row.moveIds.some((moveId) => isDraftMoveId(moveId));
+  }
+
   function savedClipRangeStyle(clip: DerivedClip, scaleKey = '') {
     const startMs = clip.actionStartMs ?? clip.startMs;
     const endMs = clip.actionEndMs ?? clip.endMs;
@@ -3723,7 +3737,11 @@
                         event.stopPropagation();
                         openSavedClipEditor(clip);
                       }}
-                    ></button>
+                    >
+                      {#if savedClipUsesDraftMove(clip)}
+                        <span class="timeline-draft-label" aria-hidden="true">draft</span>
+                      {/if}
+                    </button>
                   {/each}
                   {#if isDraftingMove && activeDraftMoveRow}
                     {#if timelineEditorChromeVisible}
@@ -3743,7 +3761,11 @@
                         in:fade={{ duration: moveRangeIntroDuration(row) }}
                         out:fade={{ duration: motionDuration(MEDIA_MOTION_SHORT_MS) }}
                         on:dblclick={(event) => editDraftMoveRowFromTimeline(event, row.id)}
-                      ></div>
+                      >
+                        {#if draftRowUsesDraftMove(row)}
+                          <span class="timeline-draft-label" aria-hidden="true">draft</span>
+                        {/if}
+                      </div>
                     {/each}
                   {/if}
                   <div class="clip-timeline-playhead" style={markerLeftStyle(playerCurrentMs, timelineScaleKey)}></div>

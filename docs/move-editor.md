@@ -31,6 +31,7 @@ Creating a move from the move-search dropdown must keep the user in the media ed
 - Add the newly created draft move to the current move row immediately.
 - Draft move chips in the media editor must show `[Draft]` in place of the generated draft move ID.
 - Draft moves must be accepted by the move editor wherever published moves are accepted for clip definitions.
+- Timeline clip bars for draft moves must show a small white `draft` label inside the bar.
 - Existing draft moves should be loaded into the media editor as valid searchable move options.
 - Draft moves remain editable later on the Create move page.
 - If a draft move's ID or display ID changes before publication, any saved or rendered media clips already attached to the previous draft move ID must be relinked immediately.
