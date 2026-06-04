@@ -4882,6 +4882,10 @@ select {
   white-space: nowrap;
 }
 
+.draft-move-row .move-link-field .move-picker-inline-chip {
+  max-width: 100%;
+}
+
 .move-chip:hover,
 .move-chip:focus-visible {
   background: #eef6ff;

@@ -105,6 +105,7 @@ The move editor saves clip definitions before rendering.
 - Clip rows are saveable when they contain at least one valid published move or draft move and the row range has positive duration.
 - Each visible clip row represents exactly one move expression.
 - Each clip row must allow only one move selection at a time; adding another move expression requires a separate row.
+- Selected move chips in clip rows should show the move name without the catalog ID and use the available picker width so long move names remain readable in the fixed row grid.
 - A clip row may store an optional extra move label, optional start position, and optional end position.
 - Start and end position pickers must let the user create a new position from typed text when no existing option is appropriate.
 - Newly created clip positions must be saved as reusable position options and selected in the current row immediately.

@@ -139,7 +139,8 @@
     createPolicy: 'draftMove',
     valueSource: 'id',
     density: 'compact',
-    maxSelected: 1
+    maxSelected: 1,
+    showId: false
   };
   const startPositionPickerTemplate: EntityPickerTemplate = {
     key: 'media-edit-start-position',
