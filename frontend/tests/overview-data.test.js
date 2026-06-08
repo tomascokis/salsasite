@@ -101,6 +101,87 @@ test('newly published moves append to an existing topic section in sorted order'
   );
 });
 
+test('existing topic rows are ordered by live catalog metadata instead of stale layout position', () => {
+  const layout = [
+    {
+      column: 1,
+      entries: [
+        {
+          id: null,
+          slug: null,
+          name: 'Inline turns',
+          entryType: 'Title',
+          group: 'Inline turns',
+          level: null,
+          type: null,
+          layoutOrder: 1,
+          levelOrder: null,
+          valid: false
+        },
+        {
+          id: 'ILT30650',
+          slug: 'inline-duck-turn',
+          name: 'Inline duck-turn',
+          entryType: 'Data',
+          group: 'Inline turns',
+          level: '5',
+          type: 'Addition',
+          layoutOrder: 2,
+          levelOrder: 2,
+          valid: true
+        },
+        {
+          id: 'ILT00001',
+          slug: 'inline-turn',
+          name: 'Inline turn',
+          entryType: 'Data',
+          group: 'Inline turns',
+          level: '2',
+          type: null,
+          layoutOrder: 3,
+          levelOrder: 2,
+          valid: true
+        }
+      ]
+    }
+  ];
+  const moves = [
+    {
+      id: 'ILT30650',
+      slug: 'inline-duck-turn',
+      name: 'Inline duck-turn',
+      topic: 'Inline turns',
+      group: 'Inline turns',
+      level: '5',
+      type: 'Addition',
+      topicOrder: 11,
+      familyOrder: 11,
+      moveOrder: 206,
+      valid: true
+    },
+    {
+      id: 'ILT00001',
+      slug: 'inline-turn',
+      name: 'Inline turn',
+      topic: 'Inline turns',
+      group: 'Inline turns',
+      level: '2',
+      type: null,
+      topicOrder: 11,
+      familyOrder: 11,
+      moveOrder: 207,
+      valid: true
+    }
+  ];
+
+  const result = buildOverviewLayout(layout, moves);
+
+  assert.deepEqual(
+    result[0].entries.filter((entry) => entry.entryType === 'Data').map((entry) => entry.id),
+    ['ILT00001', 'ILT30650']
+  );
+});
+
 test('new topic sections are appended to the last overview column when no layout hint exists', () => {
   const layout = [
     {

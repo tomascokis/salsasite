@@ -24,11 +24,36 @@ function compareNullableNumbers(left, right) {
   return normalizedLeft - normalizedRight;
 }
 
-function compareAppendedMoves(left, right) {
+function parseLevelOrder(value) {
+  const numericValue = Number.parseFloat(String(value ?? '').trim());
+  return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function compareCatalogMoves(left, right) {
   return (
     compareNullableNumbers(left.topicOrder, right.topicOrder) ||
     compareNullableNumbers(left.familyOrder, right.familyOrder) ||
+    compareNullableNumbers(parseLevelOrder(left.level), parseLevelOrder(right.level)) ||
     compareNullableNumbers(left.moveOrder, right.moveOrder) ||
+    compareMoveValues(left.name, right.name) ||
+    compareMoveValues(left.id, right.id)
+  );
+}
+
+function getMoveForLayoutEntry(entry, moveById) {
+  return entry.id ? moveById.get(String(entry.id).toUpperCase()) ?? null : null;
+}
+
+function compareLayoutEntriesByCatalogOrder(left, right, moveById) {
+  const leftMove = getMoveForLayoutEntry(left, moveById);
+  const rightMove = getMoveForLayoutEntry(right, moveById);
+
+  if (leftMove && rightMove) {
+    return compareCatalogMoves(leftMove, rightMove);
+  }
+
+  return (
+    compareNullableNumbers(left.layoutOrder, right.layoutOrder) ||
     compareMoveValues(left.name, right.name) ||
     compareMoveValues(left.id, right.id)
   );
@@ -153,7 +178,7 @@ export function buildOverviewLayout(seedLayout, moves) {
     columnStates.set(column.column, { column: column.column, sections });
   }
 
-  const unseenMoves = moves.filter((move) => !seenMoveIds.has(move.id)).sort(compareAppendedMoves);
+  const unseenMoves = moves.filter((move) => !seenMoveIds.has(move.id)).sort(compareCatalogMoves);
   for (const move of unseenMoves) {
     const label = sectionLabelForMove(move);
     const key = normalizeComparable(label);
@@ -194,21 +219,17 @@ export function buildOverviewLayout(seedLayout, moves) {
           entries.push(titleEntry);
         }
 
-        for (const row of section.rows) {
+        const rowEntries = [
+          ...section.rows,
+          ...[...section.appendedMoves].sort(compareCatalogMoves).map((move) => moveToLayoutEntry(move, section.label))
+        ].sort((left, right) => compareLayoutEntriesByCatalogOrder(left, right, moveById));
+
+        for (const row of rowEntries) {
           layoutOrder += 1;
           entries.push({
             ...row,
             layoutOrder
           });
-        }
-
-        const appendedEntries = [...section.appendedMoves]
-          .sort(compareAppendedMoves)
-          .map((move) => moveToLayoutEntry(move, section.label));
-        for (const row of appendedEntries) {
-          layoutOrder += 1;
-          row.layoutOrder = layoutOrder;
-          entries.push(row);
         }
       }
 

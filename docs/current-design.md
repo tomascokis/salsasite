@@ -113,7 +113,7 @@ Implemented user-facing routes:
 - `/settings`: badge color settings stored in browser local storage.
 - `/upload`: compatibility redirect area for older upload navigation.
 
-Overview-style pages use the live published move dataset at runtime. Published moves and published move edits must appear on the home overview and overview-derived topic/family pages without requiring fresh bootstrap JSON.
+Overview-style pages use the live published move dataset at runtime. Published moves and published move edits must appear on the home overview and overview-derived topic/family pages without requiring fresh bootstrap JSON. The saved overview layout defines topic/column placement, but move rows within a topic must be ordered from live catalog move metadata instead of stale saved layout row position.
 
 ## Move Model And Editing
 
