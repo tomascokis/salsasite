@@ -100,6 +100,7 @@ The primary app shell is [frontend/src/routes/+layout.svelte](/Volumes/fastdata/
 Implemented user-facing routes:
 
 - `/`: dense multi-column move overview with search, variation/addition filters, summary counts, and overflow handling.
+  Overview overflow controls only appear for columns whose rows exceed the available screen height. When an overflowing column is expanded into an overflow column, the expanded state must show a single collapse control, not duplicate `See less` controls on both columns.
 - `/moves/[slug]`: move detail page with metadata, inline detail editing, relationship diagram, videos, video variants, poster support, count overlays, and links back to source clip editors where available.
 - `/moves/create`: move creation and editing workspace for drafts, published move edits, pinned moves, relationship editing, review flags, and draft publishing.
 - `/progress`: historical progress snapshots rendered over the overview layout.

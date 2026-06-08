@@ -235,9 +235,9 @@
                 {/if}
               {/each}
             </div>
-            {#if columnMetrics[column.column]?.overflowing && !column.isOverflowColumn}
+            {#if columnMetrics[column.column]?.overflowing && !column.isOverflowColumn && !expandedColumns[column.column]}
               <button type="button" class="column-more" on:click={() => toggleColumn(column.column)}>
-                {expandedColumns[column.column] ? 'See less' : 'See more'}
+                See more
               </button>
             {/if}
             {#if column.isOverflowColumn}
