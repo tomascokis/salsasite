@@ -16,7 +16,9 @@
   let columnMetrics: Record<number, { maxHeight: number; overflowing: boolean; contentHeight: number; availableHeight: number; cutoffIndex?: number }> = {};
   let expandedColumns: Record<number, boolean> = {};
   let measureQueued = false;
+  let hoverSelectionTimeout: ReturnType<typeof setTimeout> | null = null;
   let hoverPreviewTimeout: ReturnType<typeof setTimeout> | null = null;
+  let selectedPreviewMoveId: string | null = null;
   let hoveredPreview: {
     id: string;
     name: string;
@@ -119,6 +121,7 @@
     }
 
     clearHoverPreviewTimeout();
+    selectedPreviewMoveId = entry.id;
     updateHoveredPreviewFromRow(target, entry);
   }
 
@@ -129,8 +132,23 @@
       return;
     }
 
+    scheduleHoverSelection(entry);
     clearHoverPreviewTimeout();
     hoverPreviewTimeout = setTimeout(() => updateHoveredPreviewFromRow(target, entry), 1000);
+  }
+
+  function scheduleHoverSelection(entry: LayoutEntry) {
+    clearHoverSelectionTimeout();
+    hoverSelectionTimeout = setTimeout(() => {
+      selectedPreviewMoveId = entry.id;
+    }, 100);
+  }
+
+  function clearHoverSelectionTimeout() {
+    if (hoverSelectionTimeout) {
+      clearTimeout(hoverSelectionTimeout);
+      hoverSelectionTimeout = null;
+    }
   }
 
   function clearHoverPreviewTimeout() {
@@ -141,7 +159,9 @@
   }
 
   function clearHoveredPreview() {
+    clearHoverSelectionTimeout();
     clearHoverPreviewTimeout();
+    selectedPreviewMoveId = null;
     hoveredPreview = null;
   }
 
@@ -299,6 +319,7 @@
                 {:else}
                   <a
                     class={`dashboard-row data-row ${typeClass(entry.type)}`}
+                    class:preview-selected={selectedPreviewMoveId === entry.id}
                     href={entry.slug ? `/moves/${entry.slug}` : '#'}
                     on:pointerenter={(event) => scheduleHoveredPreview(event, entry)}
                     on:mouseenter={(event) => scheduleHoveredPreview(event, entry)}
@@ -340,3 +361,25 @@
     {/if}
   </section>
 </div>
+
+<style>
+  .data-row.preview-selected {
+    background: #eef6fc;
+    box-shadow: inset 0 0 0 1px rgba(44, 109, 168, 0.28);
+    animation: move-row-selected 180ms ease-out;
+  }
+
+  @keyframes move-row-selected {
+    0% {
+      transform: translateY(0);
+    }
+
+    45% {
+      transform: translateY(-1px);
+    }
+
+    100% {
+      transform: translateY(0);
+    }
+  }
+</style>
