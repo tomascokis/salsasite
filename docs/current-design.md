@@ -165,7 +165,7 @@ Posters are served from `POSTER_ROOT` and can be queued/generated for video asse
 
 Progress data is loaded from SQLite after first-run import from `data/live/bootstrap/catalog/progress.json`.
 
-The progress viewer builds snapshot views over the same layout as the overview page. Overview and progress move rows must show a small embossed selected-row animation after 0.1 seconds of mouseover, then show the shared move hover preview after 1 second of mouseover, and on keyboard focus, using the same compact video/name/ID preview treatment as relationship diagram move nodes. Shared move hover preview videos must fit within the preview frame without cropping, so portrait videos height-match the frame instead of being zoomed in. Each tracked move shows three colored status dimensions:
+The progress viewer builds snapshot views over the same layout as the overview page. The `Log new progress` action must sit in the same control row as the snapshot date pickers, to the left of them, with clear visual separation from the picker group. Overview and progress move rows must show a small embossed selected-row animation after 0.1 seconds of mouseover, then show the shared move hover preview after 1 second of mouseover, and on keyboard focus, using the same compact video/name/ID preview treatment as relationship diagram move nodes. Shared move hover preview videos must fit within the preview frame without cropping, so portrait videos height-match the frame instead of being zoomed in. Each tracked move shows three colored status dimensions:
 
 - Preparation
 - Sequencing

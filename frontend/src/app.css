@@ -6621,6 +6621,24 @@ select {
   gap: 0.25rem;
 }
 
+.progress-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.progress-log-button {
+  flex: 0 0 auto;
+}
+
+.progress-control-divider {
+  align-self: stretch;
+  width: 1px;
+  min-height: 1.7rem;
+  background: #d4dde6;
+}
+
 .summary-strip {
   display: flex;
   flex-wrap: wrap;

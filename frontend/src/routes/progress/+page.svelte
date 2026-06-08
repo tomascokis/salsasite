@@ -126,19 +126,18 @@
 
 <div class="stack">
   <section class="panel">
-    <div class="panel-header">
-      <div class="panel-heading-row">
-        <h2 class="sr-only">Progress</h2>
-        <a class="header-button" href="/progress/editor">Log new progress</a>
-      </div>
-    </div>
     <div style="padding: 1rem 1.1rem" class="stack">
-      <div class="snapshot-tabs">
-        {#each data.views as view, index}
-          <button class:active={activeIndex === index} on:click={() => setActiveIndex(index)}>
-            {view.label}
-          </button>
-        {/each}
+      <h2 class="sr-only">Progress</h2>
+      <div class="progress-controls">
+        <a class="header-button progress-log-button" href="/progress/editor">Log new progress</a>
+        <div class="progress-control-divider" aria-hidden="true"></div>
+        <div class="snapshot-tabs" aria-label="Progress snapshots">
+          {#each data.views as view, index}
+            <button class:active={activeIndex === index} on:click={() => setActiveIndex(index)}>
+              {view.label}
+            </button>
+          {/each}
+        </div>
       </div>
 
       {#if data.views[activeIndex]}
