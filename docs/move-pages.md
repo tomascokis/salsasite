@@ -81,6 +81,8 @@ Shared controls on move pages and move editing surfaces must follow `docs/shared
 
 ## Pinned Moves
 
+- Pinned moves must be user-managed only; recently created moves must not be automatically added to the pinned moves list.
+- The move creation sidebar must show a separate recently created section containing at most the six most recently created moves.
 - Pinned moves must be removable with a compact remove affordance beside the pinned move.
 - Visible pinned/left-pane moves must support context menu relationship actions.
 - Relationship context menus must support right-click.

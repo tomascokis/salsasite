@@ -75,13 +75,15 @@
   let status = '';
   let isSaving = false;
   let pinSearch = '';
-  let pinnedMoveIds = [...data.recentMoveIds];
+  let pinnedMoveIds: string[] = [];
+  let pinnedMovesLoaded = false;
   let reviewMoveEntries: ReviewMoveEntry[] = [];
   let isReviewOpen = false;
   let isReviewListOpen = true;
   let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
   let lastAutosaveSignature = '';
   const pinnedStorageKey = 'salsa-encyclopedia:pinned-create-moves';
+  const recentCreatedMoveLimit = 6;
   const autosaveDelayMs = 900;
   const levelOptions = ['', '1', '2', '3', '4', '5'];
   const relationshipMenuItems = [
@@ -151,6 +153,10 @@
   };
 
   $: pinnedMoves = pinnedMoveIds
+    .map((moveId) => data.moves.find((move) => move.id === moveId))
+    .filter((move): move is MoveCardRecord => Boolean(move));
+  $: recentCreatedMoves = data.recentMoveIds
+    .slice(0, recentCreatedMoveLimit)
     .map((moveId) => data.moves.find((move) => move.id === moveId))
     .filter((move): move is MoveCardRecord => Boolean(move));
   $: reviewMoveEntries = [
@@ -417,18 +423,19 @@
     try {
       const stored = JSON.parse(window.localStorage.getItem(pinnedStorageKey) ?? '[]');
       if (Array.isArray(stored)) {
-        pinnedMoveIds = [...new Set([...data.recentMoveIds, ...stored.map((entry) => String(entry))])];
+        pinnedMoveIds = [...new Set(stored.map((entry) => String(entry)))];
       }
     } catch {
-      pinnedMoveIds = [...data.recentMoveIds];
+      pinnedMoveIds = [];
     }
+    pinnedMovesLoaded = true;
   });
 
   onDestroy(() => {
     clearAutosaveTimer();
   });
 
-  $: if (browser) {
+  $: if (browser && pinnedMovesLoaded) {
     window.localStorage.setItem(pinnedStorageKey, JSON.stringify(pinnedMoveIds));
   }
 
@@ -598,7 +605,7 @@
     relatedMoveIds = relatedMoveIds.filter((entry) => entry !== moveId);
   }
 
-  function addConnectionFromPinned(moveId: string, actionId: string) {
+  function addConnectionFromMoveCard(moveId: string, actionId: string) {
     if (actionId === 'parent' || actionId === 'child' || actionId === 'related') {
       addConnection(actionId, moveId);
     }
@@ -750,7 +757,7 @@
       <div class="panel-header">
         <div class="media-properties-title">
           <h3>Moves</h3>
-          <span>{drafts.length} drafts · {pinnedMoves.length} pinned</span>
+          <span>{drafts.length} drafts · {recentCreatedMoves.length} recent · {pinnedMoves.length} pinned</span>
         </div>
       </div>
 
@@ -821,6 +828,43 @@
       </div>
 
       <div class="move-card-section">
+        <h4>Recently created</h4>
+        {#if recentCreatedMoves.length}
+          <div class="move-card-grid">
+            {#each recentCreatedMoves as move}
+              <ContextMenu
+                items={relationshipMenuItems}
+                disabled={!selectedEditor}
+                on:select={(event) => addConnectionFromMoveCard(move.id, event.detail.id)}
+              >
+                <button
+                  type="button"
+                  class="media-gallery-card move-gallery-card"
+                  class:active={selectedEditor?.kind === 'published' && selectedEditor.id === move.id}
+                  on:click={() => loadPublishedMove(move)}
+                >
+                  <span class="media-gallery-poster">
+                    {#if move.posterFile}
+                      <img src={posterUrl(move.posterFile)} alt="" loading="lazy" />
+                    {:else}
+                      <span>No preview</span>
+                    {/if}
+                  </span>
+                  <span class="media-gallery-card-body">
+                    <strong>{move.name ?? moveDisplayId(move)}</strong>
+                    <span>{moveDisplayId(move)}</span>
+                    <span>{move.videoFiles.length} videos · {move.childIds.length} children</span>
+                  </span>
+                </button>
+              </ContextMenu>
+            {/each}
+          </div>
+        {:else}
+          <p class="move-card-empty">No created moves yet</p>
+        {/if}
+      </div>
+
+      <div class="move-card-section">
         <div class="move-card-section-heading">
           <h4>Pinned moves</h4>
           {#if pinnedMoves.length}
@@ -848,7 +892,7 @@
               <ContextMenu
                 items={relationshipMenuItems}
                 disabled={!selectedEditor}
-                on:select={(event) => addConnectionFromPinned(move.id, event.detail.id)}
+                on:select={(event) => addConnectionFromMoveCard(move.id, event.detail.id)}
               >
                 <button
                   type="button"
