@@ -112,6 +112,18 @@
     title?: string;
     onClick: () => void | Promise<void>;
   };
+  type RenderStatusUpdate = {
+    clipId: string;
+    status: DerivedClip['status'];
+    error: string | null;
+    outputAssetId: string | null;
+    actionOutputFilePath?: string | null;
+    lowResOutputFilePath?: string | null;
+    lowResPaddedOutputFilePath?: string | null;
+    publishedActionOutputFilePath?: string | null;
+    publishedLowResFilePath?: string | null;
+    publishedLowResPaddedFilePath?: string | null;
+  };
   type FullscreenDocument = Document & {
     webkitFullscreenElement?: Element | null;
     webkitExitFullscreen?: () => Promise<void> | void;
@@ -577,6 +589,7 @@
   ]);
 
   $: hasDraftChanges = isDraftingMove && currentDraftSnapshot !== draftInitialSnapshot;
+  $: hasUnsavedEditorChanges = hasDraftChanges || hasUnsavedClipRowChanges;
 
   $: hasSaveableDraftChanges =
     hasDraftChanges && draftMoveRows.some((row) => row.moveIds.some((moveId) => moveNameById.has(moveId)) && row.endMs > row.startMs);
@@ -589,11 +602,11 @@
   $: timelineZoomButtons = buildTimelineZoomButtons(isZoomLooping);
 
   beforeNavigate((navigation) => {
-    if (navigation.willUnload || !hasDraftChanges) {
+    if (navigation.willUnload || !hasUnsavedEditorChanges) {
       return;
     }
 
-    if (!confirmDiscardDraftMoveChanges()) {
+    if (!confirmDiscardEditorChanges()) {
       navigation.cancel();
     }
   });
@@ -768,6 +781,98 @@
       syncingAssetKey = assetSyncKey(syncedAsset);
       syncedMediaPath = syncedAsset.filePath;
     }
+  }
+
+  function resetSourceMetadataForm(asset: UploadAssetView) {
+    editDisplayName = asset.displayName;
+    editDancers = asset.dancers.join(', ');
+    editDancerIds = [...asset.dancers];
+    editDancerQuery = '';
+    editTiming = asset.timing;
+    editContentType = asset.contentType;
+    editEnvironment = asset.environment;
+    editOriginType = asset.originType;
+    editSourceUrl = asset.sourceUrl ?? '';
+    editCreatedAt = dateInputValue(asset.createdAt);
+    editRecordDate = asset.recordDate ?? '';
+    editTags = [...asset.tags];
+    editTagDraft = '';
+    editNotes = asset.notes ?? '';
+    detectStatus = '';
+  }
+
+  function mergeLocalSourceAssetUpdate(assetUpdate: Partial<UploadAssetView> & { id: string }) {
+    let updatedAsset: UploadAssetView | null = null;
+    let mediaPathChanged = false;
+
+    assets = assets.map((asset) => {
+      if (asset.id !== assetUpdate.id) {
+        return asset;
+      }
+
+      const nextAsset: UploadAssetView = {
+        ...asset,
+        ...assetUpdate,
+        kind: 'source',
+        posterFile: asset.posterFile,
+        linkedMoveIds: asset.linkedMoveIds,
+        clips: asset.clips
+      };
+      mediaPathChanged = asset.filePath !== nextAsset.filePath;
+      updatedAsset = nextAsset;
+      return nextAsset;
+    });
+
+    if (updatedAsset && selectedAssetId === assetUpdate.id) {
+      if (mediaPathChanged) {
+        syncingAssetKey = null;
+      } else {
+        syncingAssetKey = assetSyncKey(updatedAsset);
+        syncedMediaPath = updatedAsset.filePath;
+      }
+    }
+  }
+
+  function cancelSourceMetadataEdit() {
+    if (selectedAsset) {
+      resetSourceMetadataForm(selectedAsset);
+    }
+    isEditingMetadata = false;
+  }
+
+  function sourceClipsForPolling(sourceAssetId: string | null): Array<DerivedClip | ClipWithUi> {
+    if (!sourceAssetId) {
+      return [];
+    }
+
+    if (sourceAssetId === selectedAssetId) {
+      return clipRows;
+    }
+
+    return assets.find((asset) => asset.id === sourceAssetId)?.clips ?? [];
+  }
+
+  function applyRenderStatusesToClips<T extends DerivedClip>(clips: T[], statuses: RenderStatusUpdate[]): T[] {
+    const byId = new Map(statuses.map((entry) => [entry.clipId, entry]));
+    return clips.map((clip) => {
+      const status = byId.get(clip.id);
+      if (!status) {
+        return clip;
+      }
+
+      return {
+        ...clip,
+        status: status.status,
+        error: status.error,
+        outputAssetId: status.outputAssetId,
+        actionOutputFilePath: status.actionOutputFilePath ?? clip.actionOutputFilePath,
+        lowResOutputFilePath: status.lowResOutputFilePath ?? clip.lowResOutputFilePath,
+        lowResPaddedOutputFilePath: status.lowResPaddedOutputFilePath ?? clip.lowResPaddedOutputFilePath,
+        publishedActionOutputFilePath: status.publishedActionOutputFilePath ?? clip.publishedActionOutputFilePath,
+        publishedLowResFilePath: status.publishedLowResFilePath ?? clip.publishedLowResFilePath,
+        publishedLowResPaddedFilePath: status.publishedLowResPaddedFilePath ?? clip.publishedLowResPaddedFilePath
+      };
+    });
   }
 
   function formatSeconds(milliseconds: number) {
@@ -1338,7 +1443,7 @@
   }
 
   function openSavedClipEditor(clip: DerivedClip) {
-    if (!confirmDiscardDraftMoveChanges()) {
+    if (!confirmDiscardEditorChanges()) {
       return;
     }
 
@@ -1672,21 +1777,22 @@
     editDancerIds = editDancerIds.filter((entry) => entry !== dancerId);
   }
 
-  function confirmDiscardDraftMoveChanges() {
-    if (!hasDraftChanges || !browser) {
+  function confirmDiscardEditorChanges() {
+    if (!hasUnsavedEditorChanges || !browser) {
       return true;
     }
 
-    return window.confirm('Discard unsaved draft move edits?');
+    return window.confirm('Discard unsaved media editor changes?');
   }
 
   function selectAsset(assetId: string) {
-    if (assetId !== selectedAssetId && !confirmDiscardDraftMoveChanges()) {
+    if (assetId !== selectedAssetId && !confirmDiscardEditorChanges()) {
       return;
     }
 
     selectedAssetId = assetId;
     syncingAssetKey = null;
+    renderStatus = '';
     stopPolling();
   }
 
@@ -1767,6 +1873,11 @@
       return;
     }
 
+    if (!confirmDiscardEditorChanges()) {
+      uploadFile = null;
+      return;
+    }
+
     uploadFile = file;
     uploadStatus = 'Uploading...';
 
@@ -1835,7 +1946,9 @@
 
     saveStatus = 'Metadata saved.';
     isEditingMetadata = false;
-    await refreshLibrary(selectedAsset.id);
+    if (payload.asset?.id) {
+      mergeLocalSourceAssetUpdate(payload.asset);
+    }
   }
 
   async function detectSourceFields() {
@@ -1866,6 +1979,10 @@
   }
 
   async function deleteSourceVideo(asset: UploadAssetView) {
+    if (!confirmDiscardEditorChanges()) {
+      return;
+    }
+
     if (
       browser &&
       !window.confirm(
@@ -2874,7 +2991,7 @@
   }
 
   function startNewMoveClip() {
-    if (!confirmDiscardDraftMoveChanges()) {
+    if (!confirmDiscardEditorChanges()) {
       return;
     }
 
@@ -2926,7 +3043,7 @@
   }
 
   function openMoveEditor() {
-    if (!confirmDiscardDraftMoveChanges()) {
+    if (!confirmDiscardEditorChanges()) {
       return;
     }
 
@@ -2948,7 +3065,7 @@
   }
 
   function exitDraftMove() {
-    if (!confirmDiscardDraftMoveChanges()) {
+    if (!confirmDiscardEditorChanges()) {
       return;
     }
 
@@ -3008,7 +3125,7 @@
   }
 
   function handleBeforeUnload(event: BeforeUnloadEvent) {
-    if (!hasDraftChanges) {
+    if (!hasUnsavedEditorChanges) {
       return;
     }
 
@@ -3138,32 +3255,42 @@
     const payload = await response.json();
 
     if (!response.ok) {
-      renderStatus = payload.error ?? 'Could not save moves.';
+      if (selectedAssetId === sourceAssetId) {
+        renderStatus = payload.error ?? 'Could not save moves.';
+      }
       return;
     }
 
     const savedClips = payload.clips.map((clip: DerivedClip) => ({ ...clip }));
-    persistedClipRows = savedClips.map((clip: DerivedClip) => ({ ...clip }));
-    clipRows = savedClips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
-    syncLocalAssetClips(sourceAssetId, clipRows);
-    const clipIds = clipRows.map((clip) => clip.id).filter(Boolean);
-    resetTimelinePromotion();
-    activeClipId = null;
-    draftMoveRows = [];
-    activeDraftMoveRowId = null;
-    draftInitialSnapshot = '';
+    syncLocalAssetClips(sourceAssetId, savedClips);
+    const clipIds = savedClips.map((clip: DerivedClip) => clip.id).filter(Boolean);
+    const isSourceSelectedAfterSave = selectedAssetId === sourceAssetId;
+
+    if (isSourceSelectedAfterSave) {
+      persistedClipRows = savedClips.map((clip: DerivedClip) => ({ ...clip }));
+      clipRows = savedClips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
+      resetTimelinePromotion();
+      activeClipId = null;
+      draftMoveRows = [];
+      activeDraftMoveRowId = null;
+      draftInitialSnapshot = '';
+    }
 
     if (!clipIds.length) {
-      renderStatus = 'Moves saved.';
-      if (continueAdding) {
+      if (isSourceSelectedAfterSave) {
+        renderStatus = 'Moves saved.';
+      }
+      if (continueAdding && isSourceSelectedAfterSave) {
         startNewMoveClip();
-      } else {
+      } else if (isSourceSelectedAfterSave) {
         isDraftingMove = false;
       }
       return;
     }
 
-    renderStatus = 'Queueing renders...';
+    if (isSourceSelectedAfterSave) {
+      renderStatus = 'Queueing renders...';
+    }
     const renderResponse = await fetch('/api/upload/render', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -3172,10 +3299,13 @@
     const renderPayload = await renderResponse.json();
 
     if (!renderResponse.ok) {
-      renderStatus = renderPayload.error ?? 'Moves saved, but render queueing failed.';
-      if (continueAdding) {
+      const isSourceSelectedAfterRenderError = selectedAssetId === sourceAssetId;
+      if (isSourceSelectedAfterRenderError) {
+        renderStatus = renderPayload.error ?? 'Moves saved, but render queueing failed.';
+      }
+      if (continueAdding && isSourceSelectedAfterRenderError) {
         startNewMoveClip();
-      } else {
+      } else if (isSourceSelectedAfterRenderError) {
         isDraftingMove = false;
       }
       return;
@@ -3183,15 +3313,19 @@
 
     void renderPayload;
     const queuedIds = new Set(clipIds);
-    clipRows = clipRows.map((clip) =>
+    const queuedClips = savedClips.map((clip: DerivedClip) =>
       queuedIds.has(clip.id) ? { ...clip, status: 'pending', error: null } : clip
     );
-    syncLocalAssetClips(sourceAssetId, clipRows);
-    renderStatus = 'Rendering and publishing...';
-    startPolling();
-    if (continueAdding) {
+    syncLocalAssetClips(sourceAssetId, queuedClips);
+    const isSourceSelectedAfterRenderQueue = selectedAssetId === sourceAssetId;
+    if (isSourceSelectedAfterRenderQueue) {
+      clipRows = queuedClips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
+      renderStatus = 'Rendering and publishing...';
+    }
+    startPolling(sourceAssetId);
+    if (continueAdding && isSourceSelectedAfterRenderQueue) {
       startNewMoveClip();
-    } else {
+    } else if (isSourceSelectedAfterRenderQueue) {
       isDraftingMove = false;
     }
   }
@@ -3232,16 +3366,19 @@
     const payload = await response.json();
 
     if (!response.ok) {
-      renderStatus = payload.error ?? 'Could not save clip changes.';
+      if (selectedAssetId === sourceAssetId) {
+        renderStatus = payload.error ?? 'Could not save clip changes.';
+      }
       return;
     }
 
     const savedClips = payload.clips.map((clip: DerivedClip) => ({ ...clip }));
-    persistedClipRows = savedClips.map((clip: DerivedClip) => ({ ...clip }));
-    clipRows = savedClips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
-    syncLocalAssetClips(sourceAssetId, clipRows);
-    renderStatus = 'Clip changes saved and published.';
-    await refreshLibrary(sourceAssetId);
+    syncLocalAssetClips(sourceAssetId, savedClips);
+    if (selectedAssetId === sourceAssetId) {
+      persistedClipRows = savedClips.map((clip: DerivedClip) => ({ ...clip }));
+      clipRows = savedClips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
+      renderStatus = 'Clip changes saved and published.';
+    }
   }
 
   async function addMoreMoves() {
@@ -3294,43 +3431,19 @@
     selectDraftMoveRow(nextRow.id);
   }
 
-  function applyRenderStatuses(
-    statuses: Array<{
-      clipId: string;
-      status: DerivedClip['status'];
-      error: string | null;
-      outputAssetId: string | null;
-      actionOutputFilePath?: string | null;
-      lowResOutputFilePath?: string | null;
-      lowResPaddedOutputFilePath?: string | null;
-      publishedActionOutputFilePath?: string | null;
-      publishedLowResFilePath?: string | null;
-      publishedLowResPaddedFilePath?: string | null;
-    }>
-  ) {
-    const byId = new Map(statuses.map((entry) => [entry.clipId, entry]));
-    clipRows = clipRows.map((clip) => {
-      const status = byId.get(clip.id);
-      if (!status) {
-        return clip;
-      }
-
-      return {
-        ...clip,
-        status: status.status,
-        error: status.error,
-        outputAssetId: status.outputAssetId,
-        actionOutputFilePath: status.actionOutputFilePath ?? clip.actionOutputFilePath,
-        lowResOutputFilePath: status.lowResOutputFilePath ?? clip.lowResOutputFilePath,
-        lowResPaddedOutputFilePath: status.lowResPaddedOutputFilePath ?? clip.lowResPaddedOutputFilePath,
-        publishedActionOutputFilePath: status.publishedActionOutputFilePath ?? clip.publishedActionOutputFilePath,
-        publishedLowResFilePath: status.publishedLowResFilePath ?? clip.publishedLowResFilePath,
-        publishedLowResPaddedFilePath: status.publishedLowResPaddedFilePath ?? clip.publishedLowResPaddedFilePath
-      };
-    });
-    if (selectedAsset) {
-      syncLocalAssetClips(selectedAsset.id, clipRows);
+  function applyRenderStatuses(sourceAssetId: string, statuses: RenderStatusUpdate[]) {
+    if (selectedAssetId === sourceAssetId) {
+      clipRows = applyRenderStatusesToClips(clipRows, statuses);
+      syncLocalAssetClips(sourceAssetId, clipRows);
+      return;
     }
+
+    const asset = assets.find((entry) => entry.id === sourceAssetId);
+    if (!asset) {
+      return;
+    }
+
+    syncLocalAssetClips(sourceAssetId, applyRenderStatusesToClips(asset.clips, statuses));
   }
 
   function stopPolling() {
@@ -3340,8 +3453,9 @@
     }
   }
 
-  async function pollRenderStatuses() {
-    const clipIds = clipRows
+  async function pollRenderStatuses(sourceAssetId: string | null = selectedAssetId) {
+    const sourceClips = sourceClipsForPolling(sourceAssetId);
+    const clipIds = sourceClips
       .filter((clip) => clip.status === 'pending' || clip.status === 'rendering')
       .map((clip) => clip.id);
 
@@ -3352,30 +3466,37 @@
 
     const response = await fetch(`/api/upload/render?ids=${encodeURIComponent(clipIds.join(','))}`);
     if (!response.ok) {
-      pollTimer = setTimeout(() => void pollRenderStatuses(), 2500);
+      pollTimer = setTimeout(() => void pollRenderStatuses(sourceAssetId), 2500);
       return;
     }
 
     const payload = await response.json();
-    applyRenderStatuses(payload.statuses);
-
-    const stillPending = clipRows.some((clip) => clip.status === 'pending' || clip.status === 'rendering');
-    if (stillPending) {
-      pollTimer = setTimeout(() => void pollRenderStatuses(), 2500);
+    if (!sourceAssetId) {
+      stopPolling();
       return;
     }
 
-    renderStatus = 'Render complete and published to moves.';
+    applyRenderStatuses(sourceAssetId, payload.statuses);
+
+    const stillPending = sourceClipsForPolling(sourceAssetId).some((clip) => clip.status === 'pending' || clip.status === 'rendering');
+    if (stillPending) {
+      pollTimer = setTimeout(() => void pollRenderStatuses(sourceAssetId), 2500);
+      return;
+    }
+
+    if (selectedAssetId === sourceAssetId) {
+      renderStatus = 'Render complete and published to moves.';
+    }
     stopPolling();
   }
 
-  function startPolling() {
+  function startPolling(sourceAssetId: string | null = selectedAssetId) {
     if (!browser) {
       return;
     }
 
     stopPolling();
-    pollTimer = setTimeout(() => void pollRenderStatuses(), 1200);
+    pollTimer = setTimeout(() => void pollRenderStatuses(sourceAssetId), 1200);
   }
 
   onDestroy(() => {
@@ -4250,7 +4371,7 @@
                   <div class="upload-actions">
                     <button type="button" on:click={detectSourceFields}>Detect fields</button>
                     <button class="primary" type="button" on:click={saveSourceMetadata}>Save</button>
-                    <button type="button" on:click={() => (syncingAssetKey = null)}>Cancel</button>
+                    <button type="button" on:click={cancelSourceMetadataEdit}>Cancel</button>
                     {#if detectStatus || saveStatus}
                       <span class="muted">{detectStatus || saveStatus}</span>
                     {/if}
