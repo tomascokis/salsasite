@@ -86,7 +86,7 @@
     }
 
     clearHoverPreviewTimeout();
-    hoverPreviewTimeout = setTimeout(() => updateHoveredPreviewFromRow(target, entry), 1500);
+    hoverPreviewTimeout = setTimeout(() => updateHoveredPreviewFromRow(target, entry), 1000);
   }
 
   function clearHoverPreviewTimeout() {
