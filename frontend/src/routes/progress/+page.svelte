@@ -1,5 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { onDestroy } from 'svelte';
   import MoveHoverPreview from '$lib/components/MoveHoverPreview.svelte';
   import { colorForProgress } from '$lib/progress-ui';
   import type { ProgressView, ProgressViewEntryMove } from '$lib/types';
@@ -9,6 +10,7 @@
   };
 
   let activeIndex = 0;
+  let hoverPreviewTimeout: ReturnType<typeof setTimeout> | null = null;
   let hoveredPreview: {
     id: string;
     name: string;
@@ -35,23 +37,17 @@
   }
 
   function setActiveIndex(index: number) {
-    hoveredPreview = null;
+    clearHoveredPreview();
     activeIndex = index;
   }
 
-  function updateHoveredPreview(event: PointerEvent | FocusEvent, entry: ProgressViewEntryMove) {
+  function updateHoveredPreviewFromRow(row: HTMLElement, entry: ProgressViewEntryMove) {
     if (!browser || !entry.id) {
-      hoveredPreview = null;
+      clearHoveredPreview();
       return;
     }
 
-    const target = event.currentTarget;
-    if (!(target instanceof HTMLElement)) {
-      hoveredPreview = null;
-      return;
-    }
-
-    const rowRect = target.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
     const previewWidth = 240;
     const previewHeight = 190;
     const minLeft = 8;
@@ -71,9 +67,41 @@
     };
   }
 
+  function updateHoveredPreview(event: FocusEvent, entry: ProgressViewEntryMove) {
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLElement)) {
+      clearHoveredPreview();
+      return;
+    }
+
+    clearHoverPreviewTimeout();
+    updateHoveredPreviewFromRow(target, entry);
+  }
+
+  function scheduleHoveredPreview(event: MouseEvent | PointerEvent, entry: ProgressViewEntryMove) {
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLElement)) {
+      clearHoveredPreview();
+      return;
+    }
+
+    clearHoverPreviewTimeout();
+    hoverPreviewTimeout = setTimeout(() => updateHoveredPreviewFromRow(target, entry), 1500);
+  }
+
+  function clearHoverPreviewTimeout() {
+    if (hoverPreviewTimeout) {
+      clearTimeout(hoverPreviewTimeout);
+      hoverPreviewTimeout = null;
+    }
+  }
+
   function clearHoveredPreview() {
+    clearHoverPreviewTimeout();
     hoveredPreview = null;
   }
+
+  onDestroy(clearHoveredPreview);
 </script>
 
 <div class="stack">
@@ -113,8 +141,8 @@
                   <a
                     class={`progress-row data-row ${typeClass(entry.type)}`}
                     href={`/moves/${entry.slug}`}
-                    on:pointerenter={(event) => updateHoveredPreview(event, entry)}
-                    on:mouseover={(event) => updateHoveredPreview(event, entry)}
+                    on:pointerenter={(event) => scheduleHoveredPreview(event, entry)}
+                    on:mouseenter={(event) => scheduleHoveredPreview(event, entry)}
                     on:pointerleave={clearHoveredPreview}
                     on:mouseleave={clearHoveredPreview}
                     on:focus={(event) => updateHoveredPreview(event, entry)}

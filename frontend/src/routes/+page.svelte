@@ -1,6 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { onMount, tick } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import MoveHoverPreview from '$lib/components/MoveHoverPreview.svelte';
   import type { LayoutColumn, LayoutEntry, SearchIndexEntry, SiteManifest } from '$lib/types';
 
@@ -16,6 +16,7 @@
   let columnMetrics: Record<number, { maxHeight: number; overflowing: boolean; contentHeight: number; availableHeight: number; cutoffIndex?: number }> = {};
   let expandedColumns: Record<number, boolean> = {};
   let measureQueued = false;
+  let hoverPreviewTimeout: ReturnType<typeof setTimeout> | null = null;
   let hoveredPreview: {
     id: string;
     name: string;
@@ -80,23 +81,17 @@
   }
 
   function toggleColumn(column: number) {
-    hoveredPreview = null;
+    clearHoveredPreview();
     expandedColumns = { ...expandedColumns, [column]: !expandedColumns[column] };
   }
 
-  function updateHoveredPreview(event: PointerEvent | FocusEvent, entry: LayoutEntry) {
+  function updateHoveredPreviewFromRow(row: HTMLElement, entry: LayoutEntry) {
     if (!browser || entry.entryType !== 'Data' || !entry.id) {
-      hoveredPreview = null;
+      clearHoveredPreview();
       return;
     }
 
-    const target = event.currentTarget;
-    if (!(target instanceof HTMLElement)) {
-      hoveredPreview = null;
-      return;
-    }
-
-    const rowRect = target.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
     const previewWidth = 240;
     const previewHeight = 190;
     const minLeft = 8;
@@ -116,7 +111,37 @@
     };
   }
 
+  function updateHoveredPreview(event: FocusEvent, entry: LayoutEntry) {
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLElement)) {
+      clearHoveredPreview();
+      return;
+    }
+
+    clearHoverPreviewTimeout();
+    updateHoveredPreviewFromRow(target, entry);
+  }
+
+  function scheduleHoveredPreview(event: MouseEvent | PointerEvent, entry: LayoutEntry) {
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLElement)) {
+      clearHoveredPreview();
+      return;
+    }
+
+    clearHoverPreviewTimeout();
+    hoverPreviewTimeout = setTimeout(() => updateHoveredPreviewFromRow(target, entry), 1500);
+  }
+
+  function clearHoverPreviewTimeout() {
+    if (hoverPreviewTimeout) {
+      clearTimeout(hoverPreviewTimeout);
+      hoverPreviewTimeout = null;
+    }
+  }
+
   function clearHoveredPreview() {
+    clearHoverPreviewTimeout();
     hoveredPreview = null;
   }
 
@@ -190,6 +215,8 @@
 
     return () => window.removeEventListener('resize', handleResize);
   });
+
+  onDestroy(clearHoveredPreview);
 
   $: if (browser) {
     visibleLayout;
@@ -273,8 +300,8 @@
                   <a
                     class={`dashboard-row data-row ${typeClass(entry.type)}`}
                     href={entry.slug ? `/moves/${entry.slug}` : '#'}
-                    on:pointerenter={(event) => updateHoveredPreview(event, entry)}
-                    on:mouseover={(event) => updateHoveredPreview(event, entry)}
+                    on:pointerenter={(event) => scheduleHoveredPreview(event, entry)}
+                    on:mouseenter={(event) => scheduleHoveredPreview(event, entry)}
                     on:pointerleave={clearHoveredPreview}
                     on:mouseleave={clearHoveredPreview}
                     on:focus={(event) => updateHoveredPreview(event, entry)}
