@@ -242,6 +242,7 @@ Current constraints:
 - In edit mode, the timeline must show a compact previous/current/next move context strip so neighboring moves remain visible without adding extra rows.
 - The edit-mode previous/current/next move context strip must share the same renderer and move-name labels as the playback move-context strip; it must not use source-video or saved clip labels.
 - In edit mode, green saved clip bars for other moves must remain visible in the lower timeline lane; only the saved bar for the active draft/editing row may be hidden to avoid duplicating the orange active range.
+- After saving a newly created move clip, starting another new move must keep the saved clip visible in the timeline/editor context; local source-asset refreshes must not replace saved clips with stale pre-save clip data.
 - Opening a saved clip that belongs to a timing group must load only the clicked clip row; adding another bound row remains an explicit `Add bound move` action.
 - Choosing a previous or next move from the edit context strip must replace the visible editor row with that move without scrolling the whole page.
 - Timeline move ranges that are currently open for editing must remain orange, while move ranges that are not currently open for editing must appear green.

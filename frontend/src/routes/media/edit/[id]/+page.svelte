@@ -737,6 +737,39 @@
     ].join('::');
   }
 
+  function clipsWithoutUiState(clips: Array<DerivedClip | ClipWithUi>): DerivedClip[] {
+    return clips.map((clip) => {
+      const { selected: _selected, ...rest } = clip as ClipWithUi;
+      return { ...rest };
+    });
+  }
+
+  function syncLocalAssetClips(assetId: string, clips: Array<DerivedClip | ClipWithUi>) {
+    const nextClips = clipsWithoutUiState(clips);
+    let syncedAsset: UploadAssetView | null = null;
+
+    assets = assets.map((asset) => {
+      if (asset.id !== assetId) {
+        return asset;
+      }
+
+      const linkedMoveIds = Array.from(new Set(nextClips.map((clip) => clip.moveId))).sort((left, right) =>
+        left.localeCompare(right)
+      );
+      syncedAsset = {
+        ...asset,
+        linkedMoveIds,
+        clips: nextClips
+      };
+      return syncedAsset;
+    });
+
+    if (syncedAsset && selectedAssetId === assetId) {
+      syncingAssetKey = assetSyncKey(syncedAsset);
+      syncedMediaPath = syncedAsset.filePath;
+    }
+  }
+
   function formatSeconds(milliseconds: number) {
     return (milliseconds / 1000).toFixed(2);
   }
@@ -3068,6 +3101,7 @@
     if (!selectedAsset) {
       return;
     }
+    const sourceAssetId = selectedAsset.id;
 
     const nextClipRows = clipRowsWithDraftForSave();
     if (!nextClipRows) {
@@ -3079,7 +3113,7 @@
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        sourceAssetId: selectedAsset.id,
+        sourceAssetId,
         clips: nextClipRows.map((clip) => ({
           id: clip.id,
           moveId: clip.moveId,
@@ -3108,8 +3142,10 @@
       return;
     }
 
-    persistedClipRows = payload.clips.map((clip: DerivedClip) => ({ ...clip }));
-    clipRows = payload.clips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
+    const savedClips = payload.clips.map((clip: DerivedClip) => ({ ...clip }));
+    persistedClipRows = savedClips.map((clip: DerivedClip) => ({ ...clip }));
+    clipRows = savedClips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
+    syncLocalAssetClips(sourceAssetId, clipRows);
     const clipIds = clipRows.map((clip) => clip.id).filter(Boolean);
     resetTimelinePromotion();
     activeClipId = null;
@@ -3150,6 +3186,7 @@
     clipRows = clipRows.map((clip) =>
       queuedIds.has(clip.id) ? { ...clip, status: 'pending', error: null } : clip
     );
+    syncLocalAssetClips(sourceAssetId, clipRows);
     renderStatus = 'Rendering and publishing...';
     startPolling();
     if (continueAdding) {
@@ -3163,13 +3200,14 @@
     if (!selectedAsset) {
       return;
     }
+    const sourceAssetId = selectedAsset.id;
 
     renderStatus = 'Saving clip changes...';
     const response = await fetch('/api/upload/clips', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        sourceAssetId: selectedAsset.id,
+        sourceAssetId,
         clips: clipRows.map((clip) => ({
           id: clip.id,
           moveId: clip.moveId,
@@ -3198,10 +3236,12 @@
       return;
     }
 
-    persistedClipRows = payload.clips.map((clip: DerivedClip) => ({ ...clip }));
-    clipRows = payload.clips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
+    const savedClips = payload.clips.map((clip: DerivedClip) => ({ ...clip }));
+    persistedClipRows = savedClips.map((clip: DerivedClip) => ({ ...clip }));
+    clipRows = savedClips.map((clip: DerivedClip) => ({ ...clip, selected: false }));
+    syncLocalAssetClips(sourceAssetId, clipRows);
     renderStatus = 'Clip changes saved and published.';
-    await refreshLibrary(selectedAsset.id);
+    await refreshLibrary(sourceAssetId);
   }
 
   async function addMoreMoves() {
@@ -3288,6 +3328,9 @@
         publishedLowResPaddedFilePath: status.publishedLowResPaddedFilePath ?? clip.publishedLowResPaddedFilePath
       };
     });
+    if (selectedAsset) {
+      syncLocalAssetClips(selectedAsset.id, clipRows);
+    }
   }
 
   function stopPolling() {
