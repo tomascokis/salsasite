@@ -1,4 +1,6 @@
 import { json } from '@sveltejs/kit';
+import { runWithActionActor } from '$lib/server/app-state';
+import { requireAdmin } from '$lib/server/auth-guard';
 import { deleteSourceAsset, updateSourceAsset } from '$lib/server/video-library';
 import type { VideoContentType, VideoEnvironment, VideoOriginType, VideoTiming } from '$lib/types';
 import type { RequestHandler } from './$types';
@@ -8,7 +10,9 @@ const VALID_CONTENT_TYPES = new Set<VideoContentType>(['music', 'counts', 'other
 const VALID_ENVIRONMENTS = new Set<VideoEnvironment>(['social', 'class']);
 const VALID_ORIGIN_TYPES = new Set<VideoOriginType>(['self-recorded', 'download']);
 
-export const PUT: RequestHandler = async ({ params, request }) => {
+export const PUT: RequestHandler = async (event) => {
+  const actor = requireAdmin(event).username;
+  const { params, request } = event;
   const body = await request.json();
   const timing = String(body.timing ?? '') as VideoTiming;
   const contentType = String(body.contentType ?? '') as VideoContentType;
@@ -32,7 +36,7 @@ export const PUT: RequestHandler = async ({ params, request }) => {
   }
 
   try {
-    const asset = await updateSourceAsset({
+    const asset = await runWithActionActor(actor, () => updateSourceAsset({
       assetId: params.id,
       displayName: String(body.displayName ?? '').trim(),
       dancers: Array.isArray(body.dancers) ? body.dancers.map(String) : String(body.dancers ?? ''),
@@ -46,7 +50,7 @@ export const PUT: RequestHandler = async ({ params, request }) => {
       classWorkshop: String(body.classWorkshop ?? '').trim() || null,
       tags: Array.isArray(body.tags) ? body.tags.map(String) : String(body.tags ?? ''),
       notes: String(body.notes ?? '').trim() || null
-    });
+    }));
 
     return json({ ok: true, asset });
   } catch (error) {
@@ -57,9 +61,11 @@ export const PUT: RequestHandler = async ({ params, request }) => {
   }
 };
 
-export const DELETE: RequestHandler = async ({ params }) => {
+export const DELETE: RequestHandler = async (event) => {
+  const actor = requireAdmin(event).username;
+  const { params } = event;
   try {
-    const result = await deleteSourceAsset(params.id);
+    const result = await runWithActionActor(actor, () => deleteSourceAsset(params.id));
     return json({ ok: true, ...result });
   } catch (error) {
     return json(

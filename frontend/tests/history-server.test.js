@@ -58,7 +58,18 @@ test('history API returns sanitized undo metadata and blocks unsupported undo pa
   });
 
   const response = await GET({
-    url: new URL('http://test.local/api/history?limit=not-a-number')
+    url: new URL('http://test.local/api/history?limit=not-a-number'),
+    locals: {
+      user: {
+        id: 'admin-user',
+        username: 'admin',
+        role: 'admin',
+        isActive: true,
+        createdAt: '2026-06-02T00:00:00.000Z',
+        updatedAt: '2026-06-02T00:00:00.000Z',
+        lastLoginAt: null
+      }
+    }
   });
   const payload = await response.json();
   assert.equal(response.status, 200);

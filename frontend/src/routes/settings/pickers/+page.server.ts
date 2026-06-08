@@ -1,10 +1,13 @@
+import { requireAdminPage } from '$lib/server/auth-guard';
 import { getMoves, getRawMoveReference } from '$lib/server/data';
 import { getDancerProfiles } from '$lib/server/dancers';
 import { getSiteMetadata } from '$lib/server/metadata';
 import { findPosterForVideoFile } from '$lib/server/posters';
 import { readVideoLibrary } from '$lib/server/video-library';
+import type { PageServerLoad } from './$types';
 
-export async function load() {
+export const load: PageServerLoad = async (event) => {
+  requireAdminPage(event);
   const [moves, rawReferences] = await Promise.all([getMoves(), getRawMoveReference()]);
   const [metadata, library] = await Promise.all([getSiteMetadata(moves, rawReferences), readVideoLibrary()]);
   const dancers = await getDancerProfiles(moves, rawReferences, library);
@@ -24,4 +27,4 @@ export async function load() {
     dancers,
     moves: moveOptions
   };
-}
+};

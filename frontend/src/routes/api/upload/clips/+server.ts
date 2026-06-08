@@ -1,5 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { moveDisplayId } from '$lib/move-id';
+import { runWithActionActor } from '$lib/server/app-state';
+import { requireAdmin } from '$lib/server/auth-guard';
 import { getMoves } from '$lib/server/data';
 import { listMoveDrafts } from '$lib/server/move-editor';
 import { getPositionOptions } from '$lib/server/positions';
@@ -55,7 +57,9 @@ function parseCountMarkers(value: unknown): ClipCountMarker[] {
     .filter((entry): entry is ClipCountMarker => Boolean(entry));
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+  const actor = requireAdmin(event).username;
+  const { request } = event;
   const body = await request.json();
   const sourceAssetId = String(body.sourceAssetId ?? '').trim();
   const rawClips = Array.isArray(body.clips) ? body.clips : [];
@@ -146,10 +150,10 @@ export const POST: RequestHandler = async ({ request }) => {
     );
 
   try {
-    const saved = await saveSourceClips({
+    const saved = await runWithActionActor(actor, () => saveSourceClips({
       sourceAssetId,
       clips
-    });
+    }));
 
     return json({ ok: true, clips: saved });
   } catch (error) {

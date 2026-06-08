@@ -29,6 +29,7 @@
   };
 
   export let data: {
+    isAdmin: boolean;
     move: MoveRecord;
     rawReference: RawMoveReferenceRecord | null;
     relationshipDiagram: RelationshipDiagram;
@@ -66,6 +67,7 @@
   let detailEditorStatus = '';
   let isSavingMoveDetails = false;
   let isSavingKeyVideo = false;
+  $: isAdmin = Boolean(data.isAdmin);
   const unavailablePosterVideos = new Set<string>();
   const levelOptions = ['', '1', '2', '3', '4', '5'];
   const topicPickerTemplate: EntityPickerTemplate = {
@@ -293,6 +295,7 @@
   }
 
   function startMoveDetailsEditor() {
+    if (!isAdmin) return;
     resetDetailEditorFromMove(move);
     detailEditorStatus = '';
     isEditingMoveDetails = true;
@@ -305,6 +308,7 @@
   }
 
   async function saveMoveDetails() {
+    if (!isAdmin) return;
     isSavingMoveDetails = true;
     detailEditorStatus = 'Saving...';
 
@@ -475,6 +479,7 @@
   }
 
   async function toggleSelectedVideoKeyState() {
+    if (!isAdmin) return;
     if (!selectedVideoEntry?.clipId) {
       return;
     }
@@ -793,10 +798,10 @@
                   {showCountOverlay ? 'Hide counts' : 'Show counts'}
                 </button>
               {/if}
-              {#if selectedClipEditUrl}
+              {#if isAdmin && selectedClipEditUrl}
                 <a class="pill video-clip-edit-link" href={selectedClipEditUrl}>Go to clip</a>
               {/if}
-              {#if isEditingMoveDetails && selectedVideoEntry?.clipId}
+              {#if isAdmin && isEditingMoveDetails && selectedVideoEntry?.clipId}
                 <button
                   type="button"
                   class="key-video-toggle"
@@ -855,7 +860,7 @@
         <div class="panel-header">
           <div class="panel-heading-row">
             <h3>Move details</h3>
-            {#if !isEditingMoveDetails}
+            {#if isAdmin && !isEditingMoveDetails}
               <button
                 class="icon-button move-detail-edit-button"
                 type="button"

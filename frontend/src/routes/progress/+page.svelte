@@ -6,6 +6,7 @@
   import type { ProgressView, ProgressViewEntryMove } from '$lib/types';
 
   export let data: {
+    isAdmin: boolean;
     views: ProgressView[];
   };
 
@@ -20,6 +21,7 @@
     left: number;
     top: number;
   } | null = null;
+  $: isAdmin = Boolean(data.isAdmin);
 
   $: orderedColumns = data.views[activeIndex]?.columns
     .map((column) => ({
@@ -129,8 +131,10 @@
     <div style="padding: 1rem 1.1rem" class="stack">
       <h2 class="sr-only">Progress</h2>
       <div class="progress-controls">
-        <a class="header-button progress-log-button" href="/progress/editor">Log new progress</a>
-        <div class="progress-control-divider" aria-hidden="true"></div>
+        {#if isAdmin}
+          <a class="header-button progress-log-button" href="/progress/editor">Log new progress</a>
+          <div class="progress-control-divider" aria-hidden="true"></div>
+        {/if}
         <div class="snapshot-tabs" aria-label="Progress snapshots">
           {#each data.views as view, index}
             <button class:active={activeIndex === index} on:click={() => setActiveIndex(index)}>

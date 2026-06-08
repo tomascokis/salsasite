@@ -268,6 +268,6 @@ For browser verification from this checkout, use `http://192.168.0.127:18096`.
 - The legacy R/Quarto implementation and checked-in static reference output have been retired. Preserved RDS/XLSX artifacts remain for audit and migration context, but they are not an active build/export path.
 - The media catalog is SQLite-backed. JSON media catalog files are bootstrap/export artifacts, not the live source of truth after first SQLite bootstrap.
 - Progress editor changes are currently browser-local unless imported/exported through CSV.
-- Authentication, authorization, admin pages, and access tracking are planned but not implemented in the inspected app.
+- Authentication and authorization are implemented locally with SQLite-backed users and sessions. All application content, media files, poster files, and APIs are gated behind login. Viewers can browse/read content, while admins are required for editing, upload, publishing, undo, repair, retry, and operational settings. Detailed auth contracts live in [docs/authentication.md](/Volumes/fastdata/server/salsasite-dev/docs/authentication.md).
 - Media render jobs are in memory. If the container restarts during rendering, the saved clip definition remains but the active render job is lost.
 - The repository has existing uncommitted changes; this document does not attempt to reconcile or validate all pending worktree changes.

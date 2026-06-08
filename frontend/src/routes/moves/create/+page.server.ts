@@ -1,8 +1,10 @@
+import { requireAdminPage } from '$lib/server/auth-guard';
 import { getMoves, getRawMoveReference } from '$lib/server/data';
 import { getSiteMetadata } from '$lib/server/metadata';
 import { listCreatedMoveIds, listMoveDrafts } from '$lib/server/move-editor';
 import { findPosterForVideoFile } from '$lib/server/posters';
 import { getResolvedMoveVideos } from '$lib/server/video-library';
+import type { PageServerLoad } from './$types';
 
 type MovePreview = {
   filePath: string;
@@ -19,7 +21,8 @@ async function previewForFile(filePath: string | null | undefined, label: string
   };
 }
 
-export async function load() {
+export const load: PageServerLoad = async (event) => {
+  requireAdminPage(event);
   const [moves, drafts, recentMoveIds, rawReferences] = await Promise.all([
     getMoves(),
     listMoveDrafts(),
@@ -57,4 +60,4 @@ export async function load() {
     ),
     recentMoveIds
   };
-}
+};

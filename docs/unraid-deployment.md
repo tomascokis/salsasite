@@ -25,6 +25,23 @@ Main files:
 
 For the full video catalog, upload, clip-render, and poster workflow, see [docs/video-library.md](/Volumes/fastdata/server/salsasite-dev/docs/video-library.md).
 
+## Account setup
+
+Authentication is local to the app-state SQLite database. There is no public signup flow. Create accounts from inside the running container after dependencies are installed:
+
+```bash
+docker exec -it salsasite-dev npm run user:create -- --username admin --role admin
+docker exec -it salsasite-dev npm run user:create -- --username viewer --role viewer
+```
+
+To change an existing user's password or role:
+
+```bash
+docker exec -it salsasite-dev npm run user:password -- --username admin --role admin
+```
+
+For non-interactive automation, pipe the password and pass `--password-stdin`.
+
 ## Unraid setup
 
 Use [docker/Dockerfile.dev](/Volumes/fastdata/server/salsasite-dev/docker/Dockerfile.dev) for the live-mounted setup, or [docker/Dockerfile](/Volumes/fastdata/server/salsasite-dev/docker/Dockerfile) if you specifically want a compiled frontend app image.

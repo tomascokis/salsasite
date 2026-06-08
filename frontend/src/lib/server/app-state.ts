@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { resolveAppStateBootstrapDir, resolveCatalogBootstrapDir, resolveDataDir } from './paths';
 
 export type ActionRecord = {
@@ -35,6 +36,7 @@ type DatabaseRow = Record<string, unknown>;
 const DB_FILENAME = 'app-state.sqlite';
 let database: DatabaseSync | null = null;
 let initialized = false;
+const actionActorStorage = new AsyncLocalStorage<string | null>();
 
 function nowIso() {
   return new Date().toISOString();
@@ -111,6 +113,34 @@ function createSchema(db: DatabaseSync) {
 
     CREATE INDEX IF NOT EXISTS idx_actions_created_at ON actions(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_actions_entity ON actions(entity_type, entity_id);
+
+    CREATE TABLE IF NOT EXISTS auth_users (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      username_normalized TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL,
+      is_active INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      last_login_at TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_auth_users_role ON auth_users(role);
+
+    CREATE TABLE IF NOT EXISTS auth_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      last_seen_at TEXT NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES auth_users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_auth_sessions_token_hash ON auth_sessions(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at);
 
     CREATE TABLE IF NOT EXISTS metadata_entries (
       id TEXT PRIMARY KEY,
@@ -564,6 +594,10 @@ export function runInTransaction<T>(callback: (db: DatabaseSync) => T) {
   }
 }
 
+export function runWithActionActor<T>(actor: string | null | undefined, callback: () => T): T {
+  return actionActorStorage.run(actor ?? null, callback);
+}
+
 export function recordAction(db: DatabaseSync, input: ActionInput) {
   const id = randomUUID();
   const createdAt = nowIso();
@@ -580,7 +614,7 @@ export function recordAction(db: DatabaseSync, input: ActionInput) {
     input.entityId,
     'active',
     createdAt,
-    input.actor ?? null,
+    input.actor ?? actionActorStorage.getStore() ?? null,
     serializeJson(input.before),
     serializeJson(input.after),
     null,

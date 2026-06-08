@@ -18,6 +18,23 @@ function historyEntry(entries, type) {
   return entries.find((entry) => entry.type === type);
 }
 
+function adminEvent(extra = {}) {
+  return {
+    locals: {
+      user: {
+        id: 'admin-user',
+        username: 'admin',
+        role: 'admin',
+        isActive: true,
+        createdAt: '2026-06-02T00:00:00.000Z',
+        updatedAt: '2026-06-02T00:00:00.000Z',
+        lastLoginAt: null
+      }
+    },
+    ...extra
+  };
+}
+
 test('media catalog mutations record non-undoable audit history actions', async () => {
   const {
     createSourceAsset,
@@ -95,7 +112,7 @@ test('media catalog mutations record non-undoable audit history actions', async 
 
   const entries = listHistory(50);
   const response = await GET({
-    url: new URL('http://test.local/api/history?limit=50')
+    ...adminEvent({ url: new URL('http://test.local/api/history?limit=50') })
   });
   const payload = await response.json();
   assert.equal(response.status, 200);

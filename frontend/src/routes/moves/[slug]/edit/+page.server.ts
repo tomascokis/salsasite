@@ -1,10 +1,13 @@
 import { error } from '@sveltejs/kit';
+import { requireAdminPage } from '$lib/server/auth-guard';
 import { getMoves, getRawMoveReference } from '$lib/server/data';
 import { getSiteMetadata } from '$lib/server/metadata';
 import { findPosterForVideoFile } from '$lib/server/posters';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async (event) => {
+  requireAdminPage(event);
+  const { params } = event;
   const [moves, rawReferences] = await Promise.all([getMoves(), getRawMoveReference()]);
   const metadata = await getSiteMetadata(moves, rawReferences);
   const move = moves.find((entry) => entry.slug === params.slug) ?? null;

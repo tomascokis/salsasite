@@ -13,6 +13,7 @@
   };
 
   export let data: {
+    isAdmin: boolean;
     dancers: DancerProfile[];
   };
 
@@ -55,6 +56,7 @@
   let level: DancerLevel = 'unknown';
   let region = '';
   let regionQuery = '';
+  $: isAdmin = Boolean(data.isAdmin);
 
   $: selectedDancer = dancers.find((dancer) => dancer.id === selectedId) ?? null;
   $: pickerOptions = dancers.map(
@@ -107,6 +109,7 @@
   }
 
   function startNewDancer() {
+    if (!isAdmin) return;
     selectedId = null;
     fullName = '';
     displayName = '';
@@ -120,6 +123,7 @@
   }
 
   function startEditDancer() {
+    if (!isAdmin) return;
     if (!selectedDancer) return;
     fullName = selectedDancer.fullName;
     displayName = selectedDancer.displayName;
@@ -133,6 +137,7 @@
   }
 
   async function saveDancer() {
+    if (!isAdmin) return;
     isSaving = true;
     status = 'Saving...';
 
@@ -164,6 +169,7 @@
   }
 
   async function deleteDancer() {
+    if (!isAdmin) return;
     if (!selectedDancer) return;
 
     const dancerToDelete = selectedDancer;
@@ -206,7 +212,9 @@
 
 <div class="dancers-page">
   <div class="move-editor-topbar">
-    <button class="header-button" type="button" on:click={startNewDancer}>New dancer</button>
+    {#if isAdmin}
+      <button class="header-button" type="button" on:click={startNewDancer}>New dancer</button>
+    {/if}
     {#if status}
       <span class="muted">{status}</span>
     {/if}
@@ -249,7 +257,7 @@
     </aside>
 
     <main class="dancer-profile">
-      {#if isEditing}
+      {#if isAdmin && isEditing}
         <section class="panel meta-card dancer-profile-card">
           <div class="panel-header">
             <h3>{selectedId ? 'Edit dancer' : 'New dancer'}</h3>
@@ -321,10 +329,12 @@
               <div class="media-properties-title">
                 <h3>{selectedDancer.displayName}</h3>
               </div>
-              <div class="dancer-profile-actions">
-                <button class="pill" type="button" disabled={isDeleting} on:click={startEditDancer}>Edit</button>
-                <button class="pill danger-pill" type="button" disabled={isDeleting} on:click={deleteDancer}>Delete</button>
-              </div>
+              {#if isAdmin}
+                <div class="dancer-profile-actions">
+                  <button class="pill" type="button" disabled={isDeleting} on:click={startEditDancer}>Edit</button>
+                  <button class="pill danger-pill" type="button" disabled={isDeleting} on:click={deleteDancer}>Delete</button>
+                </div>
+              {/if}
             </div>
           </div>
 

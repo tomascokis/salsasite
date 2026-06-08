@@ -4,11 +4,18 @@
   import { applyBadgeColors, loadBadgeColors } from '$lib/badge-settings';
   import '../app.css';
 
-  const links = [
+  export let data: {
+    user: { username: string; role: 'viewer' | 'admin' } | null;
+    isAdmin: boolean;
+  };
+
+  const baseLinks = [
     { href: '/', label: 'Overview' },
     { href: '/progress', label: 'Progress' },
     { href: '/media', label: 'Media' },
-    { href: '/dancers', label: 'Dancers' },
+    { href: '/dancers', label: 'Dancers' }
+  ];
+  const adminLinks = [
     { href: '/moves/create', label: 'Create' },
     { href: '/settings', label: 'Settings' }
   ];
@@ -35,11 +42,12 @@
       .sort((a, b) => normalizePath(b.href).length - normalizePath(a.href).length)[0];
   }
 
+  $: links = data.user ? (data.isAdmin ? [...baseLinks, ...adminLinks] : baseLinks) : [];
   $: currentPath = $page.url.pathname;
   $: currentLink = activeLink(currentPath);
   $: currentPath, (isMobileMenuOpen = false);
   $: activeHref = currentLink?.href;
-  $: currentLabel = currentLink?.label ?? links[0].label;
+  $: currentLabel = currentLink?.label ?? links[0]?.label ?? 'Menu';
 
   onMount(() => {
     clientReady = true;
@@ -56,49 +64,95 @@
     <div class="topbar-main">
       <a class="brand-block" href="/">Salsa Encyclopedia</a>
       <span class="topbar-divider" aria-hidden="true"></span>
-      <nav class="nav-links" aria-label="Primary">
-        {#each links as link}
-          <a
-            href={link.href}
-            class:active={link.href === activeHref}
-            aria-current={link.href === activeHref ? 'page' : undefined}
+      {#if links.length}
+        <nav class="nav-links" aria-label="Primary">
+          {#each links as link}
+            <a
+              href={link.href}
+              class:active={link.href === activeHref}
+              aria-current={link.href === activeHref ? 'page' : undefined}
+            >
+              {link.label}
+            </a>
+          {/each}
+        </nav>
+        <div class="mobile-nav">
+          <button
+            type="button"
+            class="mobile-nav-button"
+            aria-haspopup="menu"
+            aria-expanded={isMobileMenuOpen}
+            on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}
           >
-            {link.label}
-          </a>
-        {/each}
-      </nav>
-      <div class="mobile-nav">
-        <button
-          type="button"
-          class="mobile-nav-button"
-          aria-haspopup="menu"
-          aria-expanded={isMobileMenuOpen}
-          on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}
-        >
-          <span>{currentLabel}</span>
-          <span aria-hidden="true">⌄</span>
-        </button>
-        {#if isMobileMenuOpen}
-          <nav class="mobile-nav-menu" aria-label="Primary mobile">
-            {#each links as link}
-              <a
-                href={link.href}
-                class:active={link.href === activeHref}
-                aria-current={link.href === activeHref ? 'page' : undefined}
-                on:click={() => (isMobileMenuOpen = false)}
-              >
-                {link.label}
-              </a>
-            {/each}
-          </nav>
-        {/if}
-      </div>
+            <span>{currentLabel}</span>
+            <span aria-hidden="true">⌄</span>
+          </button>
+          {#if isMobileMenuOpen}
+            <nav class="mobile-nav-menu" aria-label="Primary mobile">
+              {#each links as link}
+                <a
+                  href={link.href}
+                  class:active={link.href === activeHref}
+                  aria-current={link.href === activeHref ? 'page' : undefined}
+                  on:click={() => (isMobileMenuOpen = false)}
+                >
+                  {link.label}
+                </a>
+              {/each}
+            </nav>
+          {/if}
+        </div>
+      {/if}
     </div>
-    <span class="topbar-version" aria-label={`Interface version ${uiVersion}`}>
-      {uiVersion} {clientReady ? 'client' : 'ssr'}
-    </span>
+    <div class="topbar-meta">
+      {#if data.user}
+        <span>{data.user.username} · {data.user.role}</span>
+        <form method="POST" action="/logout">
+          <button type="submit" class="text-button">Logout</button>
+        </form>
+      {/if}
+      <span class="topbar-version" aria-label={`Interface version ${uiVersion}`}>
+        {uiVersion} {clientReady ? 'client' : 'ssr'}
+      </span>
+    </div>
   </header>
   <main class="page">
     <slot />
   </main>
 </div>
+
+<style>
+  .topbar-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex: 0 0 auto;
+    color: #66717c;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .topbar-meta form {
+    margin: 0;
+  }
+
+  .text-button {
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .text-button:hover,
+  .text-button:focus-visible {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 760px) {
+    .topbar-meta {
+      font-size: 0.72rem;
+      gap: 0.35rem;
+    }
+  }
+</style>

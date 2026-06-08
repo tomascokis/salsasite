@@ -29,6 +29,7 @@
   };
 
   export let data: {
+    isAdmin: boolean;
     timingOptions: Array<{ value: VideoTiming; label: string }>;
     contentTypeOptions: Array<{ value: VideoContentType; label: string }>;
     environmentOptions: Array<{ value: VideoEnvironment; label: string }>;
@@ -57,6 +58,7 @@
   let dancerQuery = '';
   let loadedFilterKey = 'all|all|';
   let filterRequestId = 0;
+  $: isAdmin = Boolean(data.isAdmin);
   const dancerFilterPickerTemplate: EntityPickerTemplate = {
     key: 'media-dancer-filter',
     kind: 'searchable',
@@ -211,6 +213,10 @@
   }
 
   async function uploadSourceFile(file: File | null) {
+    if (!isAdmin) {
+      uploadStatus = 'Admin access required.';
+      return;
+    }
     if (!file) {
       uploadStatus = 'Choose a source video first.';
       return;
@@ -249,6 +255,9 @@
   }
 
   function handleDrop(event: DragEvent) {
+    if (!isAdmin) {
+      return;
+    }
     event.preventDefault();
     isDragging = false;
     const file = event.dataTransfer?.files?.[0] ?? null;
@@ -336,39 +345,42 @@
       <span class="muted media-filter-count">{filteredAssets.length} / {totalAssets}</span>
     </section>
 
-    <div class="media-card-grid media-source-grid media-upload-grid">
-      <section
-        class={`media-upload-tile compact ${isDragging ? 'drag-over' : ''}`}
-        on:dragover={(event) => {
-          event.preventDefault();
-          isDragging = true;
-        }}
-        on:dragleave={() => (isDragging = false)}
-        on:drop={handleDrop}
-      >
-        <div class="media-upload-form">
-          <label class="media-file-target media-file-target-large">
-            <span>{uploadFile ? `Uploading ${uploadFile.name}` : 'Add new source video'}</span>
-            <input
-              type="file"
-              accept="video/*"
-              on:change={(event) => void uploadSourceFile((event.currentTarget as HTMLInputElement).files?.[0] ?? null)}
-            />
-          </label>
+    {#if isAdmin}
+      <div class="media-card-grid media-source-grid media-upload-grid">
+        <section
+          class={`media-upload-tile compact ${isDragging ? 'drag-over' : ''}`}
+          aria-label="Source video upload"
+          on:dragover={(event) => {
+            event.preventDefault();
+            isDragging = true;
+          }}
+          on:dragleave={() => (isDragging = false)}
+          on:drop={handleDrop}
+        >
+          <div class="media-upload-form">
+            <label class="media-file-target media-file-target-large">
+              <span>{uploadFile ? `Uploading ${uploadFile.name}` : 'Add new source video'}</span>
+              <input
+                type="file"
+                accept="video/*"
+                on:change={(event) => void uploadSourceFile((event.currentTarget as HTMLInputElement).files?.[0] ?? null)}
+              />
+            </label>
 
-          {#if uploadStatus}
-            <span class="muted">{uploadStatus}</span>
-          {/if}
-        </div>
-      </section>
-    </div>
+            {#if uploadStatus}
+              <span class="muted">{uploadStatus}</span>
+            {/if}
+          </div>
+        </section>
+      </div>
+    {/if}
 
     {#each mediaGroups as group}
       <section class="media-month-section">
         <h3>{group.month}</h3>
         <div class="media-card-grid media-source-grid">
           {#each group.assets as asset}
-            <a class="media-gallery-card" href={editUrl(asset)}>
+            <svelte:element this={isAdmin ? 'a' : 'article'} class="media-gallery-card" href={isAdmin ? editUrl(asset) : undefined}>
               <span class="media-gallery-poster">
                 {#if asset.posterFile}
                   <img src={posterUrl(asset.posterFile)} alt="" loading="lazy" />
@@ -389,7 +401,7 @@
                 {#if asset.classWorkshop}<span>{asset.classWorkshop}</span>{/if}
                 {#if asset.tags.length}<span>{asset.tags.join(', ')}</span>{/if}
               </span>
-            </a>
+            </svelte:element>
           {/each}
         </div>
       </section>

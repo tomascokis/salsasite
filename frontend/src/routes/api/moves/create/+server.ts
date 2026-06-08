@@ -1,12 +1,16 @@
 import { json } from '@sveltejs/kit';
 import { moveDisplayId } from '$lib/move-id';
 import { draftMoveIdFromName } from '$lib/move-id-utils.js';
+import { runWithActionActor } from '$lib/server/app-state';
+import { requireAdmin } from '$lib/server/auth-guard';
 import { getMoves } from '$lib/server/data';
 import { deleteMoveDraft, listMoveDrafts, publishMoveDraft, saveMoveDraft } from '$lib/server/move-editor';
 import { relinkDerivedClipsForPublishedMove } from '$lib/server/video-library';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+  const actor = requireAdmin(event).username;
+  const { request } = event;
   const body = await request.json();
   const action = String(body.action ?? 'saveDraft');
 
@@ -16,7 +20,7 @@ export const POST: RequestHandler = async ({ request }) => {
       const draftId = String(body.draftId ?? '');
       const drafts = await listMoveDrafts();
       const draft = drafts.find((entry) => entry.draftId === draftId) ?? null;
-      const move = await publishMoveDraft(moves, draftId, body.move);
+      const move = await runWithActionActor(actor, () => publishMoveDraft(moves, draftId, body.move));
       const previousMoveId = draft?.move.id ?? move.id;
       const previousDisplayId = draft ? moveDisplayId(draft.move) : previousMoveId;
       const nextDisplayId = moveDisplayId(move);
@@ -29,7 +33,7 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     if (action === 'deleteDraft') {
-      const draft = await deleteMoveDraft(String(body.draftId ?? ''));
+      const draft = await runWithActionActor(actor, () => deleteMoveDraft(String(body.draftId ?? '')));
       return json({ ok: true, draftId: draft.draftId });
     }
 
@@ -44,7 +48,7 @@ export const POST: RequestHandler = async ({ request }) => {
         ...moves.map((move) => move.id),
         ...drafts.map((draft) => draft.move.id)
       ]);
-      const draft = await saveMoveDraft(moves, { id, name });
+      const draft = await runWithActionActor(actor, () => saveMoveDraft(moves, { id, name }));
       return json({ ok: true, draft });
     }
 
@@ -53,10 +57,10 @@ export const POST: RequestHandler = async ({ request }) => {
     const existingDraft = draftId
       ? (await listMoveDrafts()).find((entry) => entry.draftId === draftId) ?? null
       : null;
-    const savedDraft = await saveMoveDraft(moves, {
+    const savedDraft = await runWithActionActor(actor, () => saveMoveDraft(moves, {
       ...(body.move ?? {}),
       draftId
-    });
+    }));
 
     if (existingDraft) {
       const previousMoveId = existingDraft.move.id;

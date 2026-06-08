@@ -1,10 +1,7 @@
 import { requireAdminPage } from '$lib/server/auth-guard';
-import { listHistory } from '$lib/server/history';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
   requireAdminPage(event);
-  return {
-    entries: listHistory(100)
-  };
+  return {};
 };

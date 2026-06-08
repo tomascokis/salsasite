@@ -1,4 +1,6 @@
 import { json } from '@sveltejs/kit';
+import { runWithActionActor } from '$lib/server/app-state';
+import { requireAdmin } from '$lib/server/auth-guard';
 import { getMoves } from '$lib/server/data';
 import {
   exportMediaCatalogSnapshot,
@@ -10,22 +12,26 @@ import {
 } from '$lib/server/video-library';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async (event) => {
+  requireAdmin(event);
+  const { url } = event;
   const limit = Number(url.searchParams.get('limit') ?? 100);
   return json({
     jobs: listMediaManagerJobs(limit)
   });
 };
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+  const actor = requireAdmin(event).username;
+  const { request } = event;
   const payload = await request.json().catch(() => ({}));
 
   try {
     if (payload?.action === 'source.hash.backfill') {
-      return json({
+      return json(await runWithActionActor(actor, async () => ({
         ok: true,
         ...(await queueSourceHashBackfill())
-      });
+      })));
     }
 
     if (payload?.action === 'catalog.repair.scan') {
@@ -36,10 +42,10 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     if (payload?.action === 'catalog.repair.run') {
-      return json({
+      return json(await runWithActionActor(actor, async () => ({
         ok: true,
         repair: await runMediaCatalogRepairs(await getMoves())
-      });
+      })));
     }
 
     if (payload?.action === 'catalog.export.json') {

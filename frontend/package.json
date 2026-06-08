@@ -11,7 +11,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "test": "node --test tests/**/*.test.js"
+    "test": "node --test tests/**/*.test.js",
+    "user:create": "node scripts/seed-user.mjs",
+    "user:password": "node scripts/seed-user.mjs --update"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "latest",

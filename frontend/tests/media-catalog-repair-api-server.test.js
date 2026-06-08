@@ -26,6 +26,23 @@ function requestFor(action) {
   });
 }
 
+function adminEvent(extra = {}) {
+  return {
+    locals: {
+      user: {
+        id: 'admin-user',
+        username: 'admin',
+        role: 'admin',
+        isActive: true,
+        createdAt: '2026-06-02T00:00:00.000Z',
+        updatedAt: '2026-06-02T00:00:00.000Z',
+        lastLoginAt: null
+      }
+    },
+    ...extra
+  };
+}
+
 function move(overrides = {}) {
   return {
     id: 'RT000001',
@@ -74,7 +91,7 @@ test('media jobs API scans and runs catalog repairs through existing endpoint', 
   await writeFile(path.join(env.mediaRoot, `${testMove.id} API Legacy.mp4`), 'legacy move video');
 
   const { POST } = await import('../src/routes/api/media/jobs/+server.ts');
-  const scanResponse = await POST({ request: requestFor('catalog.repair.scan') });
+  const scanResponse = await POST(adminEvent({ request: requestFor('catalog.repair.scan') }));
   const scanPayload = await scanResponse.json();
 
   assert.equal(scanResponse.status, 200);
@@ -83,7 +100,7 @@ test('media jobs API scans and runs catalog repairs through existing endpoint', 
   assert.equal(scanPayload.repair.changed, true);
   assert.equal(scanPayload.repair.summary.legacyMoveAssetsAdded, 1);
 
-  const runResponse = await POST({ request: requestFor('catalog.repair.run') });
+  const runResponse = await POST(adminEvent({ request: requestFor('catalog.repair.run') }));
   const runPayload = await runResponse.json();
 
   assert.equal(runResponse.status, 200);
@@ -93,7 +110,7 @@ test('media jobs API scans and runs catalog repairs through existing endpoint', 
   assert.equal(runPayload.repair.historyActionId.length > 0, true);
 
   const { GET: historyGet } = await import('../src/routes/api/history/+server.ts');
-  const historyResponse = await historyGet({ url: new URL('http://test.local/api/history?limit=20') });
+  const historyResponse = await historyGet(adminEvent({ url: new URL('http://test.local/api/history?limit=20') }));
   const historyPayload = await historyResponse.json();
   const repairEntry = historyPayload.entries.find((entry) => entry.id === runPayload.repair.historyActionId);
 
@@ -104,7 +121,7 @@ test('media jobs API scans and runs catalog repairs through existing endpoint', 
 
 test('media jobs API exports a JSON snapshot of the SQLite catalog', async () => {
   const { POST } = await import('../src/routes/api/media/jobs/+server.ts');
-  const response = await POST({ request: requestFor('catalog.export.json') });
+  const response = await POST(adminEvent({ request: requestFor('catalog.export.json') }));
   const payload = await response.json();
 
   assert.equal(response.status, 200);
@@ -123,7 +140,7 @@ test('media jobs API exports a JSON snapshot of the SQLite catalog', async () =>
 
 test('media jobs API returns read-only catalog diagnostics', async () => {
   const { POST } = await import('../src/routes/api/media/jobs/+server.ts');
-  const response = await POST({ request: requestFor('catalog.diagnostics.scan') });
+  const response = await POST(adminEvent({ request: requestFor('catalog.diagnostics.scan') }));
   const payload = await response.json();
 
   assert.equal(response.status, 200);
@@ -136,7 +153,7 @@ test('media jobs API returns read-only catalog diagnostics', async () => {
 
 test('media jobs API still returns clear 400 for unsupported actions', async () => {
   const { POST } = await import('../src/routes/api/media/jobs/+server.ts');
-  const response = await POST({ request: requestFor('unsupported.action') });
+  const response = await POST(adminEvent({ request: requestFor('unsupported.action') }));
   const payload = await response.json();
 
   assert.equal(response.status, 400);

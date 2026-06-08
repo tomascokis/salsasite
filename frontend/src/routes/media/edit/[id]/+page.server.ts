@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { requireAdminPage } from '$lib/server/auth-guard';
 import { getMoves, getRawMoveReference } from '$lib/server/data';
 import { getDancerProfiles } from '$lib/server/dancers';
 import { listMoveDrafts } from '$lib/server/move-editor';
@@ -24,7 +25,9 @@ const environmentOptions: Array<{ value: VideoEnvironment; label: string }> = [
   { value: 'class', label: 'Class' }
 ];
 
-export const load: PageServerLoad = async ({ params, url }) => {
+export const load: PageServerLoad = async (event) => {
+  requireAdminPage(event);
+  const { params, url } = event;
   const [moves, moveDrafts, rawReferences] = await Promise.all([getMoves(), listMoveDrafts(), getRawMoveReference()]);
   const uploadData = await getUploadPageData(moves);
   const selected = uploadData.assets.find((asset) => asset.id === params.id);

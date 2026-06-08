@@ -1,4 +1,6 @@
 import { json } from '@sveltejs/kit';
+import { runWithActionActor } from '$lib/server/app-state';
+import { requireAdmin } from '$lib/server/auth-guard';
 import { createSourceAsset } from '$lib/server/video-library';
 import { queuePosterGeneration } from '$lib/server/posters';
 import type { VideoContentType, VideoEnvironment, VideoOriginType, VideoTiming } from '$lib/types';
@@ -9,7 +11,9 @@ const VALID_CONTENT_TYPES = new Set<VideoContentType>(['music', 'counts', 'other
 const VALID_ENVIRONMENTS = new Set<VideoEnvironment>(['social', 'class']);
 const VALID_ORIGIN_TYPES = new Set<VideoOriginType>(['self-recorded', 'download']);
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+  const actor = requireAdmin(event).username;
+  const { request } = event;
   const formData = await request.formData();
   const file = formData.get('file');
 
@@ -38,7 +42,7 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ error: 'Source is required.' }, { status: 400 });
   }
 
-  const result = await createSourceAsset({
+  const result = await runWithActionActor(actor, () => createSourceAsset({
     originalFilename: file.name,
     displayName: String(formData.get('displayName') ?? '').trim(),
     dancers: String(formData.get('dancers') ?? ''),
@@ -52,7 +56,7 @@ export const POST: RequestHandler = async ({ request }) => {
     tags: String(formData.get('tags') ?? ''),
     notes: String(formData.get('notes') ?? '').trim() || null,
     fileStream: file.stream()
-  });
+  }));
 
   void queuePosterGeneration(result.asset.filePath);
 
