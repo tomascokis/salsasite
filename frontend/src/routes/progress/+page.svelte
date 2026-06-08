@@ -198,26 +198,37 @@
   .data-row.preview-selected {
     position: relative;
     z-index: 1;
-    outline: 2px solid #204b72;
-    outline-offset: -2px;
-    box-shadow: 0 0 0 1px rgba(32, 75, 114, 0.18);
+    background: #eef6fc;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      inset 0 -1px 0 rgba(32, 75, 114, 0.3),
+      0 1px 2px rgba(32, 75, 114, 0.22);
     animation: move-row-selected 180ms ease-out;
   }
 
   @keyframes move-row-selected {
     0% {
-      outline-color: rgba(32, 75, 114, 0.35);
-      box-shadow: 0 0 0 0 rgba(32, 75, 114, 0);
+      box-shadow:
+        inset 0 0 0 rgba(255, 255, 255, 0),
+        inset 0 0 0 rgba(32, 75, 114, 0),
+        0 0 0 rgba(32, 75, 114, 0);
+      transform: translateY(0);
     }
 
     45% {
-      outline-color: #173f63;
-      box-shadow: 0 0 0 2px rgba(32, 75, 114, 0.2);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 -2px 0 rgba(32, 75, 114, 0.34),
+        0 2px 4px rgba(32, 75, 114, 0.24);
+      transform: translateY(-1px);
     }
 
     100% {
-      outline-color: #204b72;
-      box-shadow: 0 0 0 1px rgba(32, 75, 114, 0.18);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.85),
+        inset 0 -1px 0 rgba(32, 75, 114, 0.3),
+        0 1px 2px rgba(32, 75, 114, 0.22);
+      transform: translateY(0);
     }
   }
 </style>
