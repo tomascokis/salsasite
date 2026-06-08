@@ -2,6 +2,7 @@
   import { browser } from '$app/environment';
   import { createEventDispatcher } from 'svelte';
   import { tick } from 'svelte';
+  import MoveHoverPreview from '$lib/components/MoveHoverPreview.svelte';
   import type { RelationshipDiagram } from '$lib/types';
   import { buildRelationshipDot } from '$lib/relationship-diagram';
 
@@ -73,10 +74,6 @@
       (module) => module.instance() as unknown as Promise<VizInstance>
     );
     return vizPromise;
-  }
-
-  function mediaUrl(file: string) {
-    return `/media/${encodeURIComponent(file)}`;
   }
 
   function diagramNodeById(id: string) {
@@ -421,29 +418,13 @@
       >
         {@html svgMarkup}
         {#if hoveredPreview}
-          <div
-            class="relationship-node-preview"
-            style={`left: ${hoveredPreview.left}px; top: ${hoveredPreview.top}px;`}
-            aria-hidden="true"
-          >
-            {#if hoveredPreview.videoFile}
-              <video
-                class="relationship-node-preview-video"
-                src={mediaUrl(hoveredPreview.videoFile)}
-                autoplay
-                muted
-                loop
-                playsinline
-                preload="metadata"
-              ></video>
-            {:else}
-              <div class="relationship-node-preview-empty">No video</div>
-            {/if}
-            <div class="relationship-node-preview-body">
-              <strong>{hoveredPreview.name}</strong>
-              <span>{hoveredPreview.id}</span>
-            </div>
-          </div>
+          <MoveHoverPreview
+            id={hoveredPreview.id}
+            name={hoveredPreview.name}
+            videoFile={hoveredPreview.videoFile}
+            left={hoveredPreview.left}
+            top={hoveredPreview.top}
+          />
         {/if}
         {#each nodeActionPositions as action}
           <button

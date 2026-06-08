@@ -30,7 +30,8 @@ function asViewEntry(layoutEntry: LayoutEntry, snapshot: ProgressSnapshot): Prog
     prep: progress?.statNumPrep ?? null,
     sequ: progress?.statNumSequ ?? null,
     succ: progress?.statNumSucc ?? null,
-    layoutOrder: layoutEntry.layoutOrder ?? null
+    layoutOrder: layoutEntry.layoutOrder ?? null,
+    previewVideoFile: layoutEntry.previewVideoFile ?? null
   };
 }
 

@@ -60,7 +60,8 @@ function moveToLayoutEntry(move, fallbackGroup) {
     type: move.type,
     layoutOrder: null,
     levelOrder: null,
-    valid: move.valid
+    valid: move.valid,
+    previewVideoFile: move.previewVideoFile ?? move.videoFiles?.[0] ?? null
   };
 }
 
@@ -140,7 +141,8 @@ export function buildOverviewLayout(seedLayout, moves) {
           group: liveMove.topic ?? currentSection.label,
           level: liveMove.level,
           type: liveMove.type,
-          valid: liveMove.valid
+          valid: liveMove.valid,
+          previewVideoFile: liveMove.previewVideoFile ?? liveMove.videoFiles?.[0] ?? null
         });
         continue;
       }

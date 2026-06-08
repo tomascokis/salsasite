@@ -1,12 +1,21 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
+  import MoveHoverPreview from '$lib/components/MoveHoverPreview.svelte';
   import { colorForProgress } from '$lib/progress-ui';
-  import type { ProgressView } from '$lib/types';
+  import type { ProgressView, ProgressViewEntryMove } from '$lib/types';
 
   export let data: {
     views: ProgressView[];
   };
 
   let activeIndex = 0;
+  let hoveredPreview: {
+    id: string;
+    name: string;
+    videoFile: string | null;
+    left: number;
+    top: number;
+  } | null = null;
 
   $: orderedColumns = data.views[activeIndex]?.columns
     .map((column) => ({
@@ -24,6 +33,47 @@
     if (type === 'Variation') return 'variation';
     return '';
   }
+
+  function setActiveIndex(index: number) {
+    hoveredPreview = null;
+    activeIndex = index;
+  }
+
+  function updateHoveredPreview(event: PointerEvent | FocusEvent, entry: ProgressViewEntryMove) {
+    if (!browser || !entry.id) {
+      hoveredPreview = null;
+      return;
+    }
+
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLElement)) {
+      hoveredPreview = null;
+      return;
+    }
+
+    const rowRect = target.getBoundingClientRect();
+    const previewWidth = 240;
+    const previewHeight = 190;
+    const minLeft = 8;
+    const maxLeft = window.innerWidth - previewWidth - 8;
+    const minTop = 8;
+    const maxTop = window.innerHeight - previewHeight - 8;
+    const belowTop = rowRect.bottom + 8;
+    const aboveTop = rowRect.top - previewHeight - 8;
+    const unclampedTop = belowTop <= maxTop ? belowTop : aboveTop;
+
+    hoveredPreview = {
+      id: entry.id,
+      name: entry.name || entry.id,
+      videoFile: entry.previewVideoFile ?? null,
+      left: Math.max(minLeft, Math.min(rowRect.left, Math.max(minLeft, maxLeft))),
+      top: Math.max(minTop, Math.min(unclampedTop, Math.max(minTop, maxTop)))
+    };
+  }
+
+  function clearHoveredPreview() {
+    hoveredPreview = null;
+  }
 </script>
 
 <div class="stack">
@@ -37,7 +87,7 @@
     <div style="padding: 1rem 1.1rem" class="stack">
       <div class="snapshot-tabs">
         {#each data.views as view, index}
-          <button class:active={activeIndex === index} on:click={() => (activeIndex = index)}>
+          <button class:active={activeIndex === index} on:click={() => setActiveIndex(index)}>
             {view.label}
           </button>
         {/each}
@@ -63,6 +113,12 @@
                   <a
                     class={`progress-row data-row ${typeClass(entry.type)}`}
                     href={`/moves/${entry.slug}`}
+                    on:pointerenter={(event) => updateHoveredPreview(event, entry)}
+                    on:mouseover={(event) => updateHoveredPreview(event, entry)}
+                    on:pointerleave={clearHoveredPreview}
+                    on:mouseleave={clearHoveredPreview}
+                    on:focus={(event) => updateHoveredPreview(event, entry)}
+                    on:blur={clearHoveredPreview}
                   >
                     <div class="level-cell">{entry.level ?? ''}</div>
                     <div class={`name-cell ${isEmphasis(entry.type) ? 'emphasis' : ''}`}>{entry.name}</div>
@@ -75,6 +131,15 @@
             </div>
           {/each}
         </div>
+        {#if hoveredPreview}
+          <MoveHoverPreview
+            id={hoveredPreview.id}
+            name={hoveredPreview.name}
+            videoFile={hoveredPreview.videoFile}
+            left={hoveredPreview.left}
+            top={hoveredPreview.top}
+          />
+        {/if}
       {/if}
     </div>
   </section>

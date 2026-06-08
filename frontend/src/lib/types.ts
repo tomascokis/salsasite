@@ -312,6 +312,7 @@ export interface LayoutEntry {
   layoutOrder: number | null;
   levelOrder: number | null;
   valid: boolean;
+  previewVideoFile?: string | null;
 }
 
 export interface LayoutColumn {
@@ -397,6 +398,7 @@ export interface ProgressViewEntryMove {
   sequ: number | null;
   succ: number | null;
   layoutOrder: number | null;
+  previewVideoFile: string | null;
 }
 
 export type ProgressViewEntry = ProgressViewEntryTitle | ProgressViewEntryMove;

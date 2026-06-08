@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { onMount, tick } from 'svelte';
+  import MoveHoverPreview from '$lib/components/MoveHoverPreview.svelte';
   import type { LayoutColumn, LayoutEntry, SearchIndexEntry, SiteManifest } from '$lib/types';
 
   export let data: {
@@ -15,6 +16,13 @@
   let columnMetrics: Record<number, { maxHeight: number; overflowing: boolean; contentHeight: number; availableHeight: number; cutoffIndex?: number }> = {};
   let expandedColumns: Record<number, boolean> = {};
   let measureQueued = false;
+  let hoveredPreview: {
+    id: string;
+    name: string;
+    videoFile: string | null;
+    left: number;
+    top: number;
+  } | null = null;
 
   $: orderedLayout = data.layout
     .map((column) => ({
@@ -72,7 +80,44 @@
   }
 
   function toggleColumn(column: number) {
+    hoveredPreview = null;
     expandedColumns = { ...expandedColumns, [column]: !expandedColumns[column] };
+  }
+
+  function updateHoveredPreview(event: PointerEvent | FocusEvent, entry: LayoutEntry) {
+    if (!browser || entry.entryType !== 'Data' || !entry.id) {
+      hoveredPreview = null;
+      return;
+    }
+
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLElement)) {
+      hoveredPreview = null;
+      return;
+    }
+
+    const rowRect = target.getBoundingClientRect();
+    const previewWidth = 240;
+    const previewHeight = 190;
+    const minLeft = 8;
+    const maxLeft = window.innerWidth - previewWidth - 8;
+    const minTop = 8;
+    const maxTop = window.innerHeight - previewHeight - 8;
+    const belowTop = rowRect.bottom + 8;
+    const aboveTop = rowRect.top - previewHeight - 8;
+    const unclampedTop = belowTop <= maxTop ? belowTop : aboveTop;
+
+    hoveredPreview = {
+      id: entry.id,
+      name: entry.name ?? entry.id,
+      videoFile: entry.previewVideoFile ?? null,
+      left: Math.max(minLeft, Math.min(rowRect.left, Math.max(minLeft, maxLeft))),
+      top: Math.max(minTop, Math.min(unclampedTop, Math.max(minTop, maxTop)))
+    };
+  }
+
+  function clearHoveredPreview() {
+    hoveredPreview = null;
   }
 
   async function measureColumns() {
@@ -228,6 +273,12 @@
                   <a
                     class={`dashboard-row data-row ${typeClass(entry.type)}`}
                     href={entry.slug ? `/moves/${entry.slug}` : '#'}
+                    on:pointerenter={(event) => updateHoveredPreview(event, entry)}
+                    on:mouseover={(event) => updateHoveredPreview(event, entry)}
+                    on:pointerleave={clearHoveredPreview}
+                    on:mouseleave={clearHoveredPreview}
+                    on:focus={(event) => updateHoveredPreview(event, entry)}
+                    on:blur={clearHoveredPreview}
                   >
                     <div class="level-cell">{entry.level ?? ''}</div>
                     <div class={`name-cell ${isEmphasis(entry.type) ? 'emphasis' : ''}`}>{entry.name}</div>
@@ -248,6 +299,15 @@
           </div>
         {/each}
       </div>
+      {#if hoveredPreview}
+        <MoveHoverPreview
+          id={hoveredPreview.id}
+          name={hoveredPreview.name}
+          videoFile={hoveredPreview.videoFile}
+          left={hoveredPreview.left}
+          top={hoveredPreview.top}
+        />
+      {/if}
     {:else}
       <p class="muted">No moves matched.</p>
     {/if}
