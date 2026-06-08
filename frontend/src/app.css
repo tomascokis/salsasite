@@ -2291,7 +2291,7 @@ select {
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #111820;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .relationship-node-preview-empty {
