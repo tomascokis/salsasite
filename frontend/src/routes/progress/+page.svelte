@@ -196,22 +196,28 @@
 
 <style>
   .data-row.preview-selected {
-    background: #eef6fc;
-    box-shadow: inset 0 0 0 1px rgba(44, 109, 168, 0.28);
+    position: relative;
+    z-index: 1;
+    outline: 2px solid #204b72;
+    outline-offset: -2px;
+    box-shadow: 0 0 0 1px rgba(32, 75, 114, 0.18);
     animation: move-row-selected 180ms ease-out;
   }
 
   @keyframes move-row-selected {
     0% {
-      transform: translateY(0);
+      outline-color: rgba(32, 75, 114, 0.35);
+      box-shadow: 0 0 0 0 rgba(32, 75, 114, 0);
     }
 
     45% {
-      transform: translateY(-1px);
+      outline-color: #173f63;
+      box-shadow: 0 0 0 2px rgba(32, 75, 114, 0.2);
     }
 
     100% {
-      transform: translateY(0);
+      outline-color: #204b72;
+      box-shadow: 0 0 0 1px rgba(32, 75, 114, 0.18);
     }
   }
 </style>
