@@ -61,7 +61,12 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   if (event.locals.user.role !== 'admin') {
-    if (event.request.method !== 'GET' && event.request.method !== 'HEAD' && pathname !== '/logout') {
+    if (
+      event.request.method !== 'GET' &&
+      event.request.method !== 'HEAD' &&
+      pathname !== '/logout' &&
+      pathname !== '/account'
+    ) {
       throw error(403, 'Admin access required.');
     }
     if (isAdminPage(pathname) || isAdminApi(pathname)) {

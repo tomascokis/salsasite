@@ -61,6 +61,36 @@ test('auth users can be created, authenticated, and loaded through sessions', as
   assert.equal(getUserForSessionToken(session.token), null);
 });
 
+test('users can change their own password after confirming the current password', async () => {
+  const { authenticateUser, changeOwnPassword, createOrUpdateUser } = await import('../src/lib/server/auth.ts');
+
+  const user = await createOrUpdateUser({
+    username: 'Password User',
+    password: 'old password value',
+    role: 'viewer'
+  });
+
+  await assert.rejects(
+    () =>
+      changeOwnPassword({
+        userId: user.id,
+        currentPassword: 'wrong password',
+        nextPassword: 'new password value'
+      }),
+    /Current password is incorrect/
+  );
+
+  await changeOwnPassword({
+    userId: user.id,
+    currentPassword: 'old password value',
+    nextPassword: 'new password value'
+  });
+
+  assert.equal(await authenticateUser('Password User', 'old password value'), null);
+  const authed = await authenticateUser('Password User', 'new password value');
+  assert.equal(authed?.id, user.id);
+});
+
 test('route guards reject viewers and allow admins', async () => {
   const { requireAdmin } = await import('../src/lib/server/auth-guard.ts');
   const adminEvent = {

@@ -110,6 +110,7 @@ Implemented user-facing routes:
 - `/dancers`: dancer list/profile area with editable dancer profiles and related dances/moves.
 - `/topics/[slug]`: topic splash page that reuses the overview layout filtered to a topic.
 - `/families/[slug]`: family splash page that reuses the overview layout filtered to a family.
+- `/account`: authenticated user panel with account details and self-service password change.
 - `/settings`: badge color settings stored in browser local storage.
 - `/upload`: compatibility redirect area for older upload navigation.
 

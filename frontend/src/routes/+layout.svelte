@@ -106,7 +106,7 @@
     </div>
     <div class="topbar-meta">
       {#if data.user}
-        <span>{data.user.username} · {data.user.role}</span>
+        <a class="account-link" href="/account">{data.user.username} · {data.user.role}</a>
         <form method="POST" action="/logout">
           <button type="submit" class="text-button">Logout</button>
         </form>
@@ -134,6 +134,16 @@
 
   .topbar-meta form {
     margin: 0;
+  }
+
+  .account-link {
+    color: inherit;
+  }
+
+  .account-link:hover,
+  .account-link:focus-visible {
+    color: var(--accent);
+    text-decoration: underline;
   }
 
   .text-button {

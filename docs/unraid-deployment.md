@@ -36,7 +36,7 @@ docker exec -it salsasite-dev npm run user:create -- --username admin --role adm
 docker exec -it salsasite-dev npm run user:create -- --username viewer --role viewer
 ```
 
-To change an existing user's password or role:
+Users can change their own password from the authenticated account panel. To reset an existing user's password or role as an operator:
 
 ```bash
 docker exec -it salsasite-dev npm run user:password -- --username admin --role admin

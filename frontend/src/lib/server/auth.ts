@@ -273,6 +273,51 @@ export async function authenticateUser(username: unknown, password: unknown) {
   };
 }
 
+export async function changeOwnPassword(input: {
+  userId: string;
+  currentPassword: string;
+  nextPassword: string;
+}) {
+  const userId = String(input.userId ?? '');
+  const currentPassword = String(input.currentPassword ?? '');
+  const nextPassword = String(input.nextPassword ?? '');
+  if (!userId) {
+    throw new Error('Authentication required.');
+  }
+  if (nextPassword.length < 8) {
+    throw new Error('Password must be at least 8 characters.');
+  }
+
+  const row = getAppDatabase()
+    .prepare(
+      `
+        SELECT id, username, password_hash, role, is_active, created_at, updated_at, last_login_at
+        FROM auth_users
+        WHERE id = ?
+        LIMIT 1
+      `
+    )
+    .get(userId) as AuthUserWithPasswordRow | undefined;
+
+  if (!row || !row.is_active) {
+    throw new Error('Authentication required.');
+  }
+  if (!(await verifyPassword(currentPassword, row.password_hash))) {
+    throw new Error('Current password is incorrect.');
+  }
+
+  const timestamp = nowIso();
+  const passwordHash = await hashPassword(nextPassword);
+  getAppDatabase()
+    .prepare('UPDATE auth_users SET password_hash = ?, updated_at = ? WHERE id = ?')
+    .run(passwordHash, timestamp, userId);
+
+  return {
+    ...userFromRow(row),
+    updatedAt: timestamp
+  };
+}
+
 export function createSession(userId: string) {
   const token = randomBytes(32).toString('base64url');
   const timestamp = nowIso();
