@@ -22,7 +22,8 @@ These contracts cover login, access control, and role behavior.
 ## Sessions And Accounts
 
 - Accounts are local to the deployment and stored in the app-state SQLite database.
-- Account creation and password changes are performed by a local CLI seed script, not by public signup.
+- If no users exist yet, the app creates a default admin account for `tomascokis` on the first login attempt.
+- Additional account creation and password changes are performed by a local CLI seed script, not by public signup.
 - Login sessions use an HTTP-only cookie with a long private-device expiry.
 - Logout must invalidate the server-side session and clear the browser cookie.
 - Passwords must never be stored directly; only salted password hashes may be persisted.

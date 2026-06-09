@@ -1,4 +1,11 @@
-import { randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual, createHash } from 'node:crypto';
+import {
+  randomBytes,
+  randomUUID,
+  scrypt as scryptCallback,
+  scryptSync,
+  timingSafeEqual,
+  createHash
+} from 'node:crypto';
 import { promisify } from 'node:util';
 import { getAppDatabase, runInTransaction } from './app-state';
 
@@ -7,6 +14,8 @@ const SESSION_DAYS = 30;
 const SESSION_COOKIE_NAME = 'salsa_session';
 const SCRYPT_KEY_LENGTH = 64;
 const SCRYPT_OPTIONS = { N: 16384, r: 8, p: 1 } as const;
+const DEFAULT_ADMIN_USERNAME = 'tomascokis';
+const DEFAULT_ADMIN_PASSWORD = 'superfollow';
 
 export type AuthRole = 'viewer' | 'admin';
 
@@ -76,6 +85,19 @@ async function hashPassword(password: string) {
   ].join('$');
 }
 
+function hashPasswordSync(password: string) {
+  const salt = randomBytes(16).toString('base64url');
+  const derivedKey = scryptSync(password, salt, SCRYPT_KEY_LENGTH, SCRYPT_OPTIONS);
+  return [
+    'scrypt',
+    String(SCRYPT_OPTIONS.N),
+    String(SCRYPT_OPTIONS.r),
+    String(SCRYPT_OPTIONS.p),
+    salt,
+    derivedKey.toString('base64url')
+  ].join('$');
+}
+
 async function verifyPassword(password: string, storedHash: string) {
   const parts = storedHash.split('$');
   if (parts.length !== 6 || parts[0] !== 'scrypt') {
@@ -107,6 +129,35 @@ export function sessionCookieMaxAge() {
 
 export function normalizeAuthUsername(username: unknown) {
   return normalizeUsername(username);
+}
+
+export function ensureDefaultAdminUser() {
+  const timestamp = nowIso();
+  runInTransaction((db) => {
+    const userCount = db.prepare('SELECT COUNT(*) AS count FROM auth_users').get() as { count: number };
+    if (Number(userCount.count) > 0) {
+      return;
+    }
+
+    db.prepare(
+      `
+        INSERT INTO auth_users (
+          id, username, username_normalized, password_hash, role, is_active,
+          created_at, updated_at, last_login_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+    ).run(
+      randomUUID(),
+      DEFAULT_ADMIN_USERNAME,
+      normalizeUsername(DEFAULT_ADMIN_USERNAME),
+      hashPasswordSync(DEFAULT_ADMIN_PASSWORD),
+      'admin',
+      1,
+      timestamp,
+      timestamp,
+      null
+    );
+  });
 }
 
 export async function createOrUpdateUser(input: {
@@ -187,6 +238,7 @@ export async function createOrUpdateUser(input: {
 }
 
 export async function authenticateUser(username: unknown, password: unknown) {
+  ensureDefaultAdminUser();
   const usernameNormalized = normalizeUsername(username);
   if (!usernameNormalized || typeof password !== 'string') {
     return null;

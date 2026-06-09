@@ -27,7 +27,9 @@ For the full video catalog, upload, clip-render, and poster workflow, see [docs/
 
 ## Account setup
 
-Authentication is local to the app-state SQLite database. There is no public signup flow. Create accounts from inside the running container after dependencies are installed:
+Authentication is local to the app-state SQLite database. There is no public signup flow. If the database has no users yet, the app creates a default `tomascokis` admin account on the first login attempt.
+
+Create additional accounts from inside the running container after dependencies are installed:
 
 ```bash
 docker exec -it salsasite-dev npm run user:create -- --username admin --role admin

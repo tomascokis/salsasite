@@ -15,7 +15,8 @@ if [ ! -f package.json ]; then
   exit 1
 fi
 
-if [ ! -x node_modules/.bin/vite ]; then
+if [ ! -x node_modules/.bin/vite ] \
+  || ! node -e "require.resolve('@rollup/rollup-linux-x64-gnu'); require.resolve('@rolldown/binding-linux-x64-gnu')" >/dev/null 2>&1; then
   npm install
 fi
 

@@ -14,6 +14,14 @@ test.after(async () => {
   await cleanupMediaTestEnvironment(tempRoot);
 });
 
+test('default admin is created on first login attempt when no users exist', async () => {
+  const { authenticateUser } = await import('../src/lib/server/auth.ts');
+
+  const admin = await authenticateUser('tomascokis', 'superfollow');
+  assert.equal(admin?.username, 'tomascokis');
+  assert.equal(admin?.role, 'admin');
+});
+
 test('auth users can be created, authenticated, and loaded through sessions', async () => {
   const {
     authenticateUser,
