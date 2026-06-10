@@ -8,6 +8,7 @@ import {
 } from 'node:crypto';
 import { promisify } from 'node:util';
 import { getAppDatabase, runInTransaction } from './app-state';
+import { appendAuthDebugLog, passwordDebugInfo } from './auth-debug';
 
 const scrypt = promisify(scryptCallback);
 const SESSION_DAYS = 30;
@@ -241,6 +242,16 @@ export async function authenticateUser(username: unknown, password: unknown) {
   ensureDefaultAdminUser();
   const usernameNormalized = normalizeUsername(username);
   if (!usernameNormalized || typeof password !== 'string') {
+    appendAuthDebugLog({
+      event: 'login_attempt',
+      username: String(username ?? ''),
+      usernameNormalized,
+      ...passwordDebugInfo(typeof password === 'string' ? password : ''),
+      userFound: false,
+      isActive: false,
+      passwordVerified: false,
+      reason: 'invalid_username_or_password_type'
+    });
     return null;
   }
 
@@ -255,7 +266,47 @@ export async function authenticateUser(username: unknown, password: unknown) {
     )
     .get(usernameNormalized) as AuthUserWithPasswordRow | undefined;
 
-  if (!row || !row.is_active || !(await verifyPassword(password, row.password_hash))) {
+  if (!row) {
+    appendAuthDebugLog({
+      event: 'login_attempt',
+      username: String(username ?? ''),
+      usernameNormalized,
+      ...passwordDebugInfo(password),
+      userFound: false,
+      isActive: false,
+      passwordVerified: false,
+      reason: 'user_not_found'
+    });
+    return null;
+  }
+
+  if (!row.is_active) {
+    appendAuthDebugLog({
+      event: 'login_attempt',
+      username: row.username,
+      usernameNormalized,
+      ...passwordDebugInfo(password),
+      userFound: true,
+      isActive: false,
+      passwordVerified: false,
+      reason: 'inactive_user'
+    });
+    return null;
+  }
+
+  const passwordVerified = await verifyPassword(password, row.password_hash);
+  appendAuthDebugLog({
+    event: 'login_attempt',
+    username: row.username,
+    usernameNormalized,
+    ...passwordDebugInfo(password),
+    userFound: true,
+    isActive: true,
+    passwordVerified,
+    reason: passwordVerified ? 'success' : 'password_mismatch'
+  });
+
+  if (!passwordVerified) {
     return null;
   }
 

@@ -44,6 +44,28 @@ function resolveDataDir() {
   return process.env.DATA_DIR || path.resolve(process.cwd(), '..', 'data', 'live');
 }
 
+function passwordDebugInfo(password) {
+  return {
+    passwordLength: password.length,
+    passwordByteLength: Buffer.byteLength(password, 'utf8'),
+    hasLeadingOrTrailingWhitespace: password !== password.trim(),
+    containsNewline: /[\r\n]/.test(password)
+  };
+}
+
+function appendAuthDebugLog(dataDir, event) {
+  const entry = {
+    timestamp: nowIso(),
+    ...event
+  };
+  try {
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.appendFileSync(path.join(dataDir, 'auth-debug.log'), `${JSON.stringify(entry)}\n`, 'utf8');
+  } catch (error) {
+    console.warn('Failed to write auth debug log', error);
+  }
+}
+
 function normalizeUsername(username) {
   return String(username ?? '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
 }
@@ -184,6 +206,15 @@ async function main() {
     timestamp,
     existing?.last_login_at ?? null
   );
+
+  appendAuthDebugLog(dataDir, {
+    event: 'password_set',
+    username,
+    usernameNormalized,
+    role,
+    existingUser: Boolean(existing),
+    ...passwordDebugInfo(password)
+  });
 
   const tokenPreview = createHash('sha256').update(id).digest('hex').slice(0, 8);
   console.log(`${existing ? 'Updated' : 'Created'} ${role} user "${username}" (${tokenPreview}).`);

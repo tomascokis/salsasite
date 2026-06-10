@@ -28,6 +28,7 @@ These contracts cover login, access control, and role behavior.
 - Login sessions use an HTTP-only cookie with a long private-device expiry.
 - Logout must invalidate the server-side session and clear the browser cookie.
 - Passwords must never be stored directly; only salted password hashes may be persisted.
+- Authentication diagnostics may write non-secret password metadata, such as length and verification outcome, to `DATA_DIR/auth-debug.log`; they must never write plaintext passwords or reusable password hashes.
 
 ## Security Tracking
 
