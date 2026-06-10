@@ -32,15 +32,17 @@ Authentication is local to the app-state SQLite database. There is no public sig
 Create additional accounts from inside the running container after dependencies are installed:
 
 ```bash
-docker exec -it salsasite-dev npm run user:create -- --username admin --role admin
-docker exec -it salsasite-dev npm run user:create -- --username viewer --role viewer
+docker exec -it -w /server/live/frontend salsasite-dev npm run user:create -- --username admin --role admin
+docker exec -it -w /server/live/frontend salsasite-dev npm run user:create -- --username viewer --role viewer
 ```
 
 Users can change their own password from the authenticated account panel. To reset an existing user's password or role as an operator:
 
 ```bash
-docker exec -it salsasite-dev npm run user:password -- --username admin --role admin
+docker exec -it -w /server/live/frontend salsasite-dev npm run user:password -- --username admin --role admin
 ```
+
+The `-w /server/live/frontend` working directory is required because the account scripts are frontend package scripts and the default data directory resolves relative to that package.
 
 For non-interactive automation, pipe the password and pass `--password-stdin`.
 
