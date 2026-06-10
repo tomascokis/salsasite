@@ -97,6 +97,8 @@ The primary app shell is [frontend/src/routes/+layout.svelte](/Volumes/fastdata/
 - Create
 - Settings
 
+The authenticated account/logout controls must stay on the right side of the top app shell. Responsive navigation may collapse primary links into the mobile menu, but the account controls must not wrap into a left-aligned row below the brand/navigation.
+
 Implemented user-facing routes:
 
 - `/`: dense multi-column move overview with search, variation/addition filters, summary counts, hover previews, and overflow handling.

@@ -6914,7 +6914,6 @@ select {
     order: 2;
   }
 
-  .topbar,
   .dashboard-titlebar,
   .panel-heading-row {
     align-items: flex-start;
