@@ -45,6 +45,7 @@ Thumbs.db
 .cache/
 cache/
 videomoves/
+migration-data/
 data/live/app-state.sqlite*
 
 # Local media libraries
