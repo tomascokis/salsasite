@@ -9,6 +9,8 @@ services:
       PORT: 5173
       HOST: 0.0.0.0
       LIVE_ROOT: /server/live
+      ORIGIN: https://salsa.tomascokis.com
+      TRUST_PROXY_HEADERS: "true"
       DATA_DIR: /server/live/data/live
       MEDIA_ROOT: /server/live/data/live/media/video-moves
       SOURCE_ROOT: /server/live/data/live/media/video-sources

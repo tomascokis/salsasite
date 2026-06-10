@@ -60,13 +60,27 @@ Recommended environment:
 
 - `PORT=3000`
 - `HOST=0.0.0.0`
-- `ORIGIN=http://your-unraid-host:3000`
+- `ORIGIN=https://salsa.tomascokis.com`
 - `DATA_DIR=/server/live/data/live`
 - `MEDIA_ROOT=/server/live/data/live/media/video-moves`
 - `SOURCE_ROOT=/server/live/data/live/media/video-sources`
 - `POSTER_ROOT=/server/live/data/live/media/video-posters`
+- `TRUST_PROXY_HEADERS=true` when serving the app through Caddy
 - Optional: `POSTER_TIMESTAMP_SECONDS=1.0`
-- Optional: `TRUST_PROXY_HEADERS=true` when the app is behind a trusted reverse proxy that sets `x-forwarded-for` or `x-real-ip`
+
+## Public reverse proxy
+
+The public deployment hostname is `salsa.tomascokis.com`.
+
+Caddy must proxy that host to the live Unraid app endpoint:
+
+```caddyfile
+salsa.tomascokis.com {
+	reverse_proxy 192.168.0.127:18096
+}
+```
+
+Keep the internal `web.salsa.mhs` route available for LAN checks, but use `https://salsa.tomascokis.com` as the public origin for the app runtime and external browser access.
 
 ## Data refresh workflow
 
