@@ -198,6 +198,26 @@ function createSchema(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_security_login_attempts_username_created
       ON security_login_attempts(attempted_username_normalized, created_at DESC);
 
+    CREATE TABLE IF NOT EXISTS security_ip_bans (
+      id TEXT PRIMARY KEY,
+      ip_address TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      trigger_kind TEXT NOT NULL,
+      trigger_count INTEGER NOT NULL,
+      window_started_at TEXT NOT NULL,
+      window_ended_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      unbanned_at TEXT,
+      unbanned_by TEXT,
+      unban_reason TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_security_ip_bans_ip_active
+      ON security_ip_bans(ip_address, expires_at DESC, unbanned_at);
+    CREATE INDEX IF NOT EXISTS idx_security_ip_bans_created
+      ON security_ip_bans(created_at DESC);
+
     CREATE TABLE IF NOT EXISTS metadata_entries (
       id TEXT PRIMARY KEY,
       kind TEXT NOT NULL,

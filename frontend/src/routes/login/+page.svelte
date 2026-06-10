@@ -1,6 +1,9 @@
 <script lang="ts">
-  export let data: { next: string };
-  export let form: { username?: string; next?: string; error?: string } | null;
+  export let data: { next: string; banned?: boolean; error?: string | null };
+  export let form: { username?: string; next?: string; banned?: boolean; error?: string } | null;
+
+  $: isBanned = Boolean(form?.banned ?? data.banned);
+  $: error = form?.error ?? data.error;
 </script>
 
 <svelte:head>
@@ -13,23 +16,27 @@
     <h1>Login</h1>
   </div>
 
-  <form method="POST" class="editor-form">
-    <input type="hidden" name="next" value={form?.next ?? data.next} />
-    <label>
-      Username
-      <input name="username" autocomplete="username" value={form?.username ?? ''} required />
-    </label>
-    <label>
-      Password
-      <input name="password" type="password" autocomplete="current-password" required />
-    </label>
-    {#if form?.error}
-      <p class="form-error">{form.error}</p>
-    {/if}
-    <div class="form-actions">
-      <button type="submit" class="primary-action">Login</button>
-    </div>
-  </form>
+  {#if isBanned}
+    <p class="form-error">{error ?? 'Too many login attempts. Try again later.'}</p>
+  {:else}
+    <form method="POST" class="editor-form">
+      <input type="hidden" name="next" value={form?.next ?? data.next} />
+      <label>
+        Username
+        <input name="username" autocomplete="username" value={form?.username ?? ''} required />
+      </label>
+      <label>
+        Password
+        <input name="password" type="password" autocomplete="current-password" required />
+      </label>
+      {#if error}
+        <p class="form-error">{error}</p>
+      {/if}
+      <div class="form-actions">
+        <button type="submit" class="primary-action">Login</button>
+      </div>
+    </form>
+  {/if}
 </section>
 
 <style>

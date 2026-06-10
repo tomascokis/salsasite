@@ -6,7 +6,12 @@ const PAGE_WARNING_PER_HOUR = 120;
 const VIDEO_WARNING_PER_HOUR = 40;
 const WEEKLY_IP_WARNING = 3;
 const FAILED_LOGIN_WARNING_PER_HOUR = 10;
+const FAILED_LOGIN_BAN_THRESHOLD = 20;
+const LOGIN_VIEW_BAN_THRESHOLD_PER_HOUR = 120;
+const LOGIN_BAN_WINDOW_HOURS = 1;
+const LOGIN_BAN_DURATION_HOURS = 24;
 const RECENT_ATTEMPT_LIMIT = 50;
+const RECENT_BAN_LIMIT = 50;
 
 export type UsageKind = 'page' | 'video';
 
@@ -29,6 +34,10 @@ export type SecurityDashboard = {
     videosPerHour: number;
     weeklyIpsPerAccount: number;
     failedLoginsPerHour: number;
+    failedLoginBanThreshold: number;
+    loginViewBanThresholdPerHour: number;
+    loginBanWindowHours: number;
+    loginBanDurationHours: number;
   };
   users: SecurityDashboardUser[];
   loginViewsByIp: Array<{
@@ -56,9 +65,26 @@ export type SecurityDashboard = {
     ipAddress: string;
     success: boolean;
   }>;
+  ipBans: SecurityIpBan[];
 };
 
 type CountRow = Record<string, unknown>;
+
+export type SecurityIpBan = {
+  id: string;
+  ipAddress: string;
+  reason: string;
+  triggerKind: 'failed_login' | 'login_view';
+  triggerCount: number;
+  windowStartedAt: string;
+  windowEndedAt: string;
+  createdAt: string;
+  expiresAt: string;
+  active: boolean;
+  unbannedAt: string | null;
+  unbannedBy: string | null;
+  unbanReason: string | null;
+};
 
 function nowIso() {
   return new Date().toISOString();
@@ -86,6 +112,14 @@ export function weekBucket(value: Date | string = new Date()) {
 
 function isoHoursAgo(hours: number, from: Date) {
   return hourBucket(new Date(from.getTime() - hours * 60 * 60 * 1000));
+}
+
+function exactIsoHoursAgo(hours: number, from: Date) {
+  return new Date(from.getTime() - hours * 60 * 60 * 1000).toISOString();
+}
+
+function isoHoursFrom(hours: number, from: Date) {
+  return new Date(from.getTime() + hours * 60 * 60 * 1000).toISOString();
 }
 
 function normalizeIpAddress(value: unknown) {
@@ -214,6 +248,190 @@ export function recordLoginAttempt(input: {
 
 function numberValue(value: unknown) {
   return Number(value ?? 0);
+}
+
+function securityIpBanFromRow(row: CountRow, now: Date = new Date()): SecurityIpBan {
+  const expiresAt = String(row.expires_at);
+  const unbannedAt = row.unbanned_at ? String(row.unbanned_at) : null;
+  return {
+    id: String(row.id),
+    ipAddress: String(row.ip_address),
+    reason: String(row.reason),
+    triggerKind: row.trigger_kind === 'login_view' ? 'login_view' : 'failed_login',
+    triggerCount: numberValue(row.trigger_count),
+    windowStartedAt: String(row.window_started_at),
+    windowEndedAt: String(row.window_ended_at),
+    createdAt: String(row.created_at),
+    expiresAt,
+    active: !unbannedAt && expiresAt > now.toISOString(),
+    unbannedAt,
+    unbannedBy: row.unbanned_by ? String(row.unbanned_by) : null,
+    unbanReason: row.unban_reason ? String(row.unban_reason) : null
+  };
+}
+
+export function getActiveIpBan(ipAddress: string, now: Date | string = new Date()) {
+  const at = now instanceof Date ? now : new Date(now);
+  const timestamp = at.toISOString();
+  const row = getAppDatabase()
+    .prepare(
+      `
+        SELECT *
+        FROM security_ip_bans
+        WHERE ip_address = ?
+          AND unbanned_at IS NULL
+          AND expires_at > ?
+        ORDER BY expires_at DESC, created_at DESC
+        LIMIT 1
+      `
+    )
+    .get(normalizeIpAddress(ipAddress), timestamp) as CountRow | undefined;
+
+  return row ? securityIpBanFromRow(row, at) : null;
+}
+
+function createIpBan(input: {
+  ipAddress: string;
+  reason: string;
+  triggerKind: SecurityIpBan['triggerKind'];
+  triggerCount: number;
+  windowStartedAt: string;
+  windowEndedAt: string;
+  now: Date;
+}) {
+  const ipAddress = normalizeIpAddress(input.ipAddress);
+  const activeBan = getActiveIpBan(ipAddress, input.now);
+  if (activeBan) {
+    return activeBan;
+  }
+
+  const timestamp = input.now.toISOString();
+  const expiresAt = isoHoursFrom(LOGIN_BAN_DURATION_HOURS, input.now);
+  const id = randomUUID();
+  getAppDatabase()
+    .prepare(
+      `
+        INSERT INTO security_ip_bans (
+          id, ip_address, reason, trigger_kind, trigger_count,
+          window_started_at, window_ended_at, created_at, expires_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+    )
+    .run(
+      id,
+      ipAddress,
+      input.reason,
+      input.triggerKind,
+      input.triggerCount,
+      input.windowStartedAt,
+      input.windowEndedAt,
+      timestamp,
+      expiresAt
+    );
+
+  return {
+    id,
+    ipAddress,
+    reason: input.reason,
+    triggerKind: input.triggerKind,
+    triggerCount: input.triggerCount,
+    windowStartedAt: input.windowStartedAt,
+    windowEndedAt: input.windowEndedAt,
+    createdAt: timestamp,
+    expiresAt,
+    active: true,
+    unbannedAt: null,
+    unbannedBy: null,
+    unbanReason: null
+  } satisfies SecurityIpBan;
+}
+
+export function evaluateIpBanAfterLoginAttempt(ipAddress: string, now: Date | string = new Date()) {
+  const at = now instanceof Date ? now : new Date(now);
+  const normalizedIp = normalizeIpAddress(ipAddress);
+  if (getActiveIpBan(normalizedIp, at)) {
+    return null;
+  }
+
+  const windowStartedAt = exactIsoHoursAgo(LOGIN_BAN_WINDOW_HOURS, at);
+  const windowEndedAt = at.toISOString();
+  const row = getAppDatabase()
+    .prepare(
+      `
+        SELECT COUNT(*) AS count
+        FROM security_login_attempts
+        WHERE ip_address = ?
+          AND success = 0
+          AND created_at >= ?
+          AND created_at <= ?
+      `
+    )
+    .get(normalizedIp, windowStartedAt, windowEndedAt) as { count?: number | bigint } | undefined;
+  const count = Number(row?.count ?? 0);
+  if (count < FAILED_LOGIN_BAN_THRESHOLD) {
+    return null;
+  }
+
+  return createIpBan({
+    ipAddress: normalizedIp,
+    reason: `${count} failed login attempts in ${LOGIN_BAN_WINDOW_HOURS} hour.`,
+    triggerKind: 'failed_login',
+    triggerCount: count,
+    windowStartedAt,
+    windowEndedAt,
+    now: at
+  });
+}
+
+export function evaluateIpBanAfterLoginView(ipAddress: string, now: Date | string = new Date()) {
+  const at = now instanceof Date ? now : new Date(now);
+  const normalizedIp = normalizeIpAddress(ipAddress);
+  if (getActiveIpBan(normalizedIp, at)) {
+    return null;
+  }
+
+  const hour = hourBucket(at);
+  const row = getAppDatabase()
+    .prepare(
+      `
+        SELECT view_count
+        FROM security_login_views_hourly
+        WHERE ip_address = ? AND hour_bucket = ?
+        LIMIT 1
+      `
+    )
+    .get(normalizedIp, hour) as { view_count?: number | bigint } | undefined;
+  const count = Number(row?.view_count ?? 0);
+  if (count < LOGIN_VIEW_BAN_THRESHOLD_PER_HOUR) {
+    return null;
+  }
+
+  return createIpBan({
+    ipAddress: normalizedIp,
+    reason: `${count} login page views in ${LOGIN_BAN_WINDOW_HOURS} hour.`,
+    triggerKind: 'login_view',
+    triggerCount: count,
+    windowStartedAt: hour,
+    windowEndedAt: at.toISOString(),
+    now: at
+  });
+}
+
+export function unbanIpAddress(ipAddress: string, actor: string, reason = 'Manual admin unban.') {
+  const normalizedIp = normalizeIpAddress(ipAddress);
+  const timestamp = nowIso();
+  const result = getAppDatabase()
+    .prepare(
+      `
+        UPDATE security_ip_bans
+        SET unbanned_at = ?, unbanned_by = ?, unban_reason = ?
+        WHERE ip_address = ?
+          AND unbanned_at IS NULL
+          AND expires_at > ?
+      `
+    )
+    .run(timestamp, String(actor || 'admin'), String(reason || 'Manual admin unban.'), normalizedIp, timestamp);
+  return Number(result.changes ?? 0);
 }
 
 function warningReasonsForUser(user: SecurityDashboardUser) {
@@ -358,13 +576,30 @@ export function getSecurityDashboard(input: { now?: Date | string } = {}): Secur
     )
     .all(RECENT_ATTEMPT_LIMIT) as CountRow[];
 
+  const ipBans = db
+    .prepare(
+      `
+        SELECT *
+        FROM security_ip_bans
+        ORDER BY
+          CASE WHEN unbanned_at IS NULL AND expires_at > ? THEN 0 ELSE 1 END,
+          created_at DESC
+        LIMIT ?
+      `
+    )
+    .all(generatedAt, RECENT_BAN_LIMIT) as CountRow[];
+
   return {
     generatedAt,
     thresholds: {
       pagesPerHour: PAGE_WARNING_PER_HOUR,
       videosPerHour: VIDEO_WARNING_PER_HOUR,
       weeklyIpsPerAccount: WEEKLY_IP_WARNING,
-      failedLoginsPerHour: FAILED_LOGIN_WARNING_PER_HOUR
+      failedLoginsPerHour: FAILED_LOGIN_WARNING_PER_HOUR,
+      failedLoginBanThreshold: FAILED_LOGIN_BAN_THRESHOLD,
+      loginViewBanThresholdPerHour: LOGIN_VIEW_BAN_THRESHOLD_PER_HOUR,
+      loginBanWindowHours: LOGIN_BAN_WINDOW_HOURS,
+      loginBanDurationHours: LOGIN_BAN_DURATION_HOURS
     },
     users: dashboardUsers,
     loginViewsByIp: loginViewsByIp.map((row) => ({
@@ -397,6 +632,7 @@ export function getSecurityDashboard(input: { now?: Date | string } = {}): Secur
       username: String(row.attempted_username || '(blank)'),
       ipAddress: String(row.ip_address),
       success: Boolean(row.success)
-    }))
+    })),
+    ipBans: ipBans.map((row) => securityIpBanFromRow(row, now))
   };
 }

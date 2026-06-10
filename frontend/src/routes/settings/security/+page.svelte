@@ -7,6 +7,7 @@
   $: warningUserCount = dashboard.users.filter((user) => user.warningReasons.length > 0).length;
   $: failedIpWarnings = dashboard.failedAttemptsByIp.filter((entry) => entry.warning).length;
   $: failedUsernameWarnings = dashboard.failedAttemptsByUsername.filter((entry) => entry.warning).length;
+  $: activeBanCount = dashboard.ipBans.filter((ban) => ban.active).length;
 
   function formatDate(value: string) {
     const date = new Date(value);
@@ -35,7 +36,57 @@
       <span class:warning={warningUserCount > 0}>{warningUserCount} user warnings</span>
       <span class:warning={failedIpWarnings > 0}>{failedIpWarnings} IP login warnings</span>
       <span class:warning={failedUsernameWarnings > 0}>{failedUsernameWarnings} username login warnings</span>
+      <span class:warning={activeBanCount > 0}>{activeBanCount} active IP bans</span>
       <span>Updated {formatDate(dashboard.generatedAt)}</span>
+    </div>
+  </section>
+
+  <section class="settings-panel">
+    <div class="settings-header">
+      <h2>IP bans</h2>
+    </div>
+    <p class="security-note">
+      Auto-bans trigger after {dashboard.thresholds.failedLoginBanThreshold} failed logins in {dashboard.thresholds.loginBanWindowHours} hour or {dashboard.thresholds.loginViewBanThresholdPerHour} login views in one hour. Bans last {dashboard.thresholds.loginBanDurationHours} hours unless an admin removes them.
+    </p>
+    <div class="security-table-wrap">
+      <table class="security-table">
+        <thead>
+          <tr>
+            <th>IP</th>
+            <th>Status</th>
+            <th>Reason</th>
+            <th>Window</th>
+            <th>Expires</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each dashboard.ipBans as ban}
+            <tr class:warning-row={ban.active}>
+              <td>{ban.ipAddress}</td>
+              <td>{ban.active ? 'Active' : ban.unbannedAt ? `Unbanned by ${ban.unbannedBy ?? 'admin'}` : 'Expired'}</td>
+              <td>{ban.reason}</td>
+              <td>{formatDate(ban.windowStartedAt)} - {formatDate(ban.windowEndedAt)}</td>
+              <td>{formatDate(ban.expiresAt)}</td>
+              <td>
+                {#if ban.active}
+                  <form method="POST" action="?/unban" class="inline-form">
+                    <input type="hidden" name="ipAddress" value={ban.ipAddress} />
+                    <input type="hidden" name="reason" value="Manual unban from security dashboard." />
+                    <button type="submit" class="header-button">Unban</button>
+                  </form>
+                {:else}
+                  <span class="muted">None</span>
+                {/if}
+              </td>
+            </tr>
+          {:else}
+            <tr>
+              <td colspan="6">No IP bans recorded.</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
     </div>
   </section>
 
@@ -260,6 +311,17 @@
   .security-grid h3 {
     margin: 0 0 0.4rem;
     font-size: 0.95rem;
+  }
+
+  .security-note {
+    margin: 0 0 0.75rem;
+    color: #475569;
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .inline-form {
+    margin: 0;
   }
 
   .security-table {

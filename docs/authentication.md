@@ -36,7 +36,8 @@ These contracts cover login, access control, and role behavior.
 - The app records unique IP addresses used by each account per UTC week.
 - The app records login page views by IP and login attempts by attempted username, IP, and success/failure result.
 - Security tracking is server-side and must not depend on browser-side scripts.
-- Security tracking is warning-only; it must not block, throttle, or lock accounts unless an explicit enforcement contract is added later.
+- Security tracking is warning-only except for IP auto-bans on login abuse; auto-bans must not lock usernames or deactivate accounts.
+- Login abuse auto-bans apply by IP address after 20 failed login submissions in one hour or 120 login page views in one hour, expire after 24 hours, and can be manually lifted by an admin.
 - The admin-only `/settings/security` page shows usage summaries, login activity, recent attempts, and warning states.
 - Raw IP tracking data is retained indefinitely.
 - Proxy headers are trusted only when `TRUST_PROXY_HEADERS=true`; otherwise the app uses the direct client address reported by SvelteKit.
