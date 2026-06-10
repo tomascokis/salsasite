@@ -24,6 +24,7 @@ These contracts cover login, access control, and role behavior.
 - Accounts are local to the deployment and stored in the app-state SQLite database.
 - If no users exist yet, the app creates a default admin account for `tomascokis` on the first login attempt.
 - Additional account creation and operator-driven password resets are performed by a local CLI seed script, not by public signup.
+- Account seed/reset scripts must refuse to write users when the resolved data directory does not match the running deployment's live `DATA_DIR`.
 - Authenticated users may change their own password from an account panel after confirming their current password.
 - Login sessions use an HTTP-only cookie with a long private-device expiry.
 - Logout must invalidate the server-side session and clear the browser cookie.

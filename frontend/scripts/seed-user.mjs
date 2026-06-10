@@ -4,11 +4,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 const scrypt = promisify(scryptCallback);
 const SCRYPT_KEY_LENGTH = 64;
 const SCRYPT_OPTIONS = { N: 16384, r: 8, p: 1 };
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const FRONTEND_ROOT = path.resolve(SCRIPT_DIR, '..');
+const PROJECT_ROOT = path.resolve(FRONTEND_ROOT, '..');
 
 function nowIso() {
   return new Date().toISOString();
@@ -41,7 +45,24 @@ function parseArgs(argv) {
 }
 
 function resolveDataDir() {
-  return process.env.DATA_DIR || path.resolve(process.cwd(), '..', 'data', 'live');
+  return process.env.DATA_DIR ? path.resolve(process.cwd(), process.env.DATA_DIR) : path.join(PROJECT_ROOT, 'data', 'live');
+}
+
+function expectedDataDir() {
+  return process.env.LIVE_ROOT
+    ? path.join(path.resolve(process.cwd(), process.env.LIVE_ROOT), 'data', 'live')
+    : path.join(PROJECT_ROOT, 'data', 'live');
+}
+
+function assertExpectedDataDir(dataDir) {
+  const resolvedDataDir = path.resolve(dataDir);
+  const resolvedExpectedDataDir = path.resolve(expectedDataDir());
+  if (resolvedDataDir !== resolvedExpectedDataDir) {
+    throw new Error(
+      `Refusing to write auth users to ${resolvedDataDir}. Expected live DATA_DIR ${resolvedExpectedDataDir}. ` +
+        'Pass -e DATA_DIR=/server/live/data/live when running inside the container.'
+    );
+  }
 }
 
 function passwordDebugInfo(password) {
@@ -161,12 +182,14 @@ async function main() {
     throw new Error('Pass --username USER.');
   }
 
+  const dataDir = resolveDataDir();
+  assertExpectedDataDir(dataDir);
+
   const password = await readPassword(args.passwordStdin);
   if (password.length < 8) {
     throw new Error('Password must be at least 8 characters.');
   }
 
-  const dataDir = resolveDataDir();
   fs.mkdirSync(dataDir, { recursive: true });
   const db = new DatabaseSync(path.join(dataDir, 'app-state.sqlite'));
   db.exec('PRAGMA foreign_keys = ON');
