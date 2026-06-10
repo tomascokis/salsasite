@@ -4,6 +4,7 @@ import {
   pruneExpiredSessions,
   sessionCookieName
 } from '$lib/server/auth';
+import { clientIpFromEvent, recordAuthenticatedUsage, type UsageKind } from '$lib/server/security-usage';
 
 const adminPagePrefixes = ['/media/edit', '/moves/create', '/progress/editor', '/settings'];
 const adminApiPrefixes = ['/api/history', '/api/media/jobs', '/api/upload'];
@@ -36,6 +37,28 @@ function isAdminApi(pathname: string) {
 function loginRedirect(pathname: string, search: string) {
   const next = `${pathname}${search}`;
   throw redirect(303, `/login?next=${encodeURIComponent(next)}`);
+}
+
+function usageKindForRequest(event: Parameters<Handle>[0]['event']): UsageKind | null {
+  const { pathname } = event.url;
+  if (event.request.method !== 'GET' && event.request.method !== 'HEAD') {
+    return null;
+  }
+
+  if (pathname.startsWith('/media/video-')) {
+    return 'video';
+  }
+
+  if (isApiOrAssetRequest(pathname) || isPublicPath(pathname)) {
+    return null;
+  }
+
+  if (pathname === '/__data.json' || pathname.endsWith('/__data.json')) {
+    return 'page';
+  }
+
+  const accept = event.request.headers.get('accept') ?? '';
+  return accept.includes('text/html') ? 'page' : null;
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -77,5 +100,19 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
   }
 
-  return resolve(event);
+  const usageKind = usageKindForRequest(event);
+  const response = await resolve(event);
+  if (usageKind && response.status < 400) {
+    try {
+      recordAuthenticatedUsage({
+        userId: event.locals.user.id,
+        kind: usageKind,
+        ipAddress: clientIpFromEvent(event)
+      });
+    } catch (error) {
+      console.warn('Failed to record authenticated usage', error);
+    }
+  }
+
+  return response;
 };

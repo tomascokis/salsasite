@@ -64,6 +64,7 @@ Recommended environment:
 - `SOURCE_ROOT=/server/live/data/live/media/video-sources`
 - `POSTER_ROOT=/server/live/data/live/media/video-posters`
 - Optional: `POSTER_TIMESTAMP_SECONDS=1.0`
+- Optional: `TRUST_PROXY_HEADERS=true` when the app is behind a trusted reverse proxy that sets `x-forwarded-for` or `x-real-ip`
 
 ## Data refresh workflow
 

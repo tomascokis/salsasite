@@ -112,6 +112,7 @@ Implemented user-facing routes:
 - `/families/[slug]`: family splash page that reuses the overview layout filtered to a family.
 - `/account`: authenticated user panel with account details and self-service password change.
 - `/settings`: badge color settings stored in browser local storage.
+- `/settings/security`: admin-only security dashboard for per-user usage, weekly IP counts, login views, and login attempts.
 - `/upload`: compatibility redirect area for older upload navigation.
 
 Overview-style pages use the live published move dataset at runtime. Published moves and published move edits must appear on the home overview and overview-derived topic/family pages without requiring fresh bootstrap JSON. The saved overview layout defines topic/column placement, but move rows within a topic must be ordered from live catalog move metadata instead of stale saved layout row position.
@@ -269,6 +270,6 @@ For browser verification from this checkout, use `http://192.168.0.127:18096`.
 - The legacy R/Quarto implementation and checked-in static reference output have been retired. Preserved RDS/XLSX artifacts remain for audit and migration context, but they are not an active build/export path.
 - The media catalog is SQLite-backed. JSON media catalog files are bootstrap/export artifacts, not the live source of truth after first SQLite bootstrap.
 - Progress editor changes are currently browser-local unless imported/exported through CSV.
-- Authentication and authorization are implemented locally with SQLite-backed users and sessions. All application content, media files, poster files, and APIs are gated behind login. Viewers can browse/read content, while admins are required for editing, upload, publishing, undo, repair, retry, and operational settings. Detailed auth contracts live in [docs/authentication.md](/Volumes/fastdata/server/salsasite-dev/docs/authentication.md).
+- Authentication and authorization are implemented locally with SQLite-backed users and sessions. All application content, media files, poster files, and APIs are gated behind login. Viewers can browse/read content, while admins are required for editing, upload, publishing, undo, repair, retry, and operational settings. Authenticated usage and login activity are tracked in SQLite for admin security visibility. Detailed auth contracts live in [docs/authentication.md](/Volumes/fastdata/server/salsasite-dev/docs/authentication.md).
 - Media render jobs are in memory. If the container restarts during rendering, the saved clip definition remains but the active render job is lost.
 - The repository has existing uncommitted changes; this document does not attempt to reconcile or validate all pending worktree changes.

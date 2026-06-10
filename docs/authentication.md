@@ -29,6 +29,17 @@ These contracts cover login, access control, and role behavior.
 - Logout must invalidate the server-side session and clear the browser cookie.
 - Passwords must never be stored directly; only salted password hashes may be persisted.
 
+## Security Tracking
+
+- The app records authenticated page views and video requests per user in hourly SQLite rollups.
+- The app records unique IP addresses used by each account per UTC week.
+- The app records login page views by IP and login attempts by attempted username, IP, and success/failure result.
+- Security tracking is server-side and must not depend on browser-side scripts.
+- Security tracking is warning-only; it must not block, throttle, or lock accounts unless an explicit enforcement contract is added later.
+- The admin-only `/settings/security` page shows usage summaries, login activity, recent attempts, and warning states.
+- Raw IP tracking data is retained indefinitely.
+- Proxy headers are trusted only when `TRUST_PROXY_HEADERS=true`; otherwise the app uses the direct client address reported by SvelteKit.
+
 ## Audit Actors
 
 - New mutating actions should record the authenticated actor in action history.

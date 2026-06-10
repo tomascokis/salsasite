@@ -142,6 +142,62 @@ function createSchema(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at);
 
+    CREATE TABLE IF NOT EXISTS security_user_usage_hourly (
+      user_id TEXT NOT NULL,
+      hour_bucket TEXT NOT NULL,
+      page_count INTEGER NOT NULL,
+      video_count INTEGER NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY(user_id, hour_bucket),
+      FOREIGN KEY(user_id) REFERENCES auth_users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_security_user_usage_hourly_bucket
+      ON security_user_usage_hourly(hour_bucket);
+
+    CREATE TABLE IF NOT EXISTS security_user_weekly_ips (
+      user_id TEXT NOT NULL,
+      week_bucket TEXT NOT NULL,
+      ip_address TEXT NOT NULL,
+      first_seen_at TEXT NOT NULL,
+      last_seen_at TEXT NOT NULL,
+      request_count INTEGER NOT NULL,
+      PRIMARY KEY(user_id, week_bucket, ip_address),
+      FOREIGN KEY(user_id) REFERENCES auth_users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_security_user_weekly_ips_user_week
+      ON security_user_weekly_ips(user_id, week_bucket);
+
+    CREATE TABLE IF NOT EXISTS security_login_views_hourly (
+      hour_bucket TEXT NOT NULL,
+      ip_address TEXT NOT NULL,
+      view_count INTEGER NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY(hour_bucket, ip_address)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_security_login_views_hourly_bucket
+      ON security_login_views_hourly(hour_bucket);
+
+    CREATE TABLE IF NOT EXISTS security_login_attempts (
+      id TEXT PRIMARY KEY,
+      attempted_username TEXT NOT NULL,
+      attempted_username_normalized TEXT NOT NULL,
+      user_id TEXT,
+      ip_address TEXT NOT NULL,
+      success INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES auth_users(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_security_login_attempts_created
+      ON security_login_attempts(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_security_login_attempts_ip_created
+      ON security_login_attempts(ip_address, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_security_login_attempts_username_created
+      ON security_login_attempts(attempted_username_normalized, created_at DESC);
+
     CREATE TABLE IF NOT EXISTS metadata_entries (
       id TEXT PRIMARY KEY,
       kind TEXT NOT NULL,
